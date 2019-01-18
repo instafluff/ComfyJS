@@ -1,0 +1,25 @@
+{
+  "name": "comfy.js",
+  "version": "1.0.0",
+  "description": "Twitch-Integrated Bot Module for Coding Cafe",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/instafluff/ComfyJS.git"
+  },
+  "author": "Instafluff",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/instafluff/ComfyJS/issues"
+  },
+  "homepage": "https://github.com/instafluff/ComfyJS#readme",
+  "dependencies": {
+    "twitch-js": "^1.2.17"
+  },
+  "devDependencies": {
+    "mocha": "^5.2.0"
+  }
+}
