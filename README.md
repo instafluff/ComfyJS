@@ -1,7 +1,7 @@
 # Comfy.JS
 We built this Comfy Twitch Chat Module live on Twitch for Coding Cafe!
 
-Comfy.JS lets you handle custom chat commands for your Twitch channel **SUPER EASILY** in just a few lines of code.
+**Comfy.JS** lets you handle custom chat commands for your Twitch channel ***SUPER EASILY*** in just a few lines of code.
 
 ## Instafluff ##
 > *Come and hang out with us at the Comfiest Corner on Twitch!*
