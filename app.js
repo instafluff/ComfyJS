@@ -17,10 +17,10 @@ var comfyJS = {
     channel = "#" + username;
     const options = {
       channels: [ channel ],
-      identity: {
+      ...password && { identity: {
         username: username,
         password: password
-      },
+      } },
     };
 
     client = new TwitchJS.client( options );
