@@ -20,12 +20,21 @@ npm install comfy.js --save
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags ) => {
-  if( command == "test" ) {
+  if( flags.broadcaster && command == "test" ) {
     console.log( "!test was typed in chat" );
   }
 }
 ComfyJS.Init( "MyTwitchChannel" );
 ```
+
+## Flags ##
+
+Currently, the flags possible in `onCommand()` are:
+
+- broadcaster
+- mod
+- subscriber
+- vip
 
 ## Sending Chat Messages ##
 
