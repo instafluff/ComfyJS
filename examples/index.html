@@ -1,0 +1,18 @@
+<html>
+  <head>
+    <script src="../dist/comfy.min.js"></script>
+  </head>
+  <body>
+    <script type="text/javascript">
+      ComfyJS.onCommand = ( user, command, message, flags ) => {
+        if( flags.broadcaster && command == "test" ) {
+          console.log( "!test was typed in chat" );
+        }
+      }
+      ComfyJS.onChat = ( user, message, flags ) => {
+        console.log( message );
+      }
+      ComfyJS.Init( "instafluff" );
+    </script>
+  </body>
+</html>

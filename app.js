@@ -1,4 +1,4 @@
-var TwitchJS = require( "twitch-js" );
+var tmi = require( "tmi.js" );
 
 var channel = "";
 var client = null;
@@ -16,40 +16,50 @@ var comfyJS = {
     }
     return false;
   },
-  Init: function( username, password = null ) {
+  Init: function( username, password ) {
     channel = "#" + username;
-    const options = {
+    var options = password ? {
+      connection: {
+        reconnect: true,
+        secure: true
+      },
       channels: [ channel ],
-      ...password && { identity: {
+      identity: {
         username: username,
         password: password
-      } },
+      },
+    } : {
+      connection: {
+        reconnect: true,
+        secure: true
+      },
+      channels: [ channel ]
     };
 
-    client = new TwitchJS.client( options );
-    client.on( 'chat', ( channel, userstate, message, self ) => {
+    client = new tmi.client( options );
+    client.on( 'chat', function ( channel, userstate, message, self ) {
       try {
-        let user = userstate[ "display-name" ] || userstate[ "username" ];
-        let isBroadcaster = ( "#" + userstate[ "username" ] ) == channel;
-        let isMod = userstate[ "mod" ];
-        let isSubscriber = userstate[ "subscriber" ];
-        let isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
+        var user = userstate[ "display-name" ] || userstate[ "username" ];
+        var isBroadcaster = ( "#" + userstate[ "username" ] ) == channel;
+        var isMod = userstate[ "mod" ];
+        var isSubscriber = userstate[ "subscriber" ];
+        var isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
         if( message.match( /^\!/ ) ) {
           // Message is a command
-          let parts = message.split(/ (.*)/);
+          var parts = message.split(/ (.*)/);
           comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", {
-            ...isBroadcaster && { broadcaster: isBroadcaster },
-            ...isMod && { mod: isMod },
-            ...isSubscriber && { subscriber: isSubscriber },
-            ...isVIP && { vip: isVIP }
+            broadcaster: isBroadcaster,
+            mod: isMod,
+            subscriber: isSubscriber,
+            vip: isVIP
           });
         }
         else {
           comfyJS.onChat( user, message, {
-            ...isBroadcaster && { broadcaster: isBroadcaster },
-            ...isMod && { mod: isMod },
-            ...isSubscriber && { subscriber: isSubscriber },
-            ...isVIP && { vip: isVIP }
+            broadcaster: isBroadcaster,
+            mod: isMod,
+            subscriber: isSubscriber,
+            vip: isVIP
           });
         }
       }
@@ -57,10 +67,17 @@ var comfyJS = {
         console.log( "Error:", error );
       }
     });
-    client.on( 'connected', ( address, port ) => console.log( `Connected: ${ address }:${ port }` ) );
-    client.on( 'reconnect', () => console.log( 'Reconnecting' ) );
+    client.on( 'connected', function ( address, port ) { console.log( "Connected: " + address + ":" + port ) } );
+    client.on( 'reconnect', function () { console.log( 'Reconnecting' ) } );
     client.connect();
   }
 };
 
-module.exports = comfyJS;
+// Expose everything, for browser and Node..
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = comfyJS;
+}
+if (typeof window !== "undefined") {
+    window.ComfyJS = comfyJS;
+    tmi = window.tmi;
+}
