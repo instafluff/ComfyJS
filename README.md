@@ -12,21 +12,13 @@ We built this Comfy Twitch Chat Module live on Twitch for Coding Cafe!
 
 ## Instructions ##
 
-1. Install `comfy.js`
-
 #### Node
+1. Install `comfy.js`
 ```
 npm install comfy.js --save
 ```
 
-#### Browser
-```
-<script src="comfy.min.js"></script>
-```
-
 2. Respond to !commands your channel
-
-#### Node
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags ) => {
@@ -38,10 +30,16 @@ ComfyJS.Init( "MyTwitchChannel" );
 ```
 
 #### Browser
+1. Add `comfy.js`
+```
+<script src="comfy.min.js"></script>
+```
+
+2. Respond to !commands your channel
 ```html
 <html>
   <head>
-    <script src="comfy.js"></script>
+    <script src="comfy.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
@@ -70,16 +68,14 @@ Currently, the flags possible in `onCommand()` are:
 You can read chat messages by using the onChat() handler
 
 ```javascript
-var ComfyJS = require("comfy.js");
 ComfyJS.onChat = ( user, message, flags ) => {
   console.log( user, message );
 }
-ComfyJS.Init( "MyTwitchChannel" );
 ```
 
 ## Sending Chat Messages ##
 
-Sending Chat Messages can be done through `ComfyJS.Say()` but requires an OAUTH password when connecting to chat.
+Sending Chat Messages can be done through `ComfyJS.Say( message )` but requires an OAUTH password when connecting to chat.
 
 #### Securely adding your password
 1. Get a Twitch Chat OAuth Password Token - [http://twitchapps.com/tmi/](http://twitchapps.com/tmi/)
