@@ -40,7 +40,7 @@ var comfyJS = {
         var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
         var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
-        var isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
+        var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
