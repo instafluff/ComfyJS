@@ -36,7 +36,7 @@ var comfyJS = {
     client.on( 'message', function ( channel, userstate, message, self ) {
       try {
         var user = userstate[ "display-name" ] || userstate[ "username" ];
-        var isBroadcaster = ( "#" + userstate[ "username" ] ) == channel;
+        var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
         var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
         var isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
@@ -46,7 +46,7 @@ var comfyJS = {
           subscriber: isSubscriber,
           vip: isVIP
         };
-        if( message[ 0 ] == "!" ) {
+        if( message[ 0 ] === "!" ) {
           // Message is a command
           var parts = message.split( / (.*)/ );
           var command = parts[ 0 ].slice( 1 ).toLowerCase();
