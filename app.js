@@ -11,7 +11,8 @@ var comfyJS = {
   },
   Say: function( message ) {
     if( client ) {
-      client.say( channel, message );
+      client.say( channel, message )
+      .catch( function( error ) { console.log( "Error:", error ); } );
       return true;
     }
     return false;
@@ -63,7 +64,8 @@ var comfyJS = {
     });
     client.on( 'connected', function ( address, port ) { console.log( "Connected: " + address + ":" + port ) } );
     client.on( 'reconnect', function () { console.log( 'Reconnecting' ) } );
-    client.connect();
+    client.connect()
+    .catch( function( error ) { console.log( "Error:", error ); } );
   }
 };
 
