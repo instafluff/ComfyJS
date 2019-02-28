@@ -12,56 +12,51 @@ var comfyJS = {
   },
   Say: function( message ) {
     if( client ) {
-      client.say( channel, message );
+      client.say( channel, message )
+      .catch( function( error ) { console.log( "Error:", error ); } );
       return true;
     }
     return false;
   },
   Init: function( username, password ) {
-    channel = "#" + username;
-    var options = password ? {
-      connection: {
-        reconnect: true,
-        secure: true
-      },
-      channels: [ channel ],
-      identity: {
-        username: username,
-        password: password
-      },
-    } : {
+    channel = username;
+    var options = {
       connection: {
         reconnect: true,
         secure: true
       },
       channels: [ channel ]
     };
+    if( password ) {
+      options.identity = {
+        username: username,
+        password: password
+      };
+    }
 
     client = new tmi.client( options );
-    client.on( 'chat', function ( channel, userstate, message, self ) {
+    client.on( 'message', function ( channel, userstate, message, self ) {
       try {
         var user = userstate[ "display-name" ] || userstate[ "username" ];
-        var isBroadcaster = ( "#" + userstate[ "username" ] ) == channel;
+        var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
-        var isSubscriber = userstate[ "subscriber" ];
-        var isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
-        if( message.match( /^\!/ ) ) {
+        var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
+        var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+        var flags = {
+          broadcaster: isBroadcaster,
+          mod: isMod,
+          subscriber: isSubscriber,
+          vip: isVIP
+        };
+        if( !self && message[ 0 ] === "!" ) {
           // Message is a command
-          var parts = message.split(/ (.*)/);
-          comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", {
-            broadcaster: isBroadcaster,
-            mod: isMod,
-            subscriber: isSubscriber,
-            vip: isVIP
-          });
+          var parts = message.split( / (.*)/ );
+          var command = parts[ 0 ].slice( 1 ).toLowerCase();
+          var msg = parts[ 1 ] || "";
+          comfyJS.onCommand( user, command, msg, flags );
         }
         else {
-          comfyJS.onChat( user, message, {
-            broadcaster: isBroadcaster,
-            mod: isMod,
-            subscriber: isSubscriber,
-            vip: isVIP
-          });
+          comfyJS.onChat( user, message, flags, self );
         }
       }
       catch( error ) {
@@ -70,7 +65,8 @@ var comfyJS = {
     });
     client.on( 'connected', function ( address, port ) { console.log( "Connected: " + address + ":" + port ) } );
     client.on( 'reconnect', function () { console.log( 'Reconnecting' ) } );
-    client.connect();
+    client.connect()
+    .catch( function( error ) { console.log( "Error:", error ); } );
   }
 };
 
