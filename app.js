@@ -48,8 +48,10 @@ var comfyJS = {
         };
         if( message[ 0 ] == "!" ) {
           // Message is a command
-          var parts = message.split(/ (.*)/);
-          comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", flags );
+          var parts = message.split( / (.*)/ );
+          var command = parts[ 0 ].slice( 1 ).toLowerCase();
+          var msg = parts[ 1 ] || "";
+          comfyJS.onCommand( user, command, msg, flags );
         }
         else {
           comfyJS.onChat( user, message, flags );
