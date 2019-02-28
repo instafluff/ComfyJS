@@ -46,7 +46,7 @@ var comfyJS = {
           subscriber: isSubscriber,
           vip: isVIP
         };
-        if( message[ 0 ] === "!" ) {
+        if( !self && message[ 0 ] === "!" ) {
           // Message is a command
           var parts = message.split( / (.*)/ );
           var command = parts[ 0 ].slice( 1 ).toLowerCase();
@@ -54,7 +54,7 @@ var comfyJS = {
           comfyJS.onCommand( user, command, msg, flags );
         }
         else {
-          comfyJS.onChat( user, message, flags );
+          comfyJS.onChat( user, message, flags, self );
         }
       }
       catch( error ) {
