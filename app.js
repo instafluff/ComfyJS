@@ -18,23 +18,19 @@ var comfyJS = {
   },
   Init: function( username, password ) {
     channel = username;
-    var options = password ? {
-      connection: {
-        reconnect: true,
-        secure: true
-      },
-      channels: [ channel ],
-      identity: {
-        username: username,
-        password: password
-      },
-    } : {
+    var options = {
       connection: {
         reconnect: true,
         secure: true
       },
       channels: [ channel ]
     };
+    if( password ) {
+      options.identity = {
+        username: username,
+        password: password
+      };
+    }
 
     client = new tmi.client( options );
     client.on( 'chat', function ( channel, userstate, message, self ) {
