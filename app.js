@@ -46,7 +46,7 @@ var comfyJS = {
           subscriber: isSubscriber,
           vip: isVIP
         };
-        if( message.match( /^\!/ ) ) {
+        if( message[ 0 ] == "!" ) {
           // Message is a command
           var parts = message.split(/ (.*)/);
           comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", flags );
