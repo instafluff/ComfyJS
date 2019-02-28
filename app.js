@@ -40,23 +40,19 @@ var comfyJS = {
         var isMod = userstate[ "mod" ];
         var isSubscriber = userstate[ "subscriber" ];
         var isVIP = userstate[ "badges" ] && userstate[ "badges" ].vip;
+        var flags = {
+          broadcaster: isBroadcaster,
+          mod: isMod,
+          subscriber: isSubscriber,
+          vip: isVIP
+        };
         if( message.match( /^\!/ ) ) {
           // Message is a command
           var parts = message.split(/ (.*)/);
-          comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", {
-            broadcaster: isBroadcaster,
-            mod: isMod,
-            subscriber: isSubscriber,
-            vip: isVIP
-          });
+          comfyJS.onCommand( user, parts[ 0 ].substring( 1 ).toLowerCase(), parts[ 1 ] || "", flags );
         }
         else {
-          comfyJS.onChat( user, message, {
-            broadcaster: isBroadcaster,
-            mod: isMod,
-            subscriber: isSubscriber,
-            vip: isVIP
-          });
+          comfyJS.onChat( user, message, flags );
         }
       }
       catch( error ) {
