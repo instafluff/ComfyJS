@@ -33,7 +33,7 @@ var comfyJS = {
     }
 
     client = new tmi.client( options );
-    client.on( 'chat', function ( channel, userstate, message, self ) {
+    client.on( 'message', function ( channel, userstate, message, self ) {
       try {
         var user = userstate[ "display-name" ] || userstate[ "username" ];
         var isBroadcaster = ( "#" + userstate[ "username" ] ) == channel;
