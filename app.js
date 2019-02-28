@@ -17,7 +17,7 @@ var comfyJS = {
     return false;
   },
   Init: function( username, password ) {
-    channel = "#" + username;
+    channel = username;
     var options = password ? {
       connection: {
         reconnect: true,
