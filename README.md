@@ -68,7 +68,7 @@ Currently, the flags possible in `onCommand()` are:
 You can read chat messages by using the onChat() handler
 
 ```javascript
-ComfyJS.onChat = ( user, message, flags ) => {
+ComfyJS.onChat = ( user, message, flags, self ) => {
   console.log( user, message );
 }
 ```
