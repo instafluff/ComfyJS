@@ -1,8 +1,12 @@
+// Comfy.JS v@VERSION
 var tmi = require( "tmi.js" );
 
 var channel = "";
 var client = null;
 var comfyJS = {
+  version: function() {
+    return "@VERSION";
+  },
   onCommand: function( user, command, message, flags ) {
     console.log( "onCommand default handler" );
   },

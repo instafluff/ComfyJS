@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm-run-all --sequential build:*",
     "build:browserify": "browserify app.js -o ./dist/comfy.js",
+    "build:version": "node version.js",
     "build:uglify": "uglifyjs --compress --mangle --source-map --output ./dist/comfy.min.js ./dist/comfy.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
