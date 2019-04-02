@@ -10,7 +10,7 @@ var comfyJS = {
   onCommand: function( user, command, message, flags ) {
     console.log( "onCommand default handler" );
   },
-  onChat: function( user, message, flags ) {
+  onChat: function( user, message, flags, self ) {
     console.log( "onChat default handler" );
   },
   Say: function( message ) {
