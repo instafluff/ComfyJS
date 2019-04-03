@@ -4,12 +4,12 @@
   </head>
   <body>
     <script type="text/javascript">
-      ComfyJS.onCommand = ( user, command, message, flags ) => {
+      ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
         if( flags.broadcaster && command == "test" ) {
           console.log( "!test was typed in chat" );
         }
       }
-      ComfyJS.onChat = ( user, message, flags, self ) => {
+      ComfyJS.onChat = ( user, message, flags, self, extra ) => {
         console.log( user + ":", message );
       }
       ComfyJS.Init( "instafluff" );
