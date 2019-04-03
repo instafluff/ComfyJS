@@ -58,7 +58,7 @@ var comfyJS = {
     client = new tmi.client( options );
     client.on( 'message', function ( channel, userstate, message, self ) {
       try {
-        var user = userstate[ "display-name" ] || userstate[ "username" ];
+        var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
         var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
         var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];

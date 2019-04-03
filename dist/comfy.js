@@ -14,12 +14,23 @@ var comfyJS = {
   onChat: function( user, message, flags, self ) {
     console.log( "onChat default handler" );
   },
+  onWhisper: function( user, message, flags, self ) {
+    console.log( "onWhisper default handler" );
+  },
   Say: function( message, channel ) {
     if( client ) {
       if( !channel ) {
         channel = mainChannel;
       }
       client.say( channel, message )
+      .catch( function( error ) { console.log( "Error:", error ); } );
+      return true;
+    }
+    return false;
+  },
+  Whisper: function( message, user ) {
+    if( client ) {
+      client.whisper( user, message )
       .catch( function( error ) { console.log( "Error:", error ); } );
       return true;
     }
@@ -48,11 +59,12 @@ var comfyJS = {
     client = new tmi.client( options );
     client.on( 'message', function ( channel, userstate, message, self ) {
       try {
-        var user = userstate[ "display-name" ] || userstate[ "username" ];
+        var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
         var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
         var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
         var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+        var messageType = userstate[ "message-type" ];
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
@@ -67,7 +79,12 @@ var comfyJS = {
           comfyJS.onCommand( user, command, msg, flags );
         }
         else {
-          comfyJS.onChat( user, message, flags, self );
+          if( messageType === "action" || messageType === "chat" ) {
+            comfyJS.onChat( user, message, flags, self );
+          }
+          else if( messageType === "whisper" ) {
+            comfyJS.onWhisper( user, message, flags, self );
+          }
         }
       }
       catch( error ) {
