@@ -9,8 +9,8 @@
           console.log( "!test was typed in chat" );
         }
       }
-      ComfyJS.onChat = ( user, message, flags ) => {
-        console.log( message );
+      ComfyJS.onChat = ( user, message, flags, self ) => {
+        console.log( user + ":", message );
       }
       ComfyJS.Init( "instafluff" );
     </script>

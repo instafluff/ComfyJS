@@ -2,7 +2,7 @@
 // Comfy.JS v1.0.6
 var tmi = require( "tmi.js" );
 
-var channel = "";
+var mainChannel = "";
 var client = null;
 var comfyJS = {
   version: function() {
@@ -11,25 +11,32 @@ var comfyJS = {
   onCommand: function( user, command, message, flags ) {
     console.log( "onCommand default handler" );
   },
-  onChat: function( user, message, flags ) {
+  onChat: function( user, message, flags, self ) {
     console.log( "onChat default handler" );
   },
-  Say: function( message ) {
+  Say: function( message, channel ) {
     if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
       client.say( channel, message )
       .catch( function( error ) { console.log( "Error:", error ); } );
       return true;
     }
     return false;
   },
-  Init: function( username, password ) {
-    channel = username;
+  Init: function( username, password, channels ) {
+    channels = channels || [ username ];
+    if( !Array.isArray( channels ) ) {
+      throw new Error( "Channels is not an array" );
+    }
+    mainChannel = channels[ 0 ];
     var options = {
       connection: {
         reconnect: true,
         secure: true
       },
-      channels: [ channel ]
+      channels: channels
     };
     if( password ) {
       options.identity = {
