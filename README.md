@@ -98,6 +98,37 @@ ComfyJS.onCommand = ( user, command, message, flags ) => {
 }
 ComfyJS.Init( process.env.TWITCHUSER, process.env.OAUTH );
 ```
+## Supported Events ##
+
+ - **onCommand ( user, command, message, flags, extra )**
+    - Responds to "!" commands
+ - **onChat ( user, message, flags, self, extra )**
+    - Responds to user chatting
+ - **onWhisper ( user, message, flags, self, extra )**
+    - Responds to user whisper event
+ - **onMessageDeleted ( id, extra )**
+    - Responds to chat message deleted
+ - **onJoin ( username, self )**
+    - Responds to user joining the chat
+ - **onPart ( username, self )**
+    - Responds to user leaving the chat
+ - **onHosted ( username, viewers, autohost )**
+    - Responds to channel being hosted
+    - Requires being authorized as the broadcaster
+ - **onRaid ( username, viewers )**
+    - Responds to raid event
+ - **onCheer ( userstate, message )**
+    - Responds to user cheering
+ - **onSub ( username, method, message, userstate )**
+    - Responds to user channel subscription
+ - **onResub ( username, months, message, cumulativeMonths )**
+    - Responds to user channel subscription anniversary
+ - **onSubGift ( username, streakMonths, recipient, senderCount )**
+    - Responds to user gift subscription
+ - **onSubMysteryGift ( username, numbOfSubs, senderCount )**
+    - Responds to user sending gift subscriptions
+ - **onGiftSubContinue ( username, sender, userstate )**
+    - Responds to user continuing gift subscription
 
 ## Credits ##
 Thank you too all the participants of this project!

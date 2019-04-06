@@ -1,12 +1,12 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.0.6
+// Comfy.JS v1.0.7
 var tmi = require( "tmi.js" );
 
 var mainChannel = "";
 var client = null;
 var comfyJS = {
   version: function() {
-    return "1.0.6";
+    return "1.0.7";
   },
   onCommand: function( user, command, message, flags, extra ) {
     console.log( "onCommand default handler" );
@@ -18,6 +18,37 @@ var comfyJS = {
     console.log( "onWhisper default handler" );
   },
   onMessageDeleted: function( id, extra ) {
+    console.log( "onMessageDeleted default handler" );
+  },
+  onJoin: function( username, self ) {
+    console.log( "onJoin default handler" );
+  },
+  onPart: function( username, self ) {
+    console.log( "onPart default handler" );
+  },
+  onHosted: function( username, viewers, autohost ) {
+    console.log( "onHosted default handler" );
+  },
+  onRaid: function( username, viewers ) {
+    console.log( "onRaid default handler" );
+  },
+  onSub: function( username, method, message, userstate ) {
+    console.log( "onSub default handler" );
+  },
+  onResub: function( username, months, message, cumulativeMonths ) {
+    console.log( "onResub default handler" );
+  },
+  onSubGift: function( username, streakMonths, recipient, senderCount ) {
+    console.log( "onSubGift default handler" );
+  },
+  onSubMysteryGift: function( username, numbOfSubs, senderCount ) {
+    console.log( "onSubMysteryGift default handler" );
+  },
+  onGiftSubContinue: function( username, sender, userstate ) {
+    console.log( "onGiftSubContinue default handler" );
+  },
+  onCheer: function( userstate, message ) {
+    console.log( "onCheer default handler" );
   },
   Say: function( message, channel ) {
     if( client ) {
@@ -48,6 +79,9 @@ var comfyJS = {
       return true;
     }
     return false;
+  },
+  GetClient: function() {
+    return client;
   },
   Init: function( username, password, channels ) {
     channels = channels || [ username ];
@@ -139,8 +173,45 @@ var comfyJS = {
         console.log( "Error:", error );
       }
     });
-    client.on( 'connected', function( address, port ) { console.log( "Connected: " + address + ":" + port ) } );
-    client.on( 'reconnect', function() { console.log( 'Reconnecting' ) } );
+    client.on( 'join', function( channel, username, self ) {
+      comfyJS.onJoin( username, self );
+    });
+    client.on( 'part', function( channel, username, self ) {
+      comfyJS.onPart( username, self );
+    });
+    client.on( 'hosted', function( channel, username, viewers, autohost ) {
+      comfyJS.onHosted( username, viewers, autohost );
+    });
+    client.on( 'raided', function( channel, username, viewers ) {
+      comfyJS.onRaid( username, viewers );
+    });
+    client.on( 'subscription', function( channel, username, method, message, userstate ) {
+      comfyJS.onSub( username, method, message, userstate );
+    });
+    client.on( 'resub', function( channel, username, months, message, userstate, methods ) {
+      var cumulativeMonths = ~~userstate[ 'msg-param-cumulative-months' ];
+      comfyJS.onResub( username, months, message, cumulativeMonths );
+    });
+    client.on( 'cheer', function( channel, userstate, message ) {
+      comfyJS.onCheer( userstate, message )
+    });
+    client.on( 'subgift', function( channel, username, streakMonths, recipient, methods, userstate ) {
+      var senderCount = ~~userstate[ 'msg-param-sender-count' ];
+      comfyJS.onSubGift( username, streakMonths, recipient, senderCount );
+    });
+    client.on( 'submysterygift', function( channel, username, numbOfSubs, methods, userstate ) {
+      var senderCount = ~~userstate[ 'msg-param-sender-count' ];
+      comfyJS.onSubMysterySubGift( username, numbOfSubs, senderCount );
+    });
+    client.on( 'giftpaidupgrade', function( channel, username, sender, userstate ) {
+      comfyJS.onGiftSubContinue( username, sender, userstate );
+    });
+    client.on( 'connected', function( address, port ) {
+      console.log( 'Connected:' + address + ':' + port );
+    });
+    client.on( 'reconnect', function() {
+      console.log( 'Reconnecting' );
+    });
     client.connect()
     .catch( function( error ) { console.log( "Error:", error ); } );
   }
