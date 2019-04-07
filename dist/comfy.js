@@ -112,7 +112,6 @@ var comfyJS = {
       try {
         var channelName = channel.replace( "#", "" );
         comfyJS.chatModes[ channelName ] = comfyJS.chatModes[ channelName ] || {};
-        console.log( comfyJS.chatModes );
         if( "emote-only" in state ) { comfyJS.chatModes[ channelName ].emoteOnly = state[ "emote-only" ]; }
         if( "followers-only" in state ) { comfyJS.chatModes[ channelName ].followerOnly = ( state[ "followers-only" ] >= 0 ); }
         if( "subs-only" in state ) { comfyJS.chatModes[ channelName ].subOnly = state[ "subs-only" ]; }
