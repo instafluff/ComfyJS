@@ -4,6 +4,7 @@ var tmi = require( "tmi.js" );
 var mainChannel = "";
 var client = null;
 var comfyJS = {
+  chatModes: {},
   version: function() {
     return "@VERSION";
   },
@@ -48,6 +49,9 @@ var comfyJS = {
   },
   onCheer: function( message, bits, extra ) {
     console.log( "onCheer default handler" );
+  },
+  onChatMode: function( flags, channel ) {
+    console.log( "onChatMode default handler" );
   },
   Say: function( message, channel ) {
     if( client ) {
@@ -103,6 +107,22 @@ var comfyJS = {
     }
 
     client = new tmi.client( options );
+    client.on( 'roomstate', function( channel, state ) {
+      try {
+        var channelName = channel.replace( "#", "" );
+        comfyJS.chatModes[ channelName ] = comfyJS.chatModes[ channelName ] || {};
+        console.log( comfyJS.chatModes );
+        if( "emote-only" in state ) { comfyJS.chatModes[ channelName ].emoteOnly = state[ "emote-only" ]; }
+        if( "followers-only" in state ) { comfyJS.chatModes[ channelName ].followerOnly = ( state[ "followers-only" ] >= 0 ); }
+        if( "subs-only" in state ) { comfyJS.chatModes[ channelName ].subOnly = state[ "subs-only" ]; }
+        if( "r9k" in state ) { comfyJS.chatModes[ channelName ].r9kMode = state[ "r9k" ]; }
+        if( "slow" in state ) { comfyJS.chatModes[ channelName ].slowMode = state[ "slow" ]; }
+        comfyJS.onChatMode( comfyJS.chatModes[ channelName ], channelName );
+      }
+      catch( error ) {
+        console.log( "Error:", error );
+      }
+    });
     client.on( 'message', function( channel, userstate, message, self ) {
       try {
         var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
