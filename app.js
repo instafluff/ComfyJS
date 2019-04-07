@@ -19,34 +19,34 @@ var comfyJS = {
   onMessageDeleted: function( id, extra ) {
     console.log( "onMessageDeleted default handler" );
   },
-  onJoin: function( username, self ) {
+  onJoin: function( user, self ) {
     console.log( "onJoin default handler" );
   },
-  onPart: function( username, self ) {
+  onPart: function( user, self ) {
     console.log( "onPart default handler" );
   },
-  onHosted: function( username, viewers, autohost ) {
+  onHosted: function( user, viewers, autohost ) {
     console.log( "onHosted default handler" );
   },
-  onRaid: function( username, viewers ) {
+  onRaid: function( user, viewers ) {
     console.log( "onRaid default handler" );
   },
-  onSub: function( username, method, message, userstate ) {
+  onSub: function( user, message, subTierInfo, extra ) {
     console.log( "onSub default handler" );
   },
-  onResub: function( username, months, message, cumulativeMonths ) {
+  onResub: function( user, message, streakMonths, cumulativeMonths, subTierInfo, extra ) {
     console.log( "onResub default handler" );
   },
-  onSubGift: function( username, streakMonths, recipient, senderCount ) {
+  onSubGift: function( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra ) {
     console.log( "onSubGift default handler" );
   },
-  onSubMysteryGift: function( username, numbOfSubs, senderCount ) {
+  onSubMysteryGift: function( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) {
     console.log( "onSubMysteryGift default handler" );
   },
-  onGiftSubContinue: function( username, sender, userstate ) {
+  onGiftSubContinue: function( user, sender, extra) {
     console.log( "onGiftSubContinue default handler" );
   },
-  onCheer: function( userstate, message ) {
+  onCheer: function( message, bits, extra ) {
     console.log( "onCheer default handler" );
   },
   Say: function( message, channel ) {
@@ -184,26 +184,108 @@ var comfyJS = {
     client.on( 'raided', function( channel, username, viewers ) {
       comfyJS.onRaid( username, viewers );
     });
-    client.on( 'subscription', function( channel, username, method, message, userstate ) {
-      comfyJS.onSub( username, method, message, userstate );
-    });
-    client.on( 'resub', function( channel, username, months, message, userstate, methods ) {
-      var cumulativeMonths = ~~userstate[ 'msg-param-cumulative-months' ];
-      comfyJS.onResub( username, months, message, cumulativeMonths );
-    });
     client.on( 'cheer', function( channel, userstate, message ) {
-      comfyJS.onCheer( userstate, message )
+      var bits = ~~userstate['bits'];
+
+      var extra = {
+        id: userstate['id'],
+        username: userstate[ 'login' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges'],
+        displayName: userstate[ 'display-name' ],
+        messageEmotes: userstate['emotes'],
+        subscriber: userstate['subscriber'],
+      };
+
+      comfyJS.onCheer( message, bits, extra )
     });
-    client.on( 'subgift', function( channel, username, streakMonths, recipient, methods, userstate ) {
-      var senderCount = ~~userstate[ 'msg-param-sender-count' ];
-      comfyJS.onSubGift( username, streakMonths, recipient, senderCount );
+    client.on( 'subscription', function( channel, username, methods, message, userstate ) {
+      var extra = {
+        id: userstate['id'],
+        roomId: userstate['room-id'],
+        messageType: userstate['message-type'],
+        messageEmotes: userstate['emotes'],
+        userId: userstate['user-id'],
+        username: userstate[ 'login' ],
+        displayName: userstate[ 'display-name' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges']
+      };
+
+      comfyJS.onSub( username, message, methods, extra);
     });
-    client.on( 'submysterygift', function( channel, username, numbOfSubs, methods, userstate ) {
+    client.on( 'resub', function( channel, username, streakMonths, message, userstate, methods ) {
+      var cumulativeMonths = ~~userstate[ 'msg-param-cumulative-months' ];
+      var extra = {
+        id: userstate['id'],
+        roomId: userstate['room-id'],
+        messageType: userstate['message-type'],
+        messageEmotes: userstate['emotes'],
+        userId: userstate['user-id'],
+        username: userstate[ 'login' ],
+        displayName: userstate[ 'display-name' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges']
+      };
+
+      comfyJS.onResub( username, message, streakMonths, cumulativeMonths, methods, extra );
+    });
+    client.on( 'subgift', function( channel, gifterUser, streakMonths, recipientUser, methods, userstate ) {
       var senderCount = ~~userstate[ 'msg-param-sender-count' ];
-      comfyJS.onSubMysterySubGift( username, numbOfSubs, senderCount );
+      var extra = {
+        id: userstate['id'],
+        roomId: userstate['room-id'],
+        messageType: userstate['message-type'],
+        messageEmotes: userstate['emotes'],
+        userId: userstate['user-id'],
+        username: userstate[ 'login' ],
+        displayName: userstate[ 'display-name' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges'],
+        recipientDisplayName: userstate["msg-param-recipient-display-name"],
+        recipientUsername: userstate["msg-param-recipient-user-name"],
+        recipientId: userstate["msg-param-recipient-id"]
+      };
+
+      comfyJS.onSubGift( gifterUser, streakMonths, recipientUser, senderCount, methods, extra );
+    });
+    client.on( 'submysterygift', function( channel, gifterUser, numbOfSubs, methods, userstate ) {
+      var senderCount = ~~userstate[ 'msg-param-sender-count' ];
+
+      var extra = {
+        id: userstate['id'],
+        roomId: userstate['room-id'],
+        messageType: userstate['message-type'],
+        messageEmotes: userstate['emotes'],
+        userId: userstate['user-id'],
+        username: userstate[ 'login' ],
+        displayName: userstate[ 'display-name' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges'],
+        recipientDisplayName: userstate["msg-param-recipient-display-name"],
+        recipientUsername: userstate["msg-param-recipient-user-name"],
+        recipientId: userstate["msg-param-recipient-id"],
+        userMassGiftCount: ~~userstate[ 'msg-param-mass-gift-count' ]
+      };
+      
+      comfyJS.onSubMysterySubGift( gifterUser, numbOfSubs, senderCount, methods, extra );
     });
     client.on( 'giftpaidupgrade', function( channel, username, sender, userstate ) {
-      comfyJS.onGiftSubContinue( username, sender, userstate );
+      var extra = {
+        id: userstate['id'],
+        roomId: userstate['room-id'],
+        messageType: userstate['message-type'],
+        messageEmotes: userstate['emotes'],
+        userId: userstate['user-id'],
+        username: userstate[ 'login' ],
+        displayName: userstate[ 'display-name' ],
+        userColor: userstate['color'],
+        userBadges: userstate['badges'],
+        gifterUsername: userstate['msg-param-sender-login'],
+        gifterDisplayName: userstate['msg-param-sender-name']
+      };
+
+      comfyJS.onGiftSubContinue( username, sender, extra);
     });
     client.on( 'connected', function( address, port ) {
       console.log( 'Connected:' + address + ':' + port );

@@ -100,34 +100,34 @@ ComfyJS.Init( process.env.TWITCHUSER, process.env.OAUTH );
 ```
 ## Supported Events ##
 
- - **onCommand ( user, command, message, flags, extra )**
+ - **onCommand**`( user, command, message, flags, extra )`
     - Responds to "!" commands
- - **onChat ( user, message, flags, self, extra )**
+ - **onChat**`( user, message, flags, self, extra )`
     - Responds to user chatting
- - **onWhisper ( user, message, flags, self, extra )**
+ - **onWhisper**`( user, message, flags, self, extra )`
     - Responds to user whisper event
- - **onMessageDeleted ( id, extra )**
+ - **onMessageDeleted**`( id, extra )`
     - Responds to chat message deleted
- - **onJoin ( username, self )**
+ - **onJoin**`( user, self )`
     - Responds to user joining the chat
- - **onPart ( username, self )**
+ - **onPart**`( user, self )`
     - Responds to user leaving the chat
- - **onHosted ( username, viewers, autohost )**
+ - **onHosted**`( user, viewers, autohost )`
     - Responds to channel being hosted
     - Requires being authorized as the broadcaster
- - **onRaid ( username, viewers )**
+ - **onRaid**`( user, viewers )`
     - Responds to raid event
- - **onCheer ( userstate, message )**
+ - **onCheer**`( message, bits, extra )`
     - Responds to user cheering
- - **onSub ( username, method, message, userstate )**
+ - **onSub**`( user, message, subTierInfo, extra )`
     - Responds to user channel subscription
- - **onResub ( username, months, message, cumulativeMonths )**
+ - **onResub**`( user, message, streamMonths, cumulativeMonths, subTierInfo, extra )`
     - Responds to user channel subscription anniversary
- - **onSubGift ( username, streakMonths, recipient, senderCount )**
+ - **onSubGift**`( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra )`
     - Responds to user gift subscription
- - **onSubMysteryGift ( username, numbOfSubs, senderCount )**
+ - **onSubMysteryGift**`( gifterUser, numbOfSubs, senderCount, subTierInfo, extra )`
     - Responds to user sending gift subscriptions
- - **onGiftSubContinue ( username, sender, userstate )**
+ - **onGiftSubContinue**`( user, sender, extra )`
     - Responds to user continuing gift subscription
 
 ## Credits ##
