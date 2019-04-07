@@ -1,12 +1,13 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.0.7
+// Comfy.JS v1.0.8
 var tmi = require( "tmi.js" );
 
 var mainChannel = "";
 var client = null;
 var comfyJS = {
+  chatModes: {},
   version: function() {
-    return "1.0.7";
+    return "1.0.8";
   },
   onCommand: function( user, command, message, flags, extra ) {
     console.log( "onCommand default handler" );
@@ -41,14 +42,17 @@ var comfyJS = {
   onSubGift: function( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra ) {
     console.log( "onSubGift default handler" );
   },
-  onSubMysteryGift: function( user, numbOfSubs, senderCount, subTierInfo, extra ) {
+  onSubMysteryGift: function( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) {
     console.log( "onSubMysteryGift default handler" );
   },
   onGiftSubContinue: function( user, sender, extra) {
     console.log( "onGiftSubContinue default handler" );
   },
-  onCheer: function( userstate, message, bits, extra ) {
+  onCheer: function( message, bits, extra ) {
     console.log( "onCheer default handler" );
+  },
+  onChatMode: function( flags, channel ) {
+    console.log( "onChatMode default handler" );
   },
   Say: function( message, channel ) {
     if( client ) {
@@ -104,6 +108,22 @@ var comfyJS = {
     }
 
     client = new tmi.client( options );
+    client.on( 'roomstate', function( channel, state ) {
+      try {
+        var channelName = channel.replace( "#", "" );
+        comfyJS.chatModes[ channelName ] = comfyJS.chatModes[ channelName ] || {};
+        console.log( comfyJS.chatModes );
+        if( "emote-only" in state ) { comfyJS.chatModes[ channelName ].emoteOnly = state[ "emote-only" ]; }
+        if( "followers-only" in state ) { comfyJS.chatModes[ channelName ].followerOnly = ( state[ "followers-only" ] >= 0 ); }
+        if( "subs-only" in state ) { comfyJS.chatModes[ channelName ].subOnly = state[ "subs-only" ]; }
+        if( "r9k" in state ) { comfyJS.chatModes[ channelName ].r9kMode = state[ "r9k" ]; }
+        if( "slow" in state ) { comfyJS.chatModes[ channelName ].slowMode = state[ "slow" ]; }
+        comfyJS.onChatMode( comfyJS.chatModes[ channelName ], channelName );
+      }
+      catch( error ) {
+        console.log( "Error:", error );
+      }
+    });
     client.on( 'message', function( channel, userstate, message, self ) {
       try {
         var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
@@ -198,7 +218,7 @@ var comfyJS = {
         subscriber: userstate['subscriber'],
       };
 
-      comfyJS.onCheer( userstate, message, bits, extra )
+      comfyJS.onCheer( message, bits, extra )
     });
     client.on( 'subscription', function( channel, username, methods, message, userstate ) {
       var extra = {
