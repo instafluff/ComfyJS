@@ -287,7 +287,7 @@ var comfyJS = {
         userMassGiftCount: ~~userstate[ 'msg-param-mass-gift-count' ]
       };
       
-      comfyJS.onSubMysterySubGift( gifterUser, numbOfSubs, senderCount, methods, extra );
+      comfyJS.onSubMysteryGift( gifterUser, numbOfSubs, senderCount, methods, extra );
     });
     client.on( 'giftpaidupgrade', function( channel, username, sender, userstate ) {
       var extra = {
