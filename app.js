@@ -4,54 +4,85 @@ var tmi = require( "tmi.js" );
 var mainChannel = "";
 var client = null;
 var comfyJS = {
+  isDebug: false,
   chatModes: {},
   version: function() {
     return "@VERSION";
   },
   onCommand: function( user, command, message, flags, extra ) {
-    console.log( "onCommand default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onCommand default handler" );
+    }
   },
   onChat: function( user, message, flags, self, extra ) {
-    console.log( "onChat default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onChat default handler" );
+    }
   },
   onWhisper: function( user, message, flags, self, extra ) {
-    console.log( "onWhisper default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onWhisper default handler" );
+    }
   },
   onMessageDeleted: function( id, extra ) {
-    console.log( "onMessageDeleted default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onMessageDeleted default handler" );
+    }
   },
   onJoin: function( user, self ) {
-    console.log( "onJoin default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onJoin default handler" );
+    }
   },
   onPart: function( user, self ) {
-    console.log( "onPart default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onPart default handler" );
+    }
   },
   onHosted: function( user, viewers, autohost ) {
-    console.log( "onHosted default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onHosted default handler" );
+    }
   },
   onRaid: function( user, viewers ) {
-    console.log( "onRaid default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onRaid default handler" );
+    }
   },
   onSub: function( user, message, subTierInfo, extra ) {
-    console.log( "onSub default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onSub default handler" );
+    }
   },
   onResub: function( user, message, streakMonths, cumulativeMonths, subTierInfo, extra ) {
-    console.log( "onResub default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onResub default handler" );
+    }
   },
   onSubGift: function( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra ) {
-    console.log( "onSubGift default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onSubGift default handler" );
+    }
   },
   onSubMysteryGift: function( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) {
-    console.log( "onSubMysteryGift default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onSubMysteryGift default handler" );
+    }
   },
   onGiftSubContinue: function( user, sender, extra) {
-    console.log( "onGiftSubContinue default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onGiftSubContinue default handler" );
+    }
   },
   onCheer: function( message, bits, extra ) {
-    console.log( "onCheer default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onCheer default handler" );
+    }
   },
   onChatMode: function( flags, channel ) {
-    console.log( "onChatMode default handler" );
+    if( comfyJS.isDebug ) {
+      console.log( "onChatMode default handler" );
+    }
   },
   Say: function( message, channel ) {
     if( client ) {
@@ -86,13 +117,17 @@ var comfyJS = {
   GetClient: function() {
     return client;
   },
-  Init: function( username, password, channels ) {
+  Init: function( username, password, channels, isDebug ) {
     channels = channels || [ username ];
     if( !Array.isArray( channels ) ) {
       throw new Error( "Channels is not an array" );
     }
+    comfyJS.isDebug = isDebug;
     mainChannel = channels[ 0 ];
     var options = {
+      options: {
+        debug: isDebug
+      },
       connection: {
         reconnect: true,
         secure: true
@@ -286,7 +321,7 @@ var comfyJS = {
         recipientId: userstate["msg-param-recipient-id"],
         userMassGiftCount: ~~userstate[ 'msg-param-mass-gift-count' ]
       };
-      
+
       comfyJS.onSubMysteryGift( gifterUser, numbOfSubs, senderCount, methods, extra );
     });
     client.on( 'giftpaidupgrade', function( channel, username, sender, userstate ) {
