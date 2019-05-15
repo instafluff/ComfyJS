@@ -65,7 +65,7 @@ Currently, the flags possible in `onCommand()` are:
 
 ## Reading Chat Messages ##
 
-You can read chat messages by using the onChat() handler
+You can read chat messages by using the `onChat()` handler
 
 ```javascript
 ComfyJS.onChat = ( user, message, flags, self ) => {
@@ -98,7 +98,24 @@ ComfyJS.onCommand = ( user, command, message, flags ) => {
 }
 ComfyJS.Init( process.env.TWITCHUSER, process.env.OAUTH );
 ```
-## Supported Events ##
+
+## Joining a Different Channel ##
+
+You can join a different channel or groups of channels by specifying in the `Init()`
+
+#### Joining a Single Channel
+
+```javascript
+ComfyJS.Init( "MyTwitchChannel", null, "ChannelToJoin" );
+```
+
+#### Joining Multiple Channels
+
+```javascript
+ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
+```
+
+## All Supported Events ##
 
  - **onCommand**`( user, command, message, flags, extra )`
     - Responds to "!" commands

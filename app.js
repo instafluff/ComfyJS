@@ -119,6 +119,9 @@ var comfyJS = {
   },
   Init: function( username, password, channels, isDebug ) {
     channels = channels || [ username ];
+    if( typeof channels === 'string' || channels instanceof String ) {
+      channels = [ channels ];
+    }
     if( !Array.isArray( channels ) ) {
       throw new Error( "Channels is not an array" );
     }
