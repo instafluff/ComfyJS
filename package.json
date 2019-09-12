@@ -1,6 +1,6 @@
 {
   "name": "comfy.js",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Twitch-Integrated Bot Module for Coding Cafe",
   "main": "app.js",
   "scripts": {
