@@ -21,7 +21,7 @@ npm install comfy.js --save
 2. Respond to !commands your channel
 ```javascript
 var ComfyJS = require("comfy.js");
-ComfyJS.onCommand = ( user, command, message, flags ) => {
+ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
   if( flags.broadcaster && command == "test" ) {
     console.log( "!test was typed in chat" );
   }
@@ -43,7 +43,7 @@ ComfyJS.Init( "MyTwitchChannel" );
   </head>
   <body>
     <script type="text/javascript">
-      ComfyJS.onCommand = ( user, command, message, flags ) => {
+      ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
         if( flags.broadcaster && command == "test" ) {
           console.log( "!test was typed in chat" );
         }
@@ -68,7 +68,7 @@ Currently, the flags possible in `onCommand()` are:
 You can read chat messages by using the `onChat()` handler
 
 ```javascript
-ComfyJS.onChat = ( user, message, flags, self ) => {
+ComfyJS.onChat = ( user, message, flags, self, extra ) => {
   console.log( user, message );
 }
 ```
@@ -91,7 +91,7 @@ OAUTH=[YOUR-OAUTH-PASS HERE] # e.g. OAUTH=oauth:kjh12bn1hsj78445234
 4. Initialize with the Username and OAUTH password
 ```javascript
 var ComfyJS = require("comfy.js");
-ComfyJS.onCommand = ( user, command, message, flags ) => {
+ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
   if( command == "test" ) {
     ComfyJS.Say( "replying to !test" );
   }
@@ -145,6 +145,10 @@ ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
  - **onSubMysteryGift**`( gifterUser, numbOfSubs, senderCount, subTierInfo, extra )`
     - Responds to user sending gift subscriptions
  - **onGiftSubContinue**`( user, sender, extra )`
+    - Responds to user continuing gift subscription
+ - **onConnected**`( address, port, isFirstConnect )`
+    - Responds to user continuing gift subscription
+ - **onReconnect**`( reconnectCount )`
     - Responds to user continuing gift subscription
 
 ## Credits ##

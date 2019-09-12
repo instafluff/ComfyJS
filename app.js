@@ -3,6 +3,8 @@ var tmi = require( "tmi.js" );
 
 var mainChannel = "";
 var client = null;
+var isFirstConnect = true;
+var reconnectCount = 0;
 var comfyJS = {
   isDebug: false,
   chatModes: {},
@@ -83,6 +85,10 @@ var comfyJS = {
     if( comfyJS.isDebug ) {
       console.log( "onChatMode default handler" );
     }
+  },
+  onConnected: function( address, port, isFirstConnect ) {
+  },
+  onReconnect: function( reconnectCount ) {
   },
   Say: function( message, channel ) {
     if( client ) {
@@ -346,9 +352,13 @@ var comfyJS = {
     });
     client.on( 'connected', function( address, port ) {
       console.log( 'Connected:' + address + ':' + port );
+      comfyJS.onConnected( address, port, isFirstConnect );
+      isFirstConnect = false;
     });
     client.on( 'reconnect', function() {
       console.log( 'Reconnecting' );
+      reconnectCount++;
+      comfyJS.onReconnect( reconnectCount );
     });
     client.connect()
     .catch( function( error ) { console.log( "Error:", error ); } );
