@@ -189,6 +189,7 @@ var comfyJS = {
         };
         var extra = {
           id: messageId,
+          channel: channel.replace('#', ''),
           roomId: roomId,
           messageType: messageType,
           messageEmotes: emotes,
