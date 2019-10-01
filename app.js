@@ -1,6 +1,61 @@
 // Comfy.JS v@VERSION
 var tmi = require( "tmi.js" );
 
+// User and global timestamp store
+var timestamps = {
+  global: {},
+  users: {},
+}
+
+// Returns an object containing the time period since last user interaction, and last interaction from any user in `ms`.
+//
+// # Examples
+//
+// let userId = 1;
+// let last = getTimePeriod(userId);
+// console.log(last.any);   // print the time period since last user interacted with the commands, in ms
+// console.log(last.user);  // print the time period since this user interacted with the commands, in ms; if `userId` is
+//                          // is null or undefined, the field will be `null` as well.
+var getTimePeriod = function( command, userId ) {
+  if( !command ) {
+    return {
+      any: null,
+      user: null,
+    }
+  }
+
+  let now = new Date();
+  let res = {};
+
+  if( !timestamps.global[command] ) {
+    res["any"] = 0;
+  } else {
+    res["any"] = now - timestamps.global[command];
+  }
+
+  // update the global since-last timestamp
+  timestamps.global[command] = now;
+
+  // store and update global since-last timestamp
+  if( userId ) {
+    if( !timestamps.users[userId]) {
+      timestamps.users[userId] = {};
+    }
+
+    if( !timestamps.users[userId][command] ) {
+      res["user"] = 0;
+    } else {
+      res["user"] = now - timestamps.users[userId][command];
+    }
+
+    timestamps.users[userId][command] = now
+  } else {
+    res["user"] = null;
+  }
+
+  return res
+}
+
 var mainChannel = "";
 var client = null;
 var isFirstConnect = true;
@@ -198,13 +253,14 @@ var comfyJS = {
           username: userstate[ "username" ],
           displayName: userstate[ "display-name" ],
           userColor: userColor,
-          userBadges: badges
+          userBadges: badges,
         };
         if( !self && message[ 0 ] === "!" ) {
           // Message is a command
           var parts = message.split( / (.*)/ );
           var command = parts[ 0 ].slice( 1 ).toLowerCase();
           var msg = parts[ 1 ] || "";
+          extra[sinceLastCommand] = getTimePeriod( command, userId );
           comfyJS.onCommand( user, command, msg, flags, extra );
         }
         else {
@@ -370,6 +426,7 @@ var comfyJS = {
 if (typeof module !== "undefined" && module.exports) {
     module.exports = comfyJS;
 }
+
 if (typeof window !== "undefined") {
     window.ComfyJS = comfyJS;
     tmi = window.tmi;
