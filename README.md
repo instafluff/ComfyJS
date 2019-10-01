@@ -45,6 +45,10 @@ ComfyJS.Init( "MyTwitchChannel" );
     <script type="text/javascript">
       ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
         if( flags.broadcaster && command == "test" ) {
+          if( extra.sinceLastCommand.any < 100 ) {
+            console.log( "The last `!test` was sent less than 100 ms ago" );            
+          }
+
           console.log( "!test was typed in chat" );
         }
       }
@@ -92,8 +96,8 @@ OAUTH=[YOUR-OAUTH-PASS HERE] # e.g. OAUTH=oauth:kjh12bn1hsj78445234
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-  if( command == "test" ) {
-    ComfyJS.Say( "replying to !test" );
+  if( command == "test" && extra.sinceLastCommand.user > 100 ) {
+    ComfyJS.Say( "replying to !test with 100 ms user cooldown" );
   }
 }
 ComfyJS.Init( process.env.TWITCHUSER, process.env.OAUTH );
