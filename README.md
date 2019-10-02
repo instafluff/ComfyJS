@@ -45,10 +45,6 @@ ComfyJS.Init( "MyTwitchChannel" );
     <script type="text/javascript">
       ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
         if( flags.broadcaster && command == "test" ) {
-          if( extra.sinceLastCommand.any < 100 ) {
-            console.log( "The last `!test` was sent less than 100 ms ago" );            
-          }
-
           console.log( "!test was typed in chat" );
         }
       }
@@ -66,6 +62,47 @@ Currently, the flags possible in `onCommand()` are:
 - mod
 - subscriber
 - vip
+
+## Extra Parameter ##
+
+Currently, the `extra` parameter for the `onCommand()` contains the following fields:
+
+- id (the message message)
+- channel
+- roomId
+- messageType
+- messageEmotes
+- isEmoteOnly
+- userId
+- username
+- displayName
+- userColor
+- userBadges
+
+If the message is a command, the `extra` parameter will contain an additional field:
+
+- sinceLastCommand
+
+which contains the information on the time periods in `ms` since the last time any user, or the specific user, has used the same 
+command. This field can be convenient to be used for setting global cooldown or spamming filters. See examples below:
+
+```javascript
+ComfyJS.onChat = ( user, message, flags, self, extra ) => {
+  if( flags.broadcaster && command == "test" ) {
+    if( extra.sinceLastCommand.any < 100 ) {
+      console.log( 
+        `The last '!test' command by any user was sent less than 100 ms ago` 
+      );            
+    }
+
+    if( extra.sinceLastCommand.user < 100 ) {
+      console.log( 
+        `The last '!test' command by this specific user (as denoted by the 'user' parameter) was sent less than 100 ms ago`
+      );            
+    }
+  }
+}
+```
 
 ## Reading Chat Messages ##
 
@@ -96,8 +133,8 @@ OAUTH=[YOUR-OAUTH-PASS HERE] # e.g. OAUTH=oauth:kjh12bn1hsj78445234
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-  if( command == "test" && extra.sinceLastCommand.user > 100 ) {
-    ComfyJS.Say( "replying to !test with 100 ms user cooldown" );
+  if( command == "test" ) {
+    ComfyJS.Say( "replying to !test" );
   }
 }
 ComfyJS.Init( process.env.TWITCHUSER, process.env.OAUTH );

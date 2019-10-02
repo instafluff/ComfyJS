@@ -260,7 +260,7 @@ var comfyJS = {
           var parts = message.split( / (.*)/ );
           var command = parts[ 0 ].slice( 1 ).toLowerCase();
           var msg = parts[ 1 ] || "";
-          extra[sinceLastCommand] = getTimePeriod( command, userId );
+          extra["sinceLastCommand"] = getTimePeriod( command, userId );
           comfyJS.onCommand( user, command, msg, flags, extra );
         }
         else {
