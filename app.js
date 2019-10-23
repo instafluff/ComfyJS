@@ -226,8 +226,10 @@ var comfyJS = {
         var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
         var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
-        var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
+        var isFounder = ( userstate[ "badges" ] && userstate[ "badges" ].founder === "0" )
+        var isSubscriber = isFounder || ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
         var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+        var isHighlightedMessage = userstate[ "msg-id" ] === "highlighted-message";
         var userId = userstate[ "user-id" ];
         var messageId = userstate[ "id" ];
         var roomId = userstate[ "room-id" ];
@@ -236,11 +238,15 @@ var comfyJS = {
         var emotes = userstate[ "emotes" ];
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
+        var customRewardId = userstate[ "custom-reward-id" ] || null;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
+          founder: isFounder,
           subscriber: isSubscriber,
-          vip: isVIP
+          vip: isVIP,
+          highlighted: isHighlightedMessage,
+          customReward: !!customRewardId
         };
         var extra = {
           id: messageId,
@@ -254,6 +260,7 @@ var comfyJS = {
           displayName: userstate[ "display-name" ],
           userColor: userColor,
           userBadges: badges,
+          customRewardId: customRewardId,
         };
         if( !self && message[ 0 ] === "!" ) {
           // Message is a command

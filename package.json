@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/instafluff/ComfyJS#readme",
   "dependencies": {
-    "tmi.js": "^1.3.1"
+    "tmi.js": "^1.5.0"
   },
   "devDependencies": {
     "babelify": "7.2.0",
