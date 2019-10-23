@@ -1,6 +1,61 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.0.11
+// Comfy.JS v1.0.13
 var tmi = require( "tmi.js" );
+
+// User and global timestamp store
+var timestamps = {
+  global: {},
+  users: {},
+}
+
+// Returns an object containing the time period since last user interaction, and last interaction from any user in `ms`.
+//
+// # Examples
+//
+// let userId = 1;
+// let last = getTimePeriod(userId);
+// console.log(last.any);   // print the time period since last user interacted with the commands, in ms
+// console.log(last.user);  // print the time period since this user interacted with the commands, in ms; if `userId` is
+//                          // is null or undefined, the field will be `null` as well.
+var getTimePeriod = function( command, userId ) {
+  if( !command ) {
+    return {
+      any: null,
+      user: null,
+    }
+  }
+
+  var now = new Date();
+  var res = {};
+
+  if( !timestamps.global[command] ) {
+    res["any"] = 0;
+  } else {
+    res["any"] = now - timestamps.global[command];
+  }
+
+  // update the global since-last timestamp
+  timestamps.global[command] = now;
+
+  // store and update global since-last timestamp
+  if( userId ) {
+    if( !timestamps.users[userId]) {
+      timestamps.users[userId] = {};
+    }
+
+    if( !timestamps.users[userId][command] ) {
+      res["user"] = 0;
+    } else {
+      res["user"] = now - timestamps.users[userId][command];
+    }
+
+    timestamps.users[userId][command] = now
+  } else {
+    res["user"] = null;
+  }
+
+  return res
+}
 
 var mainChannel = "";
 var client = null;
@@ -10,7 +65,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.0.11";
+    return "1.0.13";
   },
   onCommand: function( user, command, message, flags, extra ) {
     if( comfyJS.isDebug ) {
@@ -172,8 +227,10 @@ var comfyJS = {
         var user = userstate[ "display-name" ] || userstate[ "username" ] || username;
         var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
         var isMod = userstate[ "mod" ];
-        var isSubscriber = ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
+        var isFounder = ( userstate[ "badges" ] && userstate[ "badges" ].founder === "0" )
+        var isSubscriber = isFounder || ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
         var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+        var isHighlightedMessage = userstate[ "msg-id" ] === "highlighted-message";
         var userId = userstate[ "user-id" ];
         var messageId = userstate[ "id" ];
         var roomId = userstate[ "room-id" ];
@@ -182,14 +239,19 @@ var comfyJS = {
         var emotes = userstate[ "emotes" ];
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
+        var customRewardId = userstate[ "custom-reward-id" ] || null;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
+          founder: isFounder,
           subscriber: isSubscriber,
-          vip: isVIP
+          vip: isVIP,
+          highlighted: isHighlightedMessage,
+          customReward: !!customRewardId
         };
         var extra = {
           id: messageId,
+          channel: channel.replace('#', ''),
           roomId: roomId,
           messageType: messageType,
           messageEmotes: emotes,
@@ -198,13 +260,15 @@ var comfyJS = {
           username: userstate[ "username" ],
           displayName: userstate[ "display-name" ],
           userColor: userColor,
-          userBadges: badges
+          userBadges: badges,
+          customRewardId: customRewardId,
         };
         if( !self && message[ 0 ] === "!" ) {
           // Message is a command
           var parts = message.split( / (.*)/ );
           var command = parts[ 0 ].slice( 1 ).toLowerCase();
           var msg = parts[ 1 ] || "";
+          extra["sinceLastCommand"] = getTimePeriod( command, userId );
           comfyJS.onCommand( user, command, msg, flags, extra );
         }
         else {
@@ -370,6 +434,7 @@ var comfyJS = {
 if (typeof module !== "undefined" && module.exports) {
     module.exports = comfyJS;
 }
+
 if (typeof window !== "undefined") {
     window.ComfyJS = comfyJS;
     tmi = window.tmi;

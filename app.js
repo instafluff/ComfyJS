@@ -24,8 +24,8 @@ var getTimePeriod = function( command, userId ) {
     }
   }
 
-  let now = new Date();
-  let res = {};
+  var now = new Date();
+  var res = {};
 
   if( !timestamps.global[command] ) {
     res["any"] = 0;
