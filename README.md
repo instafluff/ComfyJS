@@ -56,12 +56,15 @@ ComfyJS.Init( "MyTwitchChannel" );
 
 ## Flags ##
 
-Currently, the flags possible in `onCommand()` are:
+Currently, the flags possible in `onCommand()` and `onChat()` are:
 
 - broadcaster
 - mod
+- founder
 - subscriber
 - vip
+- highlighted
+- customReward
 
 ## Extra Parameter ##
 
@@ -78,25 +81,26 @@ Currently, the `extra` parameter for the `onCommand()` contains the following fi
 - displayName
 - userColor
 - userBadges
+- customRewardId (only works with custom channel rewards with required-text)
 
 If the message is a command, the `extra` parameter will contain an additional field:
 
 - sinceLastCommand
 
-which contains the information on the time periods in `ms` since the last time any user, or the specific user, has used the same 
+which contains the information on the time periods in `ms` since the last time any user, or the specific user, has used the same
 command. This field can be convenient to be used for setting global cooldown or spamming filters. See examples below:
 
 ```javascript
 ComfyJS.onChat = ( user, message, flags, self, extra ) => {
   if( flags.broadcaster && command == "test" ) {
     if( extra.sinceLastCommand.any < 100 ) {
-      console.log( 
-        `The last '!test' command by any user was sent less than 100 ms ago` 
+      console.log(
+        `The last '!test' command by any user was sent less than 100 ms ago`
       );            
     }
 
     if( extra.sinceLastCommand.user < 100 ) {
-      console.log( 
+      console.log(
         `The last '!test' command by this specific user (as denoted by the 'user' parameter) was sent less than 100 ms ago`
       );            
     }
