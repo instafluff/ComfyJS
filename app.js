@@ -66,6 +66,9 @@ var comfyJS = {
   version: function() {
     return "@VERSION";
   },
+  onError: function( error ) {
+    console.error( "Error:", error );
+  },
   onCommand: function( user, command, message, flags, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onCommand default handler" );
@@ -151,7 +154,7 @@ var comfyJS = {
         channel = mainChannel;
       }
       client.say( channel, message )
-      .catch( function( error ) { console.log( "Error:", error ); } );
+      .catch( comfyJS.onError );
       return true;
     }
     return false;
@@ -159,7 +162,7 @@ var comfyJS = {
   Whisper: function( message, user ) {
     if( client ) {
       client.whisper( user, message )
-      .catch( function( error ) { console.log( "Error:", error ); } );
+      .catch( comfyJS.onError );
       return true;
     }
     return false;
@@ -170,7 +173,7 @@ var comfyJS = {
         channel = mainChannel;
       }
       client.deletemessage( channel, id )
-      .catch( function( error ) { console.log( "Error:", error ); } );
+      .catch( comfyJS.onError );
       return true;
     }
     return false;
@@ -218,7 +221,7 @@ var comfyJS = {
         comfyJS.onChatMode( comfyJS.chatModes[ channelName ], channelName );
       }
       catch( error ) {
-        console.log( "Error:", error );
+        comfyJS.onError( error );
       }
     });
     client.on( 'message', function( channel, userstate, message, self ) {
@@ -280,7 +283,7 @@ var comfyJS = {
         }
       }
       catch( error ) {
-        console.log( "Error:", error );
+        comfyJS.onError( error );
       }
     });
     client.on( 'messagedeleted', function( channel, username, deletedMessage, userstate ) {
@@ -296,7 +299,7 @@ var comfyJS = {
         comfyJS.onMessageDeleted( messageId, extra );
       }
       catch( error ) {
-        console.log( "Error:", error );
+        comfyJS.onError( error );
       }
     });
     client.on( 'join', function( channel, username, self ) {
@@ -425,7 +428,7 @@ var comfyJS = {
       comfyJS.onReconnect( reconnectCount );
     });
     client.connect()
-    .catch( function( error ) { console.log( "Error:", error ); } );
+    .catch( comfyJS.onError );
   }
 };
 
