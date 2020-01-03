@@ -197,6 +197,8 @@ ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
     - Responds to user continuing gift subscription
  - **onReconnect**`( reconnectCount )`
     - Responds to user continuing gift subscription
+ - **onError**`( error )`
+    - Hook for Errors
 
 ## Credits ##
 Thank you too all the participants of this project!
