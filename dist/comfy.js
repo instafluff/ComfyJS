@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.0.13
+// Comfy.JS v1.0.14
 var tmi = require( "tmi.js" );
 
 // User and global timestamp store
@@ -65,7 +65,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.0.13";
+    return "1.0.14";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -317,10 +317,27 @@ var comfyJS = {
     });
     client.on( 'cheer', function( channel, userstate, message ) {
       var bits = ~~userstate['bits'];
-
+      var roomId = userstate[ "room-id" ];
+      var user = userstate[ "display-name" ] || userstate[ "username" ] || userstate[ "login" ];
+      var userId = userstate[ "user-id" ];
+      var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
+      var isMod = userstate[ "mod" ];
+      var isFounder = ( userstate[ "badges" ] && userstate[ "badges" ].founder === "0" )
+      var isSubscriber = isFounder || ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
+      var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+      var flags = {
+        broadcaster: isBroadcaster,
+        mod: isMod,
+        founder: isFounder,
+        subscriber: isSubscriber,
+        vip: isVIP
+      };
       var extra = {
         id: userstate['id'],
-        username: userstate[ 'login' ],
+        channel: channel.replace('#', ''),
+        roomId: roomId,
+        userId: userId,
+        username: userstate[ 'username' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
         displayName: userstate[ 'display-name' ],
@@ -328,7 +345,7 @@ var comfyJS = {
         subscriber: userstate['subscriber'],
       };
 
-      comfyJS.onCheer( message, bits, extra )
+      comfyJS.onCheer( user, message, bits, flags, extra );
     });
     client.on( 'subscription', function( channel, username, methods, message, userstate ) {
       var extra = {
