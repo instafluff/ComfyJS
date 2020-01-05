@@ -181,7 +181,7 @@ ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
     - Requires being authorized as the broadcaster
  - **onRaid**`( user, viewers )`
     - Responds to raid event
- - **onCheer**`( message, bits, extra )`
+ - **onCheer**`( user, message, bits, flags, extra )`
     - Responds to user cheering
  - **onSub**`( user, message, subTierInfo, extra )`
     - Responds to user channel subscription

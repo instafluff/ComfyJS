@@ -316,10 +316,27 @@ var comfyJS = {
     });
     client.on( 'cheer', function( channel, userstate, message ) {
       var bits = ~~userstate['bits'];
-
+      var roomId = userstate[ "room-id" ];
+      var user = userstate[ "display-name" ] || userstate[ "username" ] || userstate[ "login" ];
+      var userId = userstate[ "user-id" ];
+      var isBroadcaster = ( "#" + userstate[ "username" ] ) === channel;
+      var isMod = userstate[ "mod" ];
+      var isFounder = ( userstate[ "badges" ] && userstate[ "badges" ].founder === "0" )
+      var isSubscriber = isFounder || ( userstate[ "badges" ] && typeof userstate[ "badges" ].subscriber !== "undefined" ) || userstate[ "subscriber" ];
+      var isVIP = ( userstate[ "badges" ] && userstate[ "badges" ].vip === "1" ) || false;
+      var flags = {
+        broadcaster: isBroadcaster,
+        mod: isMod,
+        founder: isFounder,
+        subscriber: isSubscriber,
+        vip: isVIP
+      };
       var extra = {
         id: userstate['id'],
-        username: userstate[ 'login' ],
+        channel: channel.replace('#', ''),
+        roomId: roomId,
+        userId: userId,
+        username: userstate[ 'username' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
         displayName: userstate[ 'display-name' ],
@@ -327,7 +344,7 @@ var comfyJS = {
         subscriber: userstate['subscriber'],
       };
 
-      comfyJS.onCheer( message, bits, extra )
+      comfyJS.onCheer( user, message, bits, flags, extra );
     });
     client.on( 'subscription', function( channel, username, methods, message, userstate ) {
       var extra = {
