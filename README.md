@@ -24,7 +24,7 @@ npm install comfy.js --save
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-  if( flags.broadcaster && command == "test" ) {
+  if( flags.broadcaster && command === "test" ) {
     console.log( "!test was typed in chat" );
   }
 }
@@ -32,21 +32,25 @@ ComfyJS.Init( "MyTwitchChannel" );
 ```
 
 #### Browser
-1. Add `comfy.js`
+1. Download and add `comfy.js` from the `dist` folder or include from the JSDelivr CDN:
 ```
 <script src="comfy.min.js"></script>
+```
+OR
+```
+<script src="//cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
 ```
 
 2. Respond to !commands your channel
 ```html
 <html>
   <head>
-    <script src="comfy.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
       ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-        if( flags.broadcaster && command == "test" ) {
+        if( flags.broadcaster && command === "test" ) {
           console.log( "!test was typed in chat" );
         }
       }
@@ -94,7 +98,7 @@ command. This field can be convenient to be used for setting global cooldown or 
 
 ```javascript
 ComfyJS.onChat = ( user, message, flags, self, extra ) => {
-  if( flags.broadcaster && command == "test" ) {
+  if( flags.broadcaster && command === "test" ) {
     if( extra.sinceLastCommand.any < 100 ) {
       console.log(
         `The last '!test' command by any user was sent less than 100 ms ago`
@@ -139,7 +143,7 @@ OAUTH=[YOUR-OAUTH-PASS HERE] # e.g. OAUTH=oauth:kjh12bn1hsj78445234
 ```javascript
 var ComfyJS = require("comfy.js");
 ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-  if( command == "test" ) {
+  if( command === "test" ) {
     ComfyJS.Say( "replying to !test" );
   }
 }
