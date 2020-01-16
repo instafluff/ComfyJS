@@ -38,14 +38,14 @@ ComfyJS.Init( "MyTwitchChannel" );
 ```
 OR
 ```
-<script src="//cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
 ```
 
 2. Respond to !commands your channel
 ```html
 <html>
   <head>
-    <script src="//cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
