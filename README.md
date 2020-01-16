@@ -33,11 +33,11 @@ ComfyJS.Init( "MyTwitchChannel" );
 
 #### Browser
 1. Download and add `comfy.js` from the `dist` folder or include from the JSDelivr CDN:
-```
+```javascript
 <script src="comfy.min.js"></script>
 ```
 OR
-```
+```javascript
 <script src="https://cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
 ```
 
