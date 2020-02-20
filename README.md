@@ -1,7 +1,9 @@
 # Comfy.JS
 We built this Comfy Twitch Chat Module live on Twitch for Coding Cafe!
 
-**Comfy.JS** lets you integrate with Twitch chat for your Twitch channel ***SUPER EASILY*** in just a few lines of code.
+**Comfy.JS** lets you integrate with Twitch chat for your Twitch channel ***SUPER EASILY*** in just a few lines of code. Here's a quick 3-min video on how to use it: (Click image to open video)
+
+[![ComfyJS How-To Video](https://img.youtube.com/vi/oXpPwnUQCCk/hqdefault.jpg)](https://www.youtube.com/watch?v=oXpPwnUQCCk)
 
 ## Instafluff ##
 > *Like these projects? The best way to support my open-source projects is by becoming a Comfy Sponsor on GitHub!*
