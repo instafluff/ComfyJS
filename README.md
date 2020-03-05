@@ -40,14 +40,14 @@ ComfyJS.Init( "MyTwitchChannel" );
 ```
 OR
 ```javascript
-<script src="https://cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
 ```
 
 2. Respond to !commands your channel
 ```html
 <html>
   <head>
-    <script src="https://cdn.jsdelivr.net/npm/comfy.js/dist/comfy.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
@@ -89,6 +89,8 @@ Currently, the `extra` parameter for the `onCommand()` contains the following fi
 - displayName
 - userColor
 - userBadges
+- flags
+- timestamp
 - customRewardId (only works with custom channel rewards with required-text)
 
 If the message is a command, the `extra` parameter will contain an additional field:
