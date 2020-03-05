@@ -239,6 +239,8 @@ var comfyJS = {
         var badges = userstate[ "badges" ];
         var userColor = userstate[ "color" ];
         var emotes = userstate[ "emotes" ];
+        var messageFlags = userstate[ "flags" ];
+        var messageTimestamp = userstate[ "tmi-sent-ts" ];
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
         var customRewardId = userstate[ "custom-reward-id" ] || null;
@@ -246,7 +248,7 @@ var comfyJS = {
           broadcaster: isBroadcaster,
           mod: isMod,
           founder: isFounder,
-          subscriber: isSubscriber,
+          subscriber: isSubscriber || isFounder,
           vip: isVIP,
           highlighted: isHighlightedMessage,
           customReward: !!customRewardId
@@ -264,6 +266,8 @@ var comfyJS = {
           userColor: userColor,
           userBadges: badges,
           customRewardId: customRewardId,
+          flags: messageFlags,
+          timestamp: messageTimestamp,
         };
         if( !self && message[ 0 ] === "!" ) {
           // Message is a command
