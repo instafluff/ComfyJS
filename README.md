@@ -170,7 +170,9 @@ ComfyJS.Init( "MyTwitchChannel", null, "ChannelToJoin" );
 ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
 ```
 
-## Disconnect from Server
+## Disconnecting from Server
+
+You can disconnect from the server and all channels by using `Disconnect()`.
 
 ```javascript
 ComfyJS.Disconnect();
