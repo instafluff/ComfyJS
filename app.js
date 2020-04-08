@@ -450,6 +450,10 @@ var comfyJS = {
     });
     client.connect()
     .catch( comfyJS.onError );
+  },
+  Disconnect: function() {
+    client.disconnect()
+    .catch( comfyJS.onError );
   }
 };
 
