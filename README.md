@@ -170,6 +170,12 @@ ComfyJS.Init( "MyTwitchChannel", null, "ChannelToJoin" );
 ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
 ```
 
+## Disconnect from Server
+
+```javascript
+ComfyJS.Disconnect();
+```
+
 ## All Supported Events ##
 
  - **onCommand**`( user, command, message, flags, extra )`
