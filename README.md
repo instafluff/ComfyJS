@@ -210,9 +210,9 @@ ComfyJS.Disconnect();
  - **onGiftSubContinue**`( user, sender, extra )`
     - Responds to user continuing gift subscription
  - **onConnected**`( address, port, isFirstConnect )`
-    - Responds to user continuing gift subscription
+    - Responds when connecting to the Twitch chat.
  - **onReconnect**`( reconnectCount )`
-    - Responds to user continuing gift subscription
+    - Responds when attempting to reconnect to the Twitch chat.
  - **onError**`( error )`
     - Hook for Errors
 
