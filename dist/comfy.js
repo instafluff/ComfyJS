@@ -308,16 +308,28 @@ var comfyJS = {
       }
     });
     client.on( 'join', function( channel, username, self ) {
-      comfyJS.onJoin( username, self );
+      var extra = {
+        channel: channel.replace('#', ''),
+      };
+      comfyJS.onJoin( username, self, extra );
     });
     client.on( 'part', function( channel, username, self ) {
-      comfyJS.onPart( username, self );
+      var extra = {
+        channel: channel.replace('#', ''),
+      };
+      comfyJS.onPart( username, self, extra );
     });
     client.on( 'hosted', function( channel, username, viewers, autohost ) {
-      comfyJS.onHosted( username, viewers, autohost );
+      var extra = {
+        channel: channel.replace('#', ''),
+      };
+      comfyJS.onHosted( username, viewers, autohost, extra );
     });
     client.on( 'raided', function( channel, username, viewers ) {
-      comfyJS.onRaid( username, viewers );
+      var extra = {
+        channel: channel.replace('#', ''),
+      };
+      comfyJS.onRaid( username, viewers, extra );
     });
     client.on( 'cheer', function( channel, userstate, message ) {
       var bits = ~~userstate['bits'];
@@ -364,7 +376,7 @@ var comfyJS = {
         userBadges: userstate['badges']
       };
 
-      comfyJS.onSub( username, message, methods, extra);
+      comfyJS.onSub( username, message, methods, extra );
     });
     client.on( 'resub', function( channel, username, streakMonths, message, userstate, methods ) {
       var cumulativeMonths = ~~userstate[ 'msg-param-cumulative-months' ];

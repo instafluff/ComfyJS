@@ -190,14 +190,14 @@ ComfyJS.Disconnect();
     - Responds to user whisper event
  - **onMessageDeleted**`( id, extra )`
     - Responds to chat message deleted
- - **onJoin**`( user, self )`
+ - **onJoin**`( user, self, extra )`
     - Responds to user joining the chat
- - **onPart**`( user, self )`
+ - **onPart**`( user, self, extra )`
     - Responds to user leaving the chat
- - **onHosted**`( user, viewers, autohost )`
+ - **onHosted**`( user, viewers, autohost, extra )`
     - Responds to channel being hosted
     - Requires being authorized as the broadcaster
- - **onRaid**`( user, viewers )`
+ - **onRaid**`( user, viewers, extra )`
     - Responds to raid event
  - **onCheer**`( user, message, bits, flags, extra )`
     - Responds to user cheering
