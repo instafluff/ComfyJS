@@ -32,5 +32,6 @@
   },
   "browser": {
     "tmi.js": "./vendor/tmi.min.js"
-  }
+  },
+  "typings": "./types/index.d.ts"
 }
