@@ -7,7 +7,7 @@
     "build": "npm-run-all --sequential build:*",
     "build:browserify": "browserify app.js -o ./dist/comfy.js",
     "build:version": "node version.js",
-    "build:uglify": "uglifyjs --compress --mangle --source-map --output ./dist/comfy.min.js ./dist/comfy.js",
+    "build:uglify": "terser --compress --mangle --source-map --output ./dist/comfy.min.js ./dist/comfy.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "static -p 8000"
   },
@@ -22,13 +22,15 @@
   },
   "homepage": "https://github.com/instafluff/ComfyJS#readme",
   "dependencies": {
+    "node-fetch": "^2.6.0",
     "tmi.js": "^1.5.0"
   },
   "devDependencies": {
     "babelify": "7.2.0",
     "browserify": "^16.5.1",
+    "dotenv": "^8.2.0",
     "npm-run-all": "^4.1.5",
-    "uglify-js": "^3.9.2"
+    "terser": "^4.8.0"
   },
   "browser": {
     "tmi.js": "./vendor/tmi.min.js"

@@ -1,5 +1,7 @@
 // Comfy.JS v@VERSION
 var tmi = require( "tmi.js" );
+var fetch = require( "node-fetch" );
+var NodeSocket = require( "ws" );
 
 // User and global timestamp store
 var timestamps = {
@@ -54,6 +56,117 @@ var getTimePeriod = function( command, userId ) {
   }
 
   return res
+}
+
+// Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
+function nonce( length ) {
+    var text = "";
+    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    for (var i = 0; i < length; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}
+
+async function pubsubConnect( channel, password ) {
+	const heartbeatInterval = 1000 * 60; //ms between PING's
+	const reconnectInterval = 1000 * 3; //ms to wait before reconnect
+	let heartbeatHandle;
+
+	password = password.replace( "oauth:", "" );
+
+	let validation = await fetch( "https://id.twitch.tv/oauth2/validate", {
+		headers: {
+			"Authorization": `OAuth ${password}`
+		}
+	}).then( r => r.json() );
+
+	if( !validation.client_id || !validation.scopes.includes( "channel:read:redemptions" ) || !validation.scopes.includes( "user:read:email" ) ) {
+		console.error( "Invalid Password or Permission Scopes (channel:read:redemptions, user:read:email)" );
+		return;
+	}
+
+	let userInfo = await fetch( "https://api.twitch.tv/helix/users?login=" + channel, {
+		headers: {
+			"Client-ID": validation.client_id,
+			"Authorization": `Bearer ${password}`
+		}
+	}).then( r => r.json() );
+	let channelId = userInfo.data[ 0 ].id;
+
+	let ws;
+	if( typeof window !== "undefined" ) {
+		ws = new WebSocket( "wss://pubsub-edge.twitch.tv" );
+	}
+	else {
+		ws = new NodeSocket( "wss://pubsub-edge.twitch.tv" );
+	}
+	ws.onopen = function( event ) {
+		ws.send( JSON.stringify( { type: 'PING' } ) );
+        heartbeatHandle = setInterval( () => {
+			ws.send( JSON.stringify( { type: 'PING' } ) );
+		}, heartbeatInterval );
+
+		// Listen to channel points topic
+		let message = {
+	        type: "LISTEN",
+	        nonce: nonce( 15 ),
+	        data: {
+	            topics: [ `channel-points-channel-v1.${channelId}` ],
+	            auth_token: password
+	        }
+	    };
+		ws.send( JSON.stringify( message ) );
+    };
+    ws.onerror = function( error ) {
+		console.error( error );
+    };
+    ws.onmessage = function( event ) {
+        message = JSON.parse( event.data );
+		switch( message.type ) {
+			case "RESPONSE":
+				if( message.error === "ERR_BADAUTH" ) {
+					console.error( "PubSub Authentication Failure" );
+				}
+				break;
+			case "RECONNECT":
+	            setTimeout( () => {
+					pubsubConnect( channel, password )
+				}, reconnectInterval );
+				break;
+			case "MESSAGE":
+				if( message.data.topic.startsWith( "channel-points-channel" ) ) {
+					let messageData = JSON.parse( message.data.message );
+					if( messageData.type === "reward-redeemed" ) {
+						let redemption = messageData.data.redemption;
+						console.log( redemption );
+						var extra = {
+				          channelId: redemption.channel_id,
+				          reward: redemption.reward,
+				          userId: redemption.user.id,
+				          username: redemption.user.login,
+				          displayName: redemption.user.display_name,
+				          customRewardId: redemption.id,
+				          timestamp: redemption.redeemed_at,
+				        };
+						comfyJS.onReward(
+							redemption.user.display_name || redemption.user.login,
+							redemption.reward.title,
+							redemption.reward.cost,
+							extra
+						);
+					}
+					// console.log( messageData );
+				}
+				break;
+		}
+    };
+    ws.onclose = function() {
+        clearInterval( heartbeatHandle );
+        setTimeout( () => {
+			pubsubConnect( channel, password )
+		}, reconnectInterval );
+    };
 }
 
 var mainChannel = "";
@@ -129,7 +242,7 @@ var comfyJS = {
       console.log( "onSubMysteryGift default handler" );
     }
   },
-  onGiftSubContinue: function( user, sender, extra) {
+  onGiftSubContinue: function( user, sender, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onGiftSubContinue default handler" );
     }
@@ -142,6 +255,11 @@ var comfyJS = {
   onChatMode: function( flags, channel ) {
     if( comfyJS.isDebug ) {
       console.log( "onChatMode default handler" );
+    }
+  },
+  onReward: function( user, reward, cost, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onReward default handler" );
     }
   },
   onConnected: function( address, port, isFirstConnect ) {
@@ -462,6 +580,11 @@ var comfyJS = {
     });
     client.connect()
     .catch( comfyJS.onError );
+
+	// Setup PubSub (https://github.com/twitchdev/pubsub-javascript-sample)
+	if( password ) {
+		pubsubConnect( mainChannel, password );
+	}
   },
   Disconnect: function() {
     client.disconnect()

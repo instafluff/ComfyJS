@@ -172,6 +172,18 @@ ComfyJS.Init( "MyTwitchChannel", null, "ChannelToJoin" );
 ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
 ```
 
+## Channel Point Reward Redemptions
+
+Channel Point Reward Redemptions require extra Twitch OAuth permission scopes.
+You can use this tool: [https://twitchapps.com/tokengen/](https://twitchapps.com/tokengen/)
+Scopes: `channel:read:redemptions user:read:email chat:edit chat:read`
+
+```javascript
+ComfyJS.onReward = ( user, reward, cost, extra ) => {
+  console.log( user + " redeemed " + reward + " for " + cost );
+}
+```
+
 ## Disconnecting from Server
 
 You can disconnect from the server and all channels by using `Disconnect()`.
@@ -181,7 +193,6 @@ ComfyJS.Disconnect();
 ```
 
 ## All Supported Events ##
-
  - **onCommand**`( user, command, message, flags, extra )`
     - Responds to "!" commands
  - **onChat**`( user, message, flags, self, extra )`
@@ -190,6 +201,9 @@ ComfyJS.Disconnect();
     - Responds to user whisper event
  - **onMessageDeleted**`( id, extra )`
     - Responds to chat message deleted
+ - **onReward**`( user, reward, cost, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to Channel Point Redemptions
  - **onJoin**`( user, self, extra )`
     - Responds to user joining the chat
  - **onPart**`( user, self, extra )`
@@ -226,3 +240,7 @@ Thank you too all the participants of this project!
 Thank you to everyone that helped in turning Comfy.JS into a browser module!
 
 **Instafluff, Instafriend, ChatTranslator, Gilokk0, qbotv3, That_MS_Gamer, KitAnnLIVE, simrose4u, MacabreMan2, LuRiMer313, sparky_pugwash, AbbyFabby, sethorizer, julieee22, Numb3rY, Jwh1o1, baileydale, kevkab, Stay_Hydrated_Bot, DrJavaSaurus, stresstest, BungalowGlow, Dr_Zero, NiteCrawla, fd_god92, DrEriksen, codeheir, Talk2meGooseman, sneelps, cottonsmiles, DutchGamer46, LilyHazel, Kyoslilmonster, guthron, DragosNox, sciondragons, HonestDanGames, Xynal, MerlinLeWizard, FablesGames, BrainoidGames, donaldwm, Gharrotey, RIKACHET, HeyOhKei, DevMerlin, CrimsonKnightZero, ellie_pop, ItsNaomiArt, SomaPills, TheSabbyLife, bktdakid31, IsaisChannel, thegooseofwild, itsDeke, bubblesandunicorns, jellydance, MalForTheWin, Chibigirl24, Pearcington, RikuRinku, rockysenpai24, DEAD_P1XL, codeaurora, EndlessMoonfall, fromtheannex, Optik_Nerve, qerwtr546, REAZNxxx, GoonPontoon, JesseSkinner, roberttables, pookiepew, Lannonbr, SoG_Cuicui, Deitypotato, shalomhanukkahbneishimon, UpmostKek, xeiu, skatesubzero, kingswerv, K1ng440, kaisuke, kinbiko, malfunct, BooobieTrap, Kara_Kim**
+
+Thanks to everyone who joined in on adding Twitch PubSub support for Channel Point Reward Redemptions to Comfy.JS!
+
+**Instafluff, Instafriend, informathemusic, aRandomTim, shadesofpixie, That_MS_Gamer, ToeNeeHee, httpJunkie, ryanchetty_1, calguru, chrislocality, Atanerah, rekaj3773, moshiko777, fizhes, AnnaCodes, Smokestormx, TheGeekGeneration, SavenaV, KotaKlan, rosebutterfly24, Simpathey, Spationaute, DjDesidera, JupiterZky, judybelle1, Shaezonai, shineslove, airsickmammal, walaber, jellydance, LilyHazel, PainArtist, Nickloop_TTV, VerbatimStudios, silversurfer1989, BellaTriXrbsa, holloway87, Asherroth86, Tiwesday, not_your_point, JenDevelops, tenaciousw, Cuicui_off, stevis5, aranhawaii, DevMerlin, wabes1, jeckle, opti_21, sparky_pugwash, tommunist_64, DutchGamer46, DoctorArgus, simrose4u, DreamGardenPanda, onelineofme, stuyksoft, Simployed, JustinZedly, Rhedone, DrMikachu, Gurkenkater, MrDemonWolf, saltipretzelz, MerlinLeWizard, Kurokirisu, Juscekame, FuriousFur, andresurrego, MissNightcrawler, karatewump, DrillsKibo, florinpop17, Axell99Design, Ahmed_Riad_1, Keegan_GDiegen, PortaalGaming, mjewl, cheppy4444dude, Soccerdude4444, klforthwind, penguinian, 10TenArt, Atndesign, DNIStream, LoveSudoNimh, prosto_artem27, lucasnramos, A_Ninja_For_Jesus_Bruh, RedChrisMS, Lineyatronic, Totte292, A_Gold_Fish, ShiDotMoe, tbdgamer, MatthewDGroves, dota2attitude, mistersyntax, SekaCakes, llamakid29, CryptoCoyote, MurdocTurner, JeanValjean80, walpolea, Jessi8712, butschibuuuu, Cmiley6, TheFlamingWings, hehe24h, cryogen_sw, DrJavaSaurus, rota22_, julieee22, bronick16, ScrtSolstice, ghostlupo86, wake_the_beast, williamcameron2, GizmoPugLife, OG24com**
