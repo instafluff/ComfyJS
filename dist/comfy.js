@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.0
+// Comfy.JS v1.1.2
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -140,10 +140,11 @@ async function pubsubConnect( channel, password ) {
 					let messageData = JSON.parse( message.data.message );
 					if( messageData.type === "reward-redeemed" ) {
 						let redemption = messageData.data.redemption;
-						console.log( redemption );
+						// console.log( redemption );
 						var extra = {
 				          channelId: redemption.channel_id,
 				          reward: redemption.reward,
+				          rewardFulfilled: redemption.status === "FULFILLED",
 				          userId: redemption.user.id,
 				          username: redemption.user.login,
 				          displayName: redemption.user.display_name,
@@ -154,6 +155,7 @@ async function pubsubConnect( channel, password ) {
 							redemption.user.display_name || redemption.user.login,
 							redemption.reward.title,
 							redemption.reward.cost,
+                            redemption.user_input || "",
 							extra
 						);
 					}
@@ -178,7 +180,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.1.0";
+    return "1.1.2";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -258,7 +260,7 @@ var comfyJS = {
       console.log( "onChatMode default handler" );
     }
   },
-  onReward: function( user, reward, cost, extra ) {
+  onReward: function( user, reward, cost, message, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onReward default handler" );
     }
