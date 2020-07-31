@@ -139,10 +139,11 @@ async function pubsubConnect( channel, password ) {
 					let messageData = JSON.parse( message.data.message );
 					if( messageData.type === "reward-redeemed" ) {
 						let redemption = messageData.data.redemption;
-						console.log( redemption );
+						// console.log( redemption );
 						var extra = {
 				          channelId: redemption.channel_id,
 				          reward: redemption.reward,
+				          rewardFulfilled: redemption.status === "FULFILLED",
 				          userId: redemption.user.id,
 				          username: redemption.user.login,
 				          displayName: redemption.user.display_name,
@@ -153,6 +154,7 @@ async function pubsubConnect( channel, password ) {
 							redemption.user.display_name || redemption.user.login,
 							redemption.reward.title,
 							redemption.reward.cost,
+                            redemption.user_input || "",
 							extra
 						);
 					}
@@ -257,7 +259,7 @@ var comfyJS = {
       console.log( "onChatMode default handler" );
     }
   },
-  onReward: function( user, reward, cost, extra ) {
+  onReward: function( user, reward, cost, message, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onReward default handler" );
     }

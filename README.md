@@ -202,7 +202,7 @@ ComfyJS.Disconnect();
     - Responds to user whisper event
  - **onMessageDeleted**`( id, extra )`
     - Responds to chat message deleted
- - **onReward**`( user, reward, cost, extra )`
+ - **onReward**`( user, reward, cost, message, extra )`
     - **REQUIRES EXTRA PERMISSION SCOPES**
     - Responds to Channel Point Redemptions
  - **onJoin**`( user, self, extra )`
