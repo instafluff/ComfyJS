@@ -1,4 +1,6 @@
 # Comfy.JS
+![npm](https://img.shields.io/npm/v/comfy.js?style=flat-square) ![GitHub](https://img.shields.io/github/license/instafluff/comfyjs?style=flat-square) [![](https://data.jsdelivr.com/v1/package/npm/comfy.js/badge)](https://www.jsdelivr.com/package/npm/comfy.js)
+
 We built this Comfy Twitch Chat Module live on Twitch for Coding Cafe!
 
 **Special Thanks:** *Comfy.JS is possible thanks to [tmi.js](https://tmijs.com/) maintained by [@AlcaDesign](https://github.com/AlcaDesign)*
