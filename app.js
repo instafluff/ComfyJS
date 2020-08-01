@@ -204,22 +204,22 @@ var comfyJS = {
       console.log( "onMessageDeleted default handler" );
     }
   },
-  onJoin: function( user, self ) {
+  onJoin: function( user, self, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onJoin default handler" );
     }
   },
-  onPart: function( user, self ) {
+  onPart: function( user, self, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onPart default handler" );
     }
   },
-  onHosted: function( user, viewers, autohost ) {
+  onHosted: function( user, viewers, autohost, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onHosted default handler" );
     }
   },
-  onRaid: function( user, viewers ) {
+  onRaid: function( user, viewers, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onRaid default handler" );
     }
