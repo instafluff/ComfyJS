@@ -190,10 +190,6 @@ export type EmoteSet = {
 /**
  * Callback Definitions
  */
-export type OnVersionHandler = {
-  (): string;
-}
-
 export type OnErrorHandler = {
   (error: any): void;
 };
@@ -334,7 +330,6 @@ export interface ComfyJSInstance {
   Disconnect(): void;
 
   // Events
-  version: OnVersionHandler;
   onError: OnErrorHandler;
   onCommand: OnCommandHandler;
   onChat: OnChatHandler;
