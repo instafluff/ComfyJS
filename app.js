@@ -385,6 +385,7 @@ var comfyJS = {
           displayName: userstate[ "display-name" ],
           userColor: userColor,
           userBadges: badges,
+          userState: userstate,
           customRewardId: customRewardId,
           flags: messageFlags,
           timestamp: messageTimestamp,
@@ -475,6 +476,7 @@ var comfyJS = {
         username: userstate[ 'username' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         displayName: userstate[ 'display-name' ],
         messageEmotes: userstate['emotes'],
         subscriber: userstate['subscriber'],
@@ -492,7 +494,8 @@ var comfyJS = {
         username: userstate[ 'login' ],
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
-        userBadges: userstate['badges']
+        userBadges: userstate['badges'],
+        userState: userstate,
       };
 
       comfyJS.onSub( username, message, methods, extra );
@@ -508,7 +511,7 @@ var comfyJS = {
         username: userstate[ 'login' ],
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
-        userBadges: userstate['badges']
+        userBadges: userstate['badges'],
       };
 
       comfyJS.onResub( username, message, streakMonths, cumulativeMonths, methods, extra );
@@ -525,6 +528,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
         recipientId: userstate["msg-param-recipient-id"]
@@ -545,6 +549,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
         recipientId: userstate["msg-param-recipient-id"],
@@ -564,6 +569,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         gifterUsername: userstate['msg-param-sender-login'],
         gifterDisplayName: userstate['msg-param-sender-name']
       };
