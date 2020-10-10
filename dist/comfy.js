@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.2
+// Comfy.JS v1.1.4
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -180,7 +180,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.1.2";
+    return "1.1.4";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -205,22 +205,22 @@ var comfyJS = {
       console.log( "onMessageDeleted default handler" );
     }
   },
-  onJoin: function( user, self ) {
+  onJoin: function( user, self, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onJoin default handler" );
     }
   },
-  onPart: function( user, self ) {
+  onPart: function( user, self, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onPart default handler" );
     }
   },
-  onHosted: function( user, viewers, autohost ) {
+  onHosted: function( user, viewers, autohost, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onHosted default handler" );
     }
   },
-  onRaid: function( user, viewers ) {
+  onRaid: function( user, viewers, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onRaid default handler" );
     }
@@ -383,10 +383,10 @@ var comfyJS = {
           isEmoteOnly: isEmoteOnly,
           userId: userId,
           username: userstate[ "username" ],
-          userstate: userstate,
           displayName: userstate[ "display-name" ],
           userColor: userColor,
           userBadges: badges,
+          userState: userstate,
           customRewardId: customRewardId,
           flags: messageFlags,
           timestamp: messageTimestamp,
@@ -477,6 +477,7 @@ var comfyJS = {
         username: userstate[ 'username' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         displayName: userstate[ 'display-name' ],
         messageEmotes: userstate['emotes'],
         subscriber: userstate['subscriber'],
@@ -494,7 +495,8 @@ var comfyJS = {
         username: userstate[ 'login' ],
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
-        userBadges: userstate['badges']
+        userBadges: userstate['badges'],
+        userState: userstate,
       };
 
       comfyJS.onSub( username, message, methods, extra );
@@ -510,7 +512,7 @@ var comfyJS = {
         username: userstate[ 'login' ],
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
-        userBadges: userstate['badges']
+        userBadges: userstate['badges'],
       };
 
       comfyJS.onResub( username, message, streakMonths, cumulativeMonths, methods, extra );
@@ -527,6 +529,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
         recipientId: userstate["msg-param-recipient-id"]
@@ -547,6 +550,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
         recipientId: userstate["msg-param-recipient-id"],
@@ -566,6 +570,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        userState: userstate,
         gifterUsername: userstate['msg-param-sender-login'],
         gifterDisplayName: userstate['msg-param-sender-name']
       };
