@@ -361,6 +361,7 @@ var comfyJS = {
         var userColor = userstate[ "color" ];
         var emotes = userstate[ "emotes" ];
         var messageFlags = userstate[ "flags" ];
+	var messageUserstate
         var messageTimestamp = userstate[ "tmi-sent-ts" ];
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
@@ -383,6 +384,7 @@ var comfyJS = {
           isEmoteOnly: isEmoteOnly,
           userId: userId,
           username: userstate[ "username" ],
+          userstate: userstate,
           displayName: userstate[ "display-name" ],
           userColor: userColor,
           userBadges: badges,
