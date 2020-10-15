@@ -249,7 +249,7 @@ var comfyJS = {
       console.log( "onGiftSubContinue default handler" );
     }
   },
-  onCheer: function( message, bits, extra ) {
+  onCheer: function( user, message, bits, flags, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onCheer default handler" );
     }
