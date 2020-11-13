@@ -179,7 +179,7 @@ ComfyJS.Init( "MyTwitchChannel", null, [ "ChannelA", "ChannelB", "ChannelC" ] );
 Channel Point Reward Redemptions require extra Twitch OAuth permission scopes.
 You can use this tool: [https://twitchapps.com/tokengen/](https://twitchapps.com/tokengen/)
 
-Scopes: `channel:read:redemptions user:read:email chat:edit chat:read`
+Scopes: `channel:manage:redemptions channel:read:redemptions user:read:email chat:edit chat:read`
 
 ```javascript
 ComfyJS.onReward = ( user, reward, cost, extra ) => {
