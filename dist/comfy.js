@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.5
+// Comfy.JS v1.1.6
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -173,6 +173,8 @@ async function pubsubConnect( channel, password ) {
 }
 
 var mainChannel = "";
+var channelPassword = "";
+var channelInfo = null;
 var client = null;
 var isFirstConnect = true;
 var reconnectCount = 0;
@@ -180,7 +182,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.1.5";
+    return "1.1.6";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -250,7 +252,7 @@ var comfyJS = {
       console.log( "onGiftSubContinue default handler" );
     }
   },
-  onCheer: function( message, bits, extra ) {
+  onCheer: function( user, message, bits, flags, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onCheer default handler" );
     }
@@ -327,6 +329,7 @@ var comfyJS = {
         username: username,
         password: password
       };
+      channelPassword = password;
     }
 
     client = new tmi.client( options );
@@ -598,6 +601,105 @@ var comfyJS = {
   Disconnect: function() {
     client.disconnect()
     .catch( comfyJS.onError );
+  },
+  GetChannelRewards: async function( clientId, manageableOnly = false ) {
+      if( channelPassword ) {
+          if( !channelInfo ) {
+              let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
+                  headers: {
+                      "Client-ID": clientId,
+                      "Authorization": `Bearer ${channelPassword}`
+                  }
+              } ).then( r => r.json() );
+              channelInfo = info.data[ 0 ];
+          }
+          let rewards = await fetch( `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&only_manageable_rewards=${manageableOnly}`, {
+              headers: {
+                  "Client-ID": clientId,
+                  "Authorization": `Bearer ${channelPassword}`
+              }
+          } ).then( r => r.json() );
+          return rewards.data || [];
+      }
+      else {
+          return [];
+      }
+  },
+  CreateChannelReward: async function( clientId, rewardInfo ) {
+      if( channelPassword ) {
+          if( !channelInfo ) {
+              let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
+                  headers: {
+                      "Client-ID": clientId,
+                      "Authorization": `Bearer ${channelPassword}`
+                  }
+              } ).then( r => r.json() );
+              channelInfo = info.data[ 0 ];
+          }
+          let custom = await fetch( `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}`, {
+              method: "POST",
+              headers: {
+                  "Client-ID": clientId,
+                  "Authorization": `Bearer ${channelPassword}`,
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify( rewardInfo )
+          } ).then( r => r.json() );
+          return custom.data[ 0 ];
+      }
+      else {
+          throw new Error( "Missing Channel Password" );
+      }
+  },
+  UpdateChannelReward: async function( clientId, rewardId, rewardInfo ) {
+      if( channelPassword ) {
+          if( !channelInfo ) {
+              let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
+                  headers: {
+                      "Client-ID": clientId,
+                      "Authorization": `Bearer ${channelPassword}`
+                  }
+              } ).then( r => r.json() );
+              channelInfo = info.data[ 0 ];
+          }
+          let custom = await fetch( `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&id=${rewardId}`, {
+              method: "PATCH",
+              headers: {
+                  "Client-ID": clientId,
+                  "Authorization": `Bearer ${channelPassword}`,
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify( rewardInfo )
+          } ).then( r => r.json() );
+          return custom.data[ 0 ];
+      }
+      else {
+          throw new Error( "Missing Channel Password" );
+      }
+  },
+  DeleteChannelReward: async function( clientId, rewardId ) {
+      if( channelPassword ) {
+          if( !channelInfo ) {
+              let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
+                  headers: {
+                      "Client-ID": clientId,
+                      "Authorization": `Bearer ${channelPassword}`
+                  }
+              } ).then( r => r.json() );
+              channelInfo = info.data[ 0 ];
+          }
+          let deleted = await fetch( `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&id=${rewardId}`, {
+              method: "DELETE",
+              headers: {
+                  "Client-ID": clientId,
+                  "Authorization": `Bearer ${channelPassword}`
+              }
+          } ).then( r => r.text() );
+          return deleted;
+      }
+      else {
+          throw new Error( "Missing Channel Password" );
+      }
   }
 };
 

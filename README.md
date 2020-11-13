@@ -187,6 +187,45 @@ ComfyJS.onReward = ( user, reward, cost, extra ) => {
 }
 ```
 
+Comfy.JS includes functions to manage Channel Point Rewards. These functions require the ClientID used in getting the Twitch OAuth password for the channel.
+ - **GetChannelRewards**`( clientId, manageableOnly = true )`
+    - Gets the channel's rewards
+ - **CreateChannelReward**`( clientId, rewardInfo )`
+    - Creates a channel point reward
+ - **UpdateChannelReward**`( clientId, rewardId, rewardInfo )`
+    - Updates a channel point reward *(Only rewards created with this ClientID can be updated)*
+ - **DeleteChannelReward**`( clientId, rewardId )`
+    - Deletes a channel point reward *(Only rewards created with this ClientID can be deleted)*
+
+```javascript
+let channelRewards = await ComfyJS.GetChannelRewards( clientId, true );
+
+let customReward = await ComfyJS.CreateChannelReward( clientId, {
+    title: "Test Reward",
+    prompt: "Test Description",
+    cost: 100,
+    is_enabled: true,
+    background_color: "#00E5CB",
+    is_user_input_required: false,
+    is_max_per_stream_enabled: false,
+    max_per_stream: 0,
+    is_max_per_user_per_stream_enabled: false,
+    max_per_user_per_stream: 0,
+    is_global_cooldown_enabled: false,
+    global_cooldown_seconds: 0,
+    should_redemptions_skip_request_queue: true
+} );
+
+let updatedReward = await ComfyJS.UpdateChannelReward( clientId, customReward.id, {
+    title: "Test Reward (Updated)",
+    prompt: "Updated Description",
+    cost: 200,
+    is_enabled: true,
+} );
+
+await ComfyJS.DeleteChannelReward( clientId, customReward.id );
+```
+
 ## Disconnecting from Server
 
 You can disconnect from the server and all channels by using `Disconnect()`.
