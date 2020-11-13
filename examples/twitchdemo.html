@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@1.1.6/dist/comfy.min.js"></script>
+  </head>
+  <body>
+    <h1 id="math"></h1>
+    <script type="text/javascript">
+	  // Authentication Instructions are at https://github.com/instafluff/ComfyJS#channel-point-reward-redemptions
+	  const twitchAuth = "YOUR_AUTH_CODE_HERE";
+	  const channel = "YOUR_CHANNEL";
+	  const clientId = "YOUR_CLIENT_ID";
+	  function getRandomInt( num ) { return Math.floor( num * Math.random() ); }
+	  function shuffleArray( array ) {
+		    for( let i = array.length - 1; i > 0; i-- ) {
+		        const j = Math.floor( Math.random() * ( i + 1 ) );
+		        [ array[ i ], array[ j ] ] = [ array[ j ], array[ i ] ];
+		    }
+		}
+
+      ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+        if( command === "test" ) {
+          console.log( "!test was typed in chat" );
+        }
+      }
+      ComfyJS.Init( channel, twitchAuth );
+	  (async () => {
+		const valueA = getRandomInt( 100 );
+        const valueB = getRandomInt( 100 );
+        const valueAnswer = valueA + valueB;
+        let answers = [ valueAnswer ];
+        for( let i = 0; i < 2; i++ ) {
+            if( Math.random() > 0.5 ) {
+                answers.push( valueAnswer + 1 + getRandomInt( 50 ) );
+            }
+            else {
+                answers.push( valueAnswer - 1 - getRandomInt( 50 ) );
+            }
+        }
+        // Shuffle Answers
+        shuffleArray( answers );
+        document.getElementById( "math" ).innerText = `${valueA} + ${valueB} = ?`;
+          let channelRewards = await ComfyJS.GetChannelRewards( clientId, true );
+          console.log( channelRewards );
+          // Clear Managed Custom Rewards
+          for( let i = 0; i < channelRewards.length; i++ ) {
+              let deleted = await ComfyJS.DeleteChannelReward( clientId, channelRewards[ i ].id );
+              console.log( "Deleted:", deleted );
+          }
+          // Create New Custom Rewards
+          for( let i = 0; i < answers.length; i++ ) {
+              let customReward = await ComfyJS.CreateChannelReward( clientId, {
+                  title: `Math: ${answers[ i ]}`,
+                  prompt: "Math Quiz",
+                  cost: 1,
+                  is_enabled: true,
+                  background_color: "#00E5CB",
+                  is_user_input_required: false,
+                  is_max_per_stream_enabled: false,
+                  max_per_stream: 0,
+                  is_max_per_user_per_stream_enabled: false,
+                  max_per_user_per_stream: 0,
+                  is_global_cooldown_enabled: false,
+                  global_cooldown_seconds: 0,
+                  should_redemptions_skip_request_queue: true
+              } );
+          }
+          ComfyJS.onReward = async ( user, reward, cost, extra ) => {
+              console.log( user + " redeemed " + reward + " for " + cost );
+              if( reward === `Math: ${valueAnswer}`) {
+                  document.getElementById( "math" ).innerText = `${valueA} + ${valueB} = ${valueAnswer} (${user} got it!)`;
+                  setTimeout( () => {
+                      location.reload();
+                  }, 5000 );
+              }
+          }
+	  })();
+    </script>
+  </body>
+</html>
