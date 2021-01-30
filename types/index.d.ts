@@ -2,7 +2,7 @@
 // Project: https://github.com/instafluff/ComfyJS
 // Definitions by: Michael Jolley <https://github.com/michaeljolley>
 
-// Last updated: 2020/08/01
+// Last updated: 2021/01/30
 
 import { Badges, Client, RoomState, SubMethods } from "tmi.js";
 
@@ -35,13 +35,58 @@ export type OnMessageFlags = {
 
 export type OnRewardExtra = {
   channelId: string;
-  reward: string;
+  reward: Reward;
   rewardFulfilled: boolean;
   userId: string;
   username: string;
   displayName: string;
   customRewardId: string;
   timestamp: string;
+}
+
+export type Reward = {
+  id: string;
+  channelId: string;
+  title: string;
+  prompt: string;
+  cost: number;
+  userInputRequired: boolean;
+  subOnly: boolean;
+  image: Image;
+  defaultImage: Image;
+  backgroundColor: string;
+  enabled: boolean;
+  paused: boolean;
+  inStock: boolean;
+  maxPerStream: RewardMaxPerStream;
+  shouldRedemptionsSkipRequestQueue: boolean;
+  templateId: string;
+  updatedForIndicatorAt: string;
+  maxPerUserPerStream: RewardMaxUserPerStream;
+  globalCooldown: RewardGlobalCooldown;
+  redemptionsRedeemedCurrentStream: string;
+  cooldownExpiresAt: string;
+}
+
+export type RewardMaxPerStream = {
+  enabled: boolean;
+  maxPerStream: number;
+}
+
+export type RewardMaxUserPerStream = {
+  enabled: boolean;
+  maxPerUserPerStream: number;
+}
+
+export type RewardGlobalCooldown = {
+  enabled: boolean;
+  globalCooldownSeconds: number;
+}
+
+export type Image = {
+  url1x: string;
+  url2x: string;
+  url4x: string;
 }
 
 export type OnMessageExtra = {

@@ -140,9 +140,50 @@ async function pubsubConnect( channel, password ) {
 					if( messageData.type === "reward-redeemed" ) {
 						let redemption = messageData.data.redemption;
 						// console.log( redemption );
+                        var reward = redemption.reward;
+                        var rewardObj = {
+                          id: reward.id,
+                          channelId: reward.channel_id,
+                          title: reward.title,
+                          prompt: reward.prompt,
+                          cost: reward.cost,
+                          userInputRequired: reward.is_user_input_required,
+                          subOnly: reward.is_sub_only,
+                          image: {
+                            url1x: reward.image.url_1x,
+                            url2x: reward.image.url_2x,
+                            url4x: reward.image.url_4x,
+                          },
+                          defaultImage: {
+                            url1x: reward.default_image.url_1x,
+                            url2x: reward.default_image.url_2x,
+                            url4x: reward.default_image.url_4x,
+                          },
+                          backgroundColor: reward.background_color,
+                          enabled: reward.is_enabled,
+                          paused: reward.is_paused,
+                          inStock: reward.is_in_stock,
+                          maxPerStream: {
+                            enabled: reward.max_per_stream.is_enabled,
+                            maxPerStream: reward.max_per_stream.max_per_stream,
+                          },
+                          shouldRedemptionsSkipRequestQueue: reward.should_redemptions_skip_request_queue,
+                          templateId: reward.template_id,
+                          updatedForIndicatorAt: reward.updated_for_indicator_at,
+                          maxPerUserPerStream: {
+                            enabled: reward.max_per_user_per_stream.is_enabled,
+                            maxPerUserPerStream: reward.max_per_user_per_stream.max_per_user_per_stream,
+                          },
+                          globalCooldown: {
+                            enabled: reward.global_cooldown.is_enabled,
+                            globalCooldownSeconds: reward.global_cooldown.global_cooldown_seconds,
+                          },
+                          redemptionsRedeemedCurrentStream: reward.redemptions_redeemed_current_stream,
+                          cooldownExpiresAt: reward.cooldown_expires_at,
+                        };
 						var extra = {
 				          channelId: redemption.channel_id,
-				          reward: redemption.reward,
+				          reward: rewardObj,
 				          rewardFulfilled: redemption.status === "FULFILLED",
 				          userId: redemption.user.id,
 				          username: redemption.user.login,
