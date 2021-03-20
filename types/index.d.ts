@@ -160,6 +160,7 @@ export type OnCheerExtra = {
 }
 
 export type OnSubExtra = {
+  channel: string;
   id: string;
   roomId: string;
   messageType: string;
@@ -172,6 +173,7 @@ export type OnSubExtra = {
 }
 
 export type OnResubExtra = {
+  channel: string;
   id: string;
   roomId: string;
   messageType: string;
@@ -184,6 +186,7 @@ export type OnResubExtra = {
 }
 
 export type OnSubGiftExtra = {
+  channel: string;
   id: string;
   roomId: string;
   messageType: string;
@@ -199,6 +202,7 @@ export type OnSubGiftExtra = {
 }
 
 export type OnSubMysteryGiftExtra = {
+  channel: string;
   id: string;
   roomId: string;
   messageType: string;
@@ -215,6 +219,7 @@ export type OnSubMysteryGiftExtra = {
 }
 
 export type OnGiftSubContinueExtra = {
+  channel: string;
   id: string;
   roomId: string;
   messageType: string;
