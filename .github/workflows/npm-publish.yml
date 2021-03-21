@@ -3,7 +3,10 @@
 
 name: Node.js Package
 
-on: push
+on: 
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -19,6 +22,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - run: npm build
       - uses: geemanjs/conventional-changelog-npm-publish@1.0.0
         with:
           author_email: ${{secrets.EMAIL}}
