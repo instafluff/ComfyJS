@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: git config --global user.email "${{ secrets.EMAIL }}"
+      - run: git config --global user.email "instaflufftv@gmail.com"
         shell: bash
       - run: git config --global user.name "${{ github.actor }}"
         shell: bash
@@ -35,7 +35,7 @@ jobs:
         shell: bash
         env:
           GH_RELEASE_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm build
+      - run: npm run build
       - run: |
           git commit -a -m "Latest Version Build"
           git push --follow-tags
