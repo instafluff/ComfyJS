@@ -32,7 +32,7 @@ jobs:
         with:
           git_email: ${{ secrets.EMAIL }}
           git_username: ${{ github.actor }}
-          newversion: ${{ github.event.inputs.newversion }}
+          newversion: patch
           push_version_commit: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
           npm_token: ${{ secrets.NPM_TOKEN }}
