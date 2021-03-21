@@ -15,6 +15,27 @@ jobs:
           node-version: 12
       - run: npm build
 
+  gitconfig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: git config --global user.name ${{secrets.USERNAME}}
+      - run: git config --global user.email ${{secrets.EMAIL}}
+
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+      - run: npm version patch
+      - run: npm build
+      - run: git commit -a -m "Latest Version"
+      - run: git push
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
@@ -24,11 +45,7 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: git config --global user.name ${{secrets.USERNAME}}
-      - run: git config --global user.email ${{secrets.EMAIL}}
-      - run: npm version patch
       - run: npm build
-      - run: git push
       - run: npm publish --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
