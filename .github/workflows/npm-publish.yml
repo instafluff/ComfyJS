@@ -28,12 +28,16 @@ jobs:
           node-version: 12
           registry-url: https://registry.npmjs.org/
       - run: npm build
-      - uses: geemanjs/conventional-changelog-npm-publish@1.0.0
+      - uses: bcomnes/npm-bump@v1.0.4
         with:
-          author_email: ${{secrets.EMAIL}}
-          author_name: ${{secrets.USERNAME}}
+          git_email: ${{ secrets.EMAIL }}
+          git_username: ${{ github.actor }}
+          newversion: ${{ github.event.inputs.newversion }}
+          push_version_commit: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          npm_token: ${{ secrets.NPM_TOKEN }}
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-npm:
     needs: build
