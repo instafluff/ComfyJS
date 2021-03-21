@@ -8,7 +8,7 @@
     "build:browserify": "browserify app.js -o ./dist/comfy.js",
     "build:version": "node version.js",
     "build:uglify": "terser --compress --mangle --source-map --output ./dist/comfy.min.js ./dist/comfy.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\"",
     "serve": "static -p 8000"
   },
   "repository": {
