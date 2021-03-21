@@ -24,8 +24,8 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: git config user.name ${{secrets.USERNAME}}
-      - run: git config user.email ${{secrets.EMAIL}}
+      - run: git config --global user.name ${{secrets.USERNAME}}
+      - run: git config --global user.email ${{secrets.EMAIL}}
       - run: npm version patch
       - run: npm build
       - run: git push
