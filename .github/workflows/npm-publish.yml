@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 12
           registry-url: https://registry.npmjs.org/
-      - run: git config --global user.email "instaflufftv@gmail.com"
+      - run: git config --global user.email "${{ secrets.email }}"
         shell: bash
       - run: git config --global user.name "${{ github.actor }}"
         shell: bash
@@ -45,7 +45,7 @@ jobs:
           GH_RELEASE_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm publish --ignore-scripts
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
 
 #   publish-gpr:
 #     needs: build
