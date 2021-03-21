@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.6
+// Comfy.JS v1.1.8
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -141,9 +141,50 @@ async function pubsubConnect( channel, password ) {
 					if( messageData.type === "reward-redeemed" ) {
 						let redemption = messageData.data.redemption;
 						// console.log( redemption );
+                        var reward = redemption.reward;
+                        var rewardObj = {
+                          id: reward.id,
+                          channelId: reward.channel_id,
+                          title: reward.title,
+                          prompt: reward.prompt,
+                          cost: reward.cost,
+                          userInputRequired: reward.is_user_input_required,
+                          subOnly: reward.is_sub_only,
+                          image: {
+                            url1x: reward.image.url_1x,
+                            url2x: reward.image.url_2x,
+                            url4x: reward.image.url_4x,
+                          },
+                          defaultImage: {
+                            url1x: reward.default_image.url_1x,
+                            url2x: reward.default_image.url_2x,
+                            url4x: reward.default_image.url_4x,
+                          },
+                          backgroundColor: reward.background_color,
+                          enabled: reward.is_enabled,
+                          paused: reward.is_paused,
+                          inStock: reward.is_in_stock,
+                          maxPerStream: {
+                            enabled: reward.max_per_stream.is_enabled,
+                            maxPerStream: reward.max_per_stream.max_per_stream,
+                          },
+                          shouldRedemptionsSkipRequestQueue: reward.should_redemptions_skip_request_queue,
+                          templateId: reward.template_id,
+                          updatedForIndicatorAt: reward.updated_for_indicator_at,
+                          maxPerUserPerStream: {
+                            enabled: reward.max_per_user_per_stream.is_enabled,
+                            maxPerUserPerStream: reward.max_per_user_per_stream.max_per_user_per_stream,
+                          },
+                          globalCooldown: {
+                            enabled: reward.global_cooldown.is_enabled,
+                            globalCooldownSeconds: reward.global_cooldown.global_cooldown_seconds,
+                          },
+                          redemptionsRedeemedCurrentStream: reward.redemptions_redeemed_current_stream,
+                          cooldownExpiresAt: reward.cooldown_expires_at,
+                        };
 						var extra = {
 				          channelId: redemption.channel_id,
-				          reward: redemption.reward,
+				          reward: rewardObj,
 				          rewardFulfilled: redemption.status === "FULFILLED",
 				          userId: redemption.user.id,
 				          username: redemption.user.login,
@@ -182,7 +223,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.1.6";
+    return "1.1.8";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -500,6 +541,7 @@ var comfyJS = {
         userColor: userstate['color'],
         userBadges: userstate['badges'],
         userState: userstate,
+        channel: channel.replace('#', ''),
       };
 
       comfyJS.onSub( username, message, methods, extra );
@@ -516,6 +558,7 @@ var comfyJS = {
         displayName: userstate[ 'display-name' ],
         userColor: userstate['color'],
         userBadges: userstate['badges'],
+        channel: channel.replace('#', ''),
       };
 
       comfyJS.onResub( username, message, streakMonths, cumulativeMonths, methods, extra );
@@ -535,7 +578,8 @@ var comfyJS = {
         userState: userstate,
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
-        recipientId: userstate["msg-param-recipient-id"]
+        recipientId: userstate["msg-param-recipient-id"],
+        channel: channel.replace('#', ''),
       };
 
       comfyJS.onSubGift( gifterUser, streakMonths, recipientUser, senderCount, methods, extra );
@@ -557,7 +601,8 @@ var comfyJS = {
         recipientDisplayName: userstate["msg-param-recipient-display-name"],
         recipientUsername: userstate["msg-param-recipient-user-name"],
         recipientId: userstate["msg-param-recipient-id"],
-        userMassGiftCount: ~~userstate[ 'msg-param-mass-gift-count' ]
+        userMassGiftCount: ~~userstate[ 'msg-param-mass-gift-count' ],
+        channel: channel.replace('#', ''),
       };
 
       comfyJS.onSubMysteryGift( gifterUser, numbOfSubs, senderCount, methods, extra );
@@ -575,7 +620,8 @@ var comfyJS = {
         userBadges: userstate['badges'],
         userState: userstate,
         gifterUsername: userstate['msg-param-sender-login'],
-        gifterDisplayName: userstate['msg-param-sender-name']
+        gifterDisplayName: userstate['msg-param-sender-name'],
+        channel: channel.replace('#', ''),
       };
 
       comfyJS.onGiftSubContinue( username, sender, extra);
@@ -712,7 +758,6 @@ if (typeof window !== "undefined") {
     window.ComfyJS = comfyJS;
     tmi = window.tmi;
 }
-
 },{"node-fetch":2,"tmi.js":4,"ws":3}],2:[function(require,module,exports){
 (function (global){
 "use strict";
@@ -733,7 +778,9 @@ var global = getGlobal();
 module.exports = exports = global.fetch;
 
 // Needed for TypeScript and Webpack.
-exports.default = global.fetch.bind(global);
+if (global.fetch) {
+	exports.default = global.fetch.bind(global);
+}
 
 exports.Headers = global.Headers;
 exports.Request = global.Request;
