@@ -182,7 +182,7 @@ You can use this tool: [https://twitchapps.com/tokengen/](https://twitchapps.com
 Scopes: `channel:manage:redemptions channel:read:redemptions user:read:email chat:edit chat:read`
 
 ```javascript
-ComfyJS.onReward = ( user, reward, cost, extra ) => {
+ComfyJS.onReward = ( user, reward, cost, message, extra ) => {
   console.log( user + " redeemed " + reward + " for " + cost );
 }
 ```
