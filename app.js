@@ -150,9 +150,9 @@ async function pubsubConnect( channel, password ) {
                           userInputRequired: reward.is_user_input_required,
                           subOnly: reward.is_sub_only,
                           image: {
-                            url1x: reward.image?.url_1x,
-                            url2x: reward.image?.url_2x,
-                            url4x: reward.image?.url_4x,
+                            url1x: reward.image?reward.image.url_1x:null,
+                            url2x: reward.image?reward.image.url_2x:null,
+                            url4x: reward.image?reward.image.url_4x:null,
                           },
                           defaultImage: {
                             url1x: reward.default_image.url_1x,
