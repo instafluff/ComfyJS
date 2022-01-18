@@ -247,6 +247,16 @@ var comfyJS = {
       console.log( "onMessageDeleted default handler" );
     }
   },
+  onBan: function (bannedUsername, reason, extra) { 
+    if ( comfyJS.isDebug ){ 
+      console.log ( "onBan default handler" );
+    }
+  },
+  onTimeout: function (timedOutUsername, reason, durationInSeconds, extra) { 
+    if ( comfyJS.isDebug ){ 
+      console.log ( "onTimeout default handler" );
+    }
+  },
   onJoin: function( user, self, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onJoin default handler" );
@@ -468,6 +478,39 @@ var comfyJS = {
         comfyJS.onMessageDeleted( messageId, extra );
       }
       catch( error ) {
+        comfyJS.onError( error );
+      }
+    });
+    client.on( 'ban', function(channel, username, reason, userstate){
+      try{
+        var bannedUsername = username;
+        var roomId = userstate[ "room-id" ];
+        var bannedUserId = userstate[ "target-user-id" ]
+        var extra = { 
+          roomId,
+          username,
+          bannedUserId
+        }
+        comfyJS.onBan( bannedUsername, reason, extra )
+      }
+      catch( error )  { 
+        comfyJS.onError( error );
+      }
+    });
+    client.on( 'timeout', function(channel, username, reason, duration, userstate){
+      try{
+        var timedOutUsername = username;
+        var durationInSeconds = duration;
+        var roomId = userstate[ "room-id" ];
+        var timedOutUserId = userstate[ "target-user-id" ]
+        var extra = { 
+          roomId,
+          username,
+          timedOutUserId
+        }
+        comfyJS.onTimeout( timedOutUsername, reason, durationInSeconds, extra )
+      }
+      catch( error )  { 
         comfyJS.onError( error );
       }
     });
