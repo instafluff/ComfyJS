@@ -254,12 +254,10 @@ ComfyJS.Disconnect();
  - **onHosted**`( user, viewers, autohost, extra )`
     - Responds to channel being hosted
     - Requires being authorized as the broadcaster
- - **onBan**`( bannedUsername, reason, extra )`
+ - **onBan**`( bannedUsername, extra )`
     - Responds to a user being banned
-    - reason will be null unless authorized as broadcaster or moderator for the channel
- - **onTimeout**`( timedOutUsername, reason, durationInSeconds, extra )`
+ - **onTimeout**`( timedOutUsername, durationInSeconds, extra )`
     - Responds to a user being timed out
-    - reason will be null unless authorized as broadcaster or moderator for the channel
  - **onRaid**`( user, viewers, extra )`
     - Responds to raid event
  - **onCheer**`( user, message, bits, flags, extra )`

@@ -247,12 +247,12 @@ var comfyJS = {
       console.log( "onMessageDeleted default handler" );
     }
   },
-  onBan: function (bannedUsername, reason, extra) { 
+  onBan: function (bannedUsername, extra) { 
     if ( comfyJS.isDebug ){ 
       console.log ( "onBan default handler" );
     }
   },
-  onTimeout: function (timedOutUsername, reason, durationInSeconds, extra) { 
+  onTimeout: function (timedOutUsername, durationInSeconds, extra) { 
     if ( comfyJS.isDebug ){ 
       console.log ( "onTimeout default handler" );
     }
@@ -491,7 +491,7 @@ var comfyJS = {
           username,
           bannedUserId
         }
-        comfyJS.onBan( bannedUsername, reason, extra )
+        comfyJS.onBan( bannedUsername, extra )
       }
       catch( error )  { 
         comfyJS.onError( error );
@@ -508,7 +508,7 @@ var comfyJS = {
           username,
           timedOutUserId
         }
-        comfyJS.onTimeout( timedOutUsername, reason, durationInSeconds, extra )
+        comfyJS.onTimeout( timedOutUsername, durationInSeconds, extra )
       }
       catch( error )  { 
         comfyJS.onError( error );
