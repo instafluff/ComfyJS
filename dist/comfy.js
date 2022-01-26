@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.12
+// Comfy.JS v1.1.13
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -223,7 +223,7 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function() {
-    return "1.1.12";
+    return "1.1.13";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -246,6 +246,16 @@ var comfyJS = {
   onMessageDeleted: function( id, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onMessageDeleted default handler" );
+    }
+  },
+  onBan: function (bannedUsername, extra) { 
+    if ( comfyJS.isDebug ){ 
+      console.log ( "onBan default handler" );
+    }
+  },
+  onTimeout: function (timedOutUsername, durationInSeconds, extra) { 
+    if ( comfyJS.isDebug ){ 
+      console.log ( "onTimeout default handler" );
     }
   },
   onJoin: function( user, self, extra ) {
@@ -469,6 +479,39 @@ var comfyJS = {
         comfyJS.onMessageDeleted( messageId, extra );
       }
       catch( error ) {
+        comfyJS.onError( error );
+      }
+    });
+    client.on( 'ban', function(channel, username, reason, userstate){
+      try{
+        var bannedUsername = username;
+        var roomId = userstate[ "room-id" ];
+        var bannedUserId = userstate[ "target-user-id" ]
+        var extra = { 
+          roomId,
+          username,
+          bannedUserId
+        }
+        comfyJS.onBan( bannedUsername, extra )
+      }
+      catch( error )  { 
+        comfyJS.onError( error );
+      }
+    });
+    client.on( 'timeout', function(channel, username, reason, duration, userstate){
+      try{
+        var timedOutUsername = username;
+        var durationInSeconds = duration;
+        var roomId = userstate[ "room-id" ];
+        var timedOutUserId = userstate[ "target-user-id" ]
+        var extra = { 
+          roomId,
+          username,
+          timedOutUserId
+        }
+        comfyJS.onTimeout( timedOutUsername, durationInSeconds, extra )
+      }
+      catch( error )  { 
         comfyJS.onError( error );
       }
     });
