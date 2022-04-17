@@ -23,7 +23,7 @@
   "homepage": "https://github.com/instafluff/ComfyJS#readme",
   "dependencies": {
     "node-fetch": "^2.6.0",
-    "tmi.js": "^1.5.0"
+    "tmi.js": "^1.8.5"
   },
   "devDependencies": {
     "babelify": "7.2.0",
