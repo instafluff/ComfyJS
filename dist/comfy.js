@@ -248,13 +248,13 @@ var comfyJS = {
       console.log( "onMessageDeleted default handler" );
     }
   },
-  onBan: function (bannedUsername, extra) { 
-    if ( comfyJS.isDebug ){ 
+  onBan: function (bannedUsername, extra) {
+    if ( comfyJS.isDebug ){
       console.log ( "onBan default handler" );
     }
   },
-  onTimeout: function (timedOutUsername, durationInSeconds, extra) { 
-    if ( comfyJS.isDebug ){ 
+  onTimeout: function (timedOutUsername, durationInSeconds, extra) {
+    if ( comfyJS.isDebug ){
       console.log ( "onTimeout default handler" );
     }
   },
@@ -367,7 +367,8 @@ var comfyJS = {
     mainChannel = channels[ 0 ];
     var options = {
       options: {
-        debug: isDebug
+        debug: isDebug,
+        skipUpdatingEmotesets: true
       },
       connection: {
         reconnect: true,
@@ -487,14 +488,14 @@ var comfyJS = {
         var bannedUsername = username;
         var roomId = userstate[ "room-id" ];
         var bannedUserId = userstate[ "target-user-id" ]
-        var extra = { 
+        var extra = {
           roomId,
           username,
           bannedUserId
         }
         comfyJS.onBan( bannedUsername, extra )
       }
-      catch( error )  { 
+      catch( error )  {
         comfyJS.onError( error );
       }
     });
@@ -504,14 +505,14 @@ var comfyJS = {
         var durationInSeconds = duration;
         var roomId = userstate[ "room-id" ];
         var timedOutUserId = userstate[ "target-user-id" ]
-        var extra = { 
+        var extra = {
           roomId,
           username,
           timedOutUserId
         }
         comfyJS.onTimeout( timedOutUsername, durationInSeconds, extra )
       }
-      catch( error )  { 
+      catch( error )  {
         comfyJS.onError( error );
       }
     });
@@ -801,6 +802,7 @@ if (typeof window !== "undefined") {
     window.ComfyJS = comfyJS;
     tmi = window.tmi;
 }
+
 },{"node-fetch":2,"tmi.js":4,"ws":3}],2:[function(require,module,exports){
 (function (global){(function (){
 "use strict";
