@@ -340,6 +340,61 @@ var comfyJS = {
     }
     return false;
   },
+  Announce: function( message, channel ) {
+    if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
+      client.say( channel, `/announce ${message}` )
+      .catch( comfyJS.onError );
+      return true;
+    }
+    return false;
+  },
+  AnnounceBlue: function( message, channel ) {
+    if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
+      client.say( channel, `/announceblue ${message}` )
+      .catch( comfyJS.onError );
+      return true;
+    }
+    return false;
+  },
+  AnnounceGreen: function( message, channel ) {
+    if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
+      client.say( channel, `/announcegreen ${message}` )
+      .catch( comfyJS.onError );
+      return true;
+    }
+    return false;
+  },
+  AnnounceOrange: function( message, channel ) {
+    if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
+      client.say( channel, `/announceorange ${message}` )
+      .catch( comfyJS.onError );
+      return true;
+    }
+    return false;
+  },
+  AnnouncePurple: function( message, channel ) {
+    if( client ) {
+      if( !channel ) {
+        channel = mainChannel;
+      }
+      client.say( channel, `/announcepurple ${message}` )
+      .catch( comfyJS.onError );
+      return true;
+    }
+    return false;
+  },
   DeleteMessage: function( id, channel ) {
     if( client ) {
       if( !channel ) {
