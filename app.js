@@ -345,12 +345,8 @@ var comfyJS = {
       if( !channel ) {
         channel = mainChannel;
       }
-      if ( !color ) {
-        client.say( channel, `/announce ${message}` ).catch( comfyJS.onError );
-      } else {
-        color = color.toLowerCase();
-        client.say( channel, `/announce${color} ${message}` ).catch( comfyJS.onError );
-      }
+      client.say( channel, `/announce ${message}` )
+      .catch( comfyJS.onError );
       return true;
     }
     return false;

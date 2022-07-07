@@ -368,7 +368,7 @@ export interface ComfyJSInstance {
 
   // Functions
   Say(message: string, channel: string): boolean;
-  Announce(message: string, channel?: null|string, color?: null|"blue"|"green"|"orange"|"purple"): boolean;
+  Announce(message: string, channel: string): boolean;
   Whisper(message: string, user: string): boolean;
   DeleteMessage(id: string, channel: string): boolean;
   GetClient(): Client;
