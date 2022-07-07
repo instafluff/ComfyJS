@@ -340,57 +340,17 @@ var comfyJS = {
     }
     return false;
   },
-  Announce: function( message, channel ) {
+  Announce: function( message, channel, color = null ) {
     if( client ) {
       if( !channel ) {
         channel = mainChannel;
       }
-      client.say( channel, `/announce ${message}` )
-      .catch( comfyJS.onError );
-      return true;
-    }
-    return false;
-  },
-  AnnounceBlue: function( message, channel ) {
-    if( client ) {
-      if( !channel ) {
-        channel = mainChannel;
+      if ( !color ) {
+        client.say( channel, `/announce ${message}` ).catch( comfyJS.onError );
+      } else {
+        color = color.toLowerCase();
+        client.say( channel, `/announce${color} ${message}` ).catch( comfyJS.onError );
       }
-      client.say( channel, `/announceblue ${message}` )
-      .catch( comfyJS.onError );
-      return true;
-    }
-    return false;
-  },
-  AnnounceGreen: function( message, channel ) {
-    if( client ) {
-      if( !channel ) {
-        channel = mainChannel;
-      }
-      client.say( channel, `/announcegreen ${message}` )
-      .catch( comfyJS.onError );
-      return true;
-    }
-    return false;
-  },
-  AnnounceOrange: function( message, channel ) {
-    if( client ) {
-      if( !channel ) {
-        channel = mainChannel;
-      }
-      client.say( channel, `/announceorange ${message}` )
-      .catch( comfyJS.onError );
-      return true;
-    }
-    return false;
-  },
-  AnnouncePurple: function( message, channel ) {
-    if( client ) {
-      if( !channel ) {
-        channel = mainChannel;
-      }
-      client.say( channel, `/announcepurple ${message}` )
-      .catch( comfyJS.onError );
       return true;
     }
     return false;
