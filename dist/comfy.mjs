@@ -147,7 +147,7 @@ class TwitchChat {
     };
   }
   get version() {
-    return "@VERSION";
+    return "2.0.0";
   }
 }
 _ws = new WeakMap();

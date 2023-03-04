@@ -4,5 +4,13 @@
     </head>
     <body>
         Press F12 for Debug
+        <script type="text/javascript">
+            ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+                if( flags.broadcaster && command === "test" ) {
+                    console.log( "!test was typed in chat" );
+                }
+            }
+            ComfyJS.Init( "instafluff" );
+        </script>
     </body>
 </html>

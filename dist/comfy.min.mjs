@@ -116,7 +116,7 @@ class E {
     };
   }
   get version() {
-    return "@VERSION";
+    return "2.0.0";
   }
 }
 s = new WeakMap(), m = new WeakSet(), f = function() {
