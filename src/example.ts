@@ -1,6 +1,6 @@
 import { TwitchChat } from ".";
 
 const channel = "instafluff";
-const password = "";
+const password = undefined;
 
-const chat = new TwitchChat( channel );
+const chat = new TwitchChat( channel, password );

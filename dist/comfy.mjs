@@ -1,4 +1,3 @@
-"use strict";
 var __accessCheck = (obj, member, msg) => {
   if (!member.has(obj))
     throw TypeError("Cannot " + msg);
