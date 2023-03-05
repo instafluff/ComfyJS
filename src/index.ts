@@ -1,8 +1,6 @@
-import { connectToIRC } from "./irc/connection";
-import { parseMessage } from "./irc/parse";
-import { authenticate, joinChannel, processMessage, requestCapabilities, TwitchEventType } from "./irc/twitch";
-
-const _WebSocket = global.WebSocket || require( "ws" );
+import { parseMessage } from "./parse";
+import { createWebSocket } from "./socket";
+import { authenticate, joinChannel, processMessage, requestCapabilities, TwitchEventType } from "./twitch";
 
 /*
 TODO:
@@ -48,7 +46,7 @@ export class TwitchChat {
 		const TwitchServerWSS = "wss://irc-ws.chat.twitch.tv:443";
 		// const TwitchServerWS = "ws://irc-ws.chat.twitch.tv:80";
 
-		this.#ws = connectToIRC( TwitchServerWSS );
+		this.#ws = createWebSocket( TwitchServerWSS, "irc" );
 		this.#ws.onopen = () => { this.#onOpen(); };
 		this.#ws.onmessage = ( event ) => { this.#onMessage( event ); };
 		this.#ws.onerror = ( event ) => { this.#onError( event ); };

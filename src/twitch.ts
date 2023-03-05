@@ -1,26 +1,5 @@
 import { ParsedMessage } from "./parse";
 
-export function requestCapabilities( ws : WebSocket ) : void {
-    // Request Twitch-specific Capabilities
-    // TODO: consider adding twitch.tv/membership CAP to get JOIN and PART events
-    ws.send( "CAP REQ :twitch.tv/tags twitch.tv/commands" );
-}
-
-export function authenticate( ws : WebSocket, username? : string, password? : string ) : void {
-    const ircUsername = password ? username : `justinfan${Math.floor( ( Math.random() * 99998999 ) + 1000 )}`;
-    const ircPassword = password || `INSTAFLUFF`;
-    ws.send( `PASS ${ircPassword}` );
-    ws.send( `NICK ${ircUsername}` );
-}
-
-export function joinChannel( ws : WebSocket, channel : string ) : void {
-    ws.send( `JOIN #${channel}` );
-}
-
-export function leaveChannel( ws : WebSocket, channel : string ) : void {
-    ws.send( `PART #${channel}` );
-}
-
 export enum TwitchEventType {
     None = "none",
     Connect = "connect",
@@ -155,4 +134,25 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
     }
     console.log( message );
     return null;
+}
+
+export function requestCapabilities( ws : WebSocket ) : void {
+    // Request Twitch-specific Capabilities
+    // TODO: consider adding twitch.tv/membership CAP to get JOIN and PART events
+    ws.send( "CAP REQ :twitch.tv/tags twitch.tv/commands" );
+}
+
+export function authenticate( ws : WebSocket, username? : string, password? : string ) : void {
+    const ircUsername = password ? username : `justinfan${Math.floor( ( Math.random() * 99998999 ) + 1000 )}`;
+    const ircPassword = password || `INSTAFLUFF`;
+    ws.send( `PASS ${ircPassword}` );
+    ws.send( `NICK ${ircUsername}` );
+}
+
+export function joinChannel( ws : WebSocket, channel : string ) : void {
+    ws.send( `JOIN #${channel}` );
+}
+
+export function leaveChannel( ws : WebSocket, channel : string ) : void {
+    ws.send( `PART #${channel}` );
 }
