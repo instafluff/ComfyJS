@@ -1,11 +1,8 @@
 import { connectToIRC } from "./irc/connection";
 import { parseMessage } from "./irc/parse";
-import { authenticate, joinChannel, processMessage, requestCapabilities } from "./irc/twitch";
+import { authenticate, joinChannel, processMessage, requestCapabilities, TwitchEventType } from "./irc/twitch";
 
 const _WebSocket = global.WebSocket || require( "ws" );
-
-const TwitchServerWSS = "wss://irc-ws.chat.twitch.tv:443";
-// const TwitchServerWS = "ws://irc-ws.chat.twitch.tv:80";
 
 /*
 TODO:
@@ -48,6 +45,9 @@ export class TwitchChat {
 	#connect() {
 		if( this.#isConnected ) { return; } // Already connected
 
+		const TwitchServerWSS = "wss://irc-ws.chat.twitch.tv:443";
+		// const TwitchServerWS = "ws://irc-ws.chat.twitch.tv:80";
+
 		this.#ws = connectToIRC( TwitchServerWSS );
 		this.#ws.onopen = () => { this.#onOpen(); };
 		this.#ws.onmessage = ( event ) => { this.#onMessage( event ); };
@@ -76,8 +76,11 @@ export class TwitchChat {
 	#onMessage( event : MessageEvent<any> ) {
 		const parts = event.data.trim().split( `\r\n` );
 		for( const str of parts ) {
-			const message = parseMessage( str );
-			processMessage( message );
+			const message = processMessage( parseMessage( str ) );
+			if( message && message.type !== TwitchEventType.None ) {
+				// Send the event to handlers
+				console.log( message );
+			}
 		}
 	}
 
