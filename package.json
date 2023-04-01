@@ -20,7 +20,6 @@
     "build:minified": "vite build -c vite.config.min.js",
     "build:version": "node version.js",
     "test": "jest",
-    "serve": "static -p 8000",
     "start": "npm run build && node build/index.js",
     "clean": "rimraf ./build/",
     "lint": "eslint . --ext .js,.ts"
