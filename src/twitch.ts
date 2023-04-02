@@ -1,5 +1,6 @@
 import { ParsedMessage } from "./parse";
 
+
 export enum TwitchEventType {
 	None = "none",
 	Ping = "Ping",
@@ -10,11 +11,17 @@ export enum TwitchEventType {
 	ChatMode = "roomstate",
 	Userstate = "userstate",
 	Join = "join",
-	Part = "part",
+	Leave = "leave",
 	Command = "command",
 	Chat = "message",
 	Reply = "reply",
 	Whisper = "whisper",
+	Subscribe = "sub",
+	Resubscribe = "resub",
+	SubscribeGift = "subgift",
+	SubscribeGiftAnonymous = "anonsubgift", // TODO: Confirm. This might not be called
+	SubscribeGiftMystery = "submysterygift",
+	SubscribeGiftMysteryAnonymous = "anonsubmysterygift", // TODO: Confirm. This might not be called
 	Raid = "raid",
 	Timeout = "Timeout",
 	Ban = "Ban",
@@ -37,36 +44,118 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 	try {
 		if( message.command ) {
 			const commandParts = message.command.split( " " );
+			const channel = commandParts[ 1 ];
 			switch( commandParts[ 0 ] ) {
 			case "PING":
-				return {
-					type: TwitchEventType.Ping,
-					data: {
-						timestamp: Date.now(),
-					},
-				};
+				return { type: TwitchEventType.Ping	};
 			case "PONG":
-				return {
-					type: TwitchEventType.Pong,
-					data: {
-						timestamp: Date.now(),
-					},
-				};
+				return { type: TwitchEventType.Pong	};
 			case "CAP": // Capabilities Confirmation
 				// console.debug( "capabilities", message.parameters );
 				return null;
 			case "JOIN":
 				return {
 					type: TwitchEventType.Join,
-					data: {
-						channel: commandParts[ 1 ],
-						username: parseUsername( message.source ),
-					},
+					data: { channel, username: parseUsername( message.source ) },
 				}
 			case "PART":
+				return {
+					type: TwitchEventType.Leave,
+					data: { channel, username: parseUsername( message.source ) },
+				}
+			case "ROOMSTATE":
+				// TODO: Save ChatMode for the room at the first message and then diff the notifications afterwards
+				//      e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
+				console.log( message );
+				return {
+					type: TwitchEventType.ChatMode,
+					data: {
+						emoteOnly: message.tags[ "emote-only" ] ? message.tags[ "emote-only" ] !== "0" : false,
+						followersOnly: message.tags[ "followers-only" ] ? message.tags[ "followers-only" ] !== "-1" : false,
+						...message.tags,
+						channel: commandParts[ 1 ],
+					},
+				};
+			case "GLOBALUSERSTATE":
+				console.log( "Global User State" );
+				break;
+			case "USERSTATE":
+				console.log( message );
+				switch( message.tags[ "msg-id" ] ) {
+				default:
+					return {
+						type: TwitchEventType.Userstate,
+						data: {
+							...message.tags,
+							channel: commandParts[ 1 ],
+							username: parseUsername( message.source ),
+							extra: message.tags,
+						},
+					};
+				}
 			case "HOSTTARGET":
 			case "USERNOTICE":
-				console.log( "TODO IMPLEMENT COMMAND", message );
+				switch( message.tags[ "msg-id" ] ) {
+				case "sub":
+					return {
+						type: TwitchEventType.Subscribe,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							months: parseInt( message.tags[ "msg-param-months" ] ),
+							multiMonthDuration: parseInt( message.tags[ "msg-param-multimonth-duration" ] ),
+							multiMonthTenure: parseInt( message.tags[ "msg-param-multimonth-tenure" ] ),
+							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
+							subPlan: message.tags[ "msg-param-sub-plan" ],
+							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
+							goalContributionType: message.tags[ "msg-param-goal-contribution-type" ],
+							goalCurrentContributions: message.tags[ "msg-param-goal-current-contributions" ],
+							goalDescription: message.tags[ "msg-param-goal-description" ],
+							goalTargetContributions: message.tags[ "msg-param-goal-target-contributions" ],
+							goalUserContributions: message.tags[ "msg-param-goal-user-contributions" ],
+							channel: commandParts[ 1 ],
+							username: message.tags[ "login" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "resub":
+					return {
+						type: TwitchEventType.Resubscribe,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							cumulativeMonths: parseInt( message.tags[ "msg-param-cumulative-months" ] ),
+							months: parseInt( message.tags[ "msg-param-months" ] ),
+							multiMonthDuration: parseInt( message.tags[ "msg-param-multimonth-duration" ] ),
+							multiMonthTenure: parseInt( message.tags[ "msg-param-multimonth-tenure" ] ),
+							streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ),
+							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
+							subPlan: message.tags[ "msg-param-sub-plan" ],
+							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
+							channel: commandParts[ 1 ],
+							username: message.tags[ "login" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "raid":
+					// TODO: Should User be displayName || username || login?
+					return {
+						type: TwitchEventType.Raid,
+						data: {
+							profileImageURL: message.tags[ "msg-param-profileImageURL" ],
+							displayName: message.tags[ "msg-param-displayName" ] || message.tags[ "display-name" ] || message.tags[ "msg-param-login" ] || message.tags[ "login" ],
+							viewers: parseInt( message.tags[ "msg-param-viewerCount" ] ),
+							channel: commandParts[ 1 ],
+							username: message.tags[ "msg-param-login" ] || message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				default:
+					console.log( "TODO IMPLEMENT COMMAND", message );
+					break;
+				}
 				break;
 			case "WHISPER":
 				// TODO: Check for OAuth password and scope for reading whispers
@@ -94,6 +183,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 								...message.tags,
 								channel: commandParts[ 1 ],
 								username: message.parameters,
+								userId: message.tags[ "target-user-id" ],
+								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 								extra: message.tags,
 							},
 						};
@@ -105,6 +196,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 								...message.tags,
 								channel: commandParts[ 1 ],
 								username: message.parameters,
+								userId: message.tags[ "target-user-id" ],
+								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 								extra: message.tags,
 							},
 						};
@@ -121,7 +214,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					data: {
 						...message.tags,
 						channel: commandParts[ 1 ],
-						username: parseUsername( message.source ),
+						displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+						username: message.tags[ "login" ],
 						message: message.parameters,
 						extra: message.tags,
 					},
@@ -139,7 +233,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: parseUsername( message.source ),
 							command: command,
 							message: msg,
-							timestamp: parseInt( message.tags[ "tmientTs" ] ),
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
 					}
@@ -158,48 +252,6 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						},
 					};
 				}
-			case "GLOBALUSERSTATE":
-				console.log( "Global User State" );
-				break;
-			case "USERSTATE":
-				switch( message.tags[ "msg-id" ] ) {
-				case "raid":
-					// TODO: Should User be displayName || username || login?
-					return {
-						type: TwitchEventType.Raid,
-						data: {
-							profileImageURL: message.tags[ "msg-param-profileImageURL" ],
-							displayName: message.tags[ "msg-param-displayName" ],
-							viewers: parseInt( message.tags[ "msg-param-viewerCount" ] ),
-							channel: commandParts[ 1 ],
-							username: parseUsername( message.source ),
-							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
-							extra: message.tags,
-						},
-					};
-				default:
-					return {
-						type: TwitchEventType.Userstate,
-						data: {
-							...message.tags,
-							channel: commandParts[ 1 ],
-							username: parseUsername( message.source ),
-							extra: message.tags,
-						},
-					};
-				}
-			case "ROOMSTATE":
-				// TODO: Save ChatMode for the room at the first message and then diff the notifications afterwards
-				//      e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
-				return {
-					type: TwitchEventType.ChatMode,
-					data: {
-						emoteOnly: message.tags[ "emote-only" ] ? message.tags[ "emote-only" ] !== "0" : false,
-						followersOnly: message.tags[ "followers-only" ] ? message.tags[ "followers-only" ] !== "-1" : false,
-						...message.tags,
-						channel: commandParts[ 1 ],
-					},
-				};
 			case "RECONNECT":  
 				console.log( "The Twitch IRC server is about to terminate the connection for maintenance." )
 				break;

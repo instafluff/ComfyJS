@@ -1,6 +1,6 @@
 import { parseMessage } from "./parse";
 import { createWebSocket } from "./socket";
-import { authenticate, joinChannel, ping, pong, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
+import { authenticate, joinChannel, leaveChannel, ping, pong, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
 
 /*
 DONE:
@@ -132,7 +132,7 @@ export class TwitchChat {
 		[ TwitchEventType.ChatMode ]: undefined,
 		[ TwitchEventType.Userstate ]: undefined,
 		[ TwitchEventType.Join ]: undefined,
-		[ TwitchEventType.Part ]: undefined,
+		[ TwitchEventType.Leave ]: undefined,
 		[ TwitchEventType.Command ]: undefined,
 		[ TwitchEventType.Chat ]: undefined,
 		[ TwitchEventType.Whisper ]: undefined,
@@ -175,6 +175,20 @@ export class TwitchChat {
 		if( !this.#isConnected ) { return; }
 
 		replyChat( this.#ws, channel || this.#mainChannel, messageId, message );
+	}
+
+	join( channel : string ) : void {
+		if( !this.#ws ) { return; }
+		if( !this.#isConnected ) { return; }
+
+		joinChannel( this.#ws, channel );
+	}
+
+	leave( channel : string ) : void {
+		if( !this.#ws ) { return; }
+		if( !this.#isConnected ) { return; }
+
+		leaveChannel( this.#ws, channel );
 	}
 
 	deleteMessage( messageId : string, channel? : string ) : void {
@@ -249,7 +263,8 @@ export class TwitchChat {
 				}
 				if( message.type === TwitchEventType.Pong ) {
 					// Calculate and attach latency to the data
-					message.data[ "latency" ] = ( message.data.timestamp - this.#pingTime ); // Latency in milliseconds
+					message.data = message.data || {};
+					message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
 				}
 				// Send the event to handlers
 				if( this.handlers[ message.type ] ) {
@@ -270,7 +285,10 @@ export class TwitchChat {
 				}
 				// Also send to the "all" event handler if it exists
 				if( this.handlers[ TwitchEventType.All ] ) {
-					this.handlers[ TwitchEventType.All ]!( message.data );
+					this.handlers[ TwitchEventType.All ]!( {
+						event: message.type,
+						...message.data,
+					} );
 				}
 				// console.debug( message );
 			}

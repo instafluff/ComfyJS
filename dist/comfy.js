@@ -21,7 +21,7 @@ var __privateMethod = (obj, member, method) => {
   __accessCheck(obj, member, "access private method");
   return method;
 };
-var _ws, _username, _password, _pingTimer, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _onMessage, onMessage_fn;
+var _ws, _username, _password, _pingTimer, _pingTime, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _onMessage, onMessage_fn;
 function extractComponent(message, index) {
   const nextSpace = message.indexOf(" ", index);
   const rawComponent = message.slice(index + 1, nextSpace);
@@ -70,6 +70,7 @@ function createWebSocket(server, protocols) {
 var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["None"] = "none";
   TwitchEventType2["Ping"] = "Ping";
+  TwitchEventType2["Pong"] = "Pong";
   TwitchEventType2["Connect"] = "connect";
   TwitchEventType2["Reconnected"] = "reconnect";
   TwitchEventType2["Error"] = "error";
@@ -82,6 +83,9 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["Reply"] = "reply";
   TwitchEventType2["Whisper"] = "whisper";
   TwitchEventType2["Raid"] = "raid";
+  TwitchEventType2["Timeout"] = "Timeout";
+  TwitchEventType2["Ban"] = "Ban";
+  TwitchEventType2["MessageDeleted"] = "MessageDeleted";
   TwitchEventType2["All"] = "all";
   return TwitchEventType2;
 })(TwitchEventType || {});
@@ -96,17 +100,19 @@ function processMessage(message) {
       const commandParts = message.command.split(" ");
       switch (commandParts[0]) {
         case "PING":
-          console.debug("PING");
           return {
             type: "Ping",
             data: {
               timestamp: Date.now()
             }
           };
-          break;
         case "PONG":
-          console.debug("PONG");
-          break;
+          return {
+            type: "Pong",
+            data: {
+              timestamp: Date.now()
+            }
+          };
         case "CAP":
           return null;
         case "JOIN":
@@ -118,11 +124,10 @@ function processMessage(message) {
             }
           };
         case "PART":
-        case "NOTICE":
-        case "CLEARCHAT":
-        case "CLEARMSG":
         case "HOSTTARGET":
         case "USERNOTICE":
+          console.log("TODO IMPLEMENT COMMAND", message);
+          break;
         case "WHISPER":
           console.log(message);
           console.log("Channel:", commandParts[1], message.parameters);
@@ -135,7 +140,46 @@ function processMessage(message) {
               message: message.parameters
             }
           };
+        case "NOTICE":
+          console.log("NOTICE!!!", message);
           break;
+        case "CLEARCHAT":
+          if (message.tags["target-user-id"]) {
+            if (message.tags["ban-duration"]) {
+              return {
+                type: "Timeout",
+                data: {
+                  ...message.tags,
+                  channel: commandParts[1],
+                  username: message.parameters,
+                  extra: message.tags
+                }
+              };
+            } else {
+              return {
+                type: "Ban",
+                data: {
+                  ...message.tags,
+                  channel: commandParts[1],
+                  username: message.parameters,
+                  extra: message.tags
+                }
+              };
+            }
+          } else {
+          }
+          break;
+        case "CLEARMSG":
+          return {
+            type: "MessageDeleted",
+            data: {
+              ...message.tags,
+              channel: commandParts[1],
+              username: parseUsername(message.source),
+              message: message.parameters,
+              extra: message.tags
+            }
+          };
         case "PRIVMSG":
           if ((_a = message.parameters) == null ? void 0 : _a.startsWith("!")) {
             const msgParts = message.parameters.split(/ (.*)/);
@@ -272,7 +316,6 @@ function sendChat(ws, channel2, message) {
   ws.send(`PRIVMSG #${channel2} :${message}`);
 }
 function replyChat(ws, channel2, messageId, message) {
-  console.debug(`@reply-parent-msg-id=${messageId} PRIVMSG #${channel2} :${message}`);
   ws.send(`@reply-parent-msg-id=${messageId} PRIVMSG #${channel2} :${message}`);
 }
 class TwitchChat {
@@ -289,6 +332,8 @@ class TwitchChat {
     __privateAdd(this, _username, void 0);
     __privateAdd(this, _password, void 0);
     __privateAdd(this, _pingTimer, void 0);
+    __privateAdd(this, _pingTime, void 0);
+    __privateSet(this, _pingTime, 0);
     this.handlers = {
       [TwitchEventType.None]: void 0,
       [TwitchEventType.Ping]: void 0,
@@ -338,6 +383,14 @@ class TwitchChat {
     }
     replyChat(__privateGet(this, _ws), channel2 || __privateGet(this, _mainChannel, mainChannel_get), messageId, message);
   }
+  deleteMessage(messageId, channel2) {
+    if (!__privateGet(this, _ws)) {
+      return;
+    }
+    if (!__privateGet(this, _isConnected, isConnected_get)) {
+      return;
+    }
+  }
   destroy() {
     if (__privateGet(this, _ws) && __privateGet(this, _ws).readyState !== __privateGet(this, _ws).CLOSED) {
       __privateGet(this, _ws).close();
@@ -348,6 +401,7 @@ _ws = new WeakMap();
 _username = new WeakMap();
 _password = new WeakMap();
 _pingTimer = new WeakMap();
+_pingTime = new WeakMap();
 _mainChannel = new WeakSet();
 mainChannel_get = function() {
   return this.channels[0];
@@ -401,16 +455,14 @@ onClose_fn = function(event) {
 };
 _ping = new WeakSet();
 ping_fn = function() {
-  console.log("ping start", __privateGet(this, _isConnected, isConnected_get));
   if (!__privateGet(this, _ws)) {
     return;
   }
   if (!__privateGet(this, _isConnected, isConnected_get)) {
     return;
   }
-  console.log("pinging");
+  __privateSet(this, _pingTime, Date.now());
   ping(__privateGet(this, _ws));
-  console.log("PINGINGINGINGINGINGNG");
 };
 _onMessage = new WeakSet();
 onMessage_fn = function(event) {
@@ -425,6 +477,20 @@ onMessage_fn = function(event) {
   for (const str of parts) {
     const message = processMessage(parseMessage(str));
     if (message && message.type !== TwitchEventType.None) {
+      if (message.type === TwitchEventType.Connect) {
+        if (__privateGet(this, _pingTimer)) {
+          clearInterval(__privateGet(this, _pingTimer));
+        }
+        __privateSet(this, _pingTimer, setInterval(() => {
+          __privateMethod(this, _ping, ping_fn).call(this);
+        }, 6e4));
+      }
+      if (message.type === TwitchEventType.Ping) {
+        pong(__privateGet(this, _ws));
+      }
+      if (message.type === TwitchEventType.Pong) {
+        message.data["latency"] = message.data.timestamp - __privateGet(this, _pingTime);
+      }
       if (this.handlers[message.type]) {
         this.handlers[message.type](message.data);
       }
@@ -442,18 +508,6 @@ onMessage_fn = function(event) {
       }
       if (this.handlers[TwitchEventType.All]) {
         this.handlers[TwitchEventType.All](message.data);
-      }
-      if (message.type === TwitchEventType.Connect) {
-        if (__privateGet(this, _pingTimer)) {
-          clearInterval(__privateGet(this, _pingTimer));
-        }
-        console.log("setting ping timer");
-        __privateSet(this, _pingTimer, setInterval(() => {
-          __privateMethod(this, _ping, ping_fn).call(this);
-        }, 6e4));
-      }
-      if (message.type === TwitchEventType.Ping) {
-        pong(__privateGet(this, _ws));
       }
     }
   }
@@ -477,6 +531,10 @@ comfyJs.on(TwitchEventType.Command, (context) => {
     console.log(context);
     comfyJs.reply(context.extra.id, "Hello!");
   }
+  if (context.command === "delete") {
+    console.log(context);
+    comfyJs.deleteMessage(context.extra.id);
+  }
 });
 comfyJs.on(TwitchEventType.Chat, (context) => {
   console.log(`${context.channel} - ${context.username} : ${context.message}`, context);
@@ -495,4 +553,16 @@ comfyJs.on(TwitchEventType.Reply, (context) => {
   setTimeout(() => {
     comfyJs.reply(context.extra.id, "Yes, I am replying to your message");
   }, 3e3);
+});
+comfyJs.on(TwitchEventType.Pong, (context) => {
+  console.log(`PONG: ${context.latency} ms`);
+});
+comfyJs.on(TwitchEventType.MessageDeleted, (context) => {
+  console.log(`Message Deleted in ${context.channel}`, context);
+});
+comfyJs.on(TwitchEventType.Ban, (context) => {
+  console.log(`User Banned in ${context.channel}`, context);
+});
+comfyJs.on(TwitchEventType.Timeout, (context) => {
+  console.log(`User Timed Out in ${context.channel}`, context);
 });
