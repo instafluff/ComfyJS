@@ -2,121 +2,15 @@ import { parseMessage } from "./parse";
 import { createWebSocket } from "./socket";
 import { authenticate, joinChannel, leaveChannel, ping, pong, ProcessedMessage, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
 
-/*
-DONE:
-- event handlers
-- pong
-- ping (send ping to the server on a timer to keep alive)
-- all ComfyJS Events
-	! onConnected( isFirstConnect )
-		Responds when connecting to the Twitch chat.
-	! onError( error )
-		Hook for Errors
-	! onRaid( user, viewers, extra )
-		Responds to raid event
-	X onJoin( user, self, extra ) - DEPRECATED
-		Responds to user joining the chat
-	X onPart( user, self, extra ) - DEPRECATED
-		Responds to user leaving the chat
-	X onHosted( user, viewers, autohost, extra ) - DEPRECATED
-		Responds to channel being hosted
-		Requires being authorized as the broadcaster
-	! onMessageDeleted( id, extra )
-		Responds to chat message deleted
-	! onBan( bannedUsername, extra )
-		Responds to a user being banned
-	! onTimeout( timedOutUsername, durationInSeconds, extra )
-		Responds to a user being timed out
-	! onAnnouncement( message, extra )
-		Responds to an announcement
-	- onCheer( user, message, bits, flags, extra )
-		Responds to user cheering
-	- onSub( user, message, subTierInfo, extra )
-		Responds to user channel subscription
-	- onResub( user, message, streamMonths, cumulativeMonths, subTierInfo, extra )
-		Responds to user channel subscription anniversary
-	- onSubGift( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra )
-		Responds to user gift subscription
-	- onSubMysteryGift( gifterUser, numbOfSubs, senderCount, subTierInfo, extra )
-		Responds to user sending gift subscriptions
-	- onGiftSubContinue( user, sender, extra )
-		Responds to user continuing gift subscription
-	! onCommand( user, command, message, flags, extra )
-		Responds to "!" commands
-	! onChat( user, message, flags, self, extra )
-		Responds to user chatting
-- APIs / channel points things
-	- Chat via IRC
-
-TODO:
-- all ComfyJS Events
-	? onWhisper( user, message, flags, self, extra )
-		Responds to user whisper event
-	? onChatMode()
-		Notifies changes to the chat room mode
-	- onReward( user, reward, cost, message, extra )
-		REQUIRES EXTRA PERMISSION SCOPES
-		Responds to Channel Point Redemptions
-	- onReconnect( reconnectCount )
-		Responds when attempting to reconnect to the Twitch chat.
-- parsing tags to events (and parsing usernames and other context better)
-- reconnect
-- connecting to multiple channels
-- connecting to many multiple channels
-- websub events
-- APIs / channel points things
-	- Chat/Commands sent should also trigger the events from self
-	- Whisper via API
-	- Announce via API
-	- Delete Message via API
-	- Chat list via API
-- ComfyJS Instafluff hello log message
-- Backwards compat wrapper for previous ComfyJS
-	- onCommand( user, command, message, flags, extra )
-		Responds to "!" commands
-	- onChat( user, message, flags, self, extra )
-		Responds to user chatting
-	- onWhisper( user, message, flags, self, extra )
-		Responds to user whisper event
-	- onMessageDeleted( id, extra )
-		Responds to chat message deleted
-	- onReward( user, reward, cost, message, extra )
-		REQUIRES EXTRA PERMISSION SCOPES
-		Responds to Channel Point Redemptions
-	- onJoin( user, self, extra )
-		Responds to user joining the chat
-	- onPart( user, self, extra )
-		Responds to user leaving the chat
-	- onHosted( user, viewers, autohost, extra )
-		Responds to channel being hosted
-		Requires being authorized as the broadcaster
-	- onBan( bannedUsername, extra )
-		Responds to a user being banned
-	- onTimeout( timedOutUsername, durationInSeconds, extra )
-		Responds to a user being timed out
-	- onRaid( user, viewers, extra )
-		Responds to raid event
-	- onCheer( user, message, bits, flags, extra )
-		Responds to user cheering
-	- onSub( user, message, subTierInfo, extra )
-		Responds to user channel subscription
-	- onResub( user, message, streamMonths, cumulativeMonths, subTierInfo, extra )
-		Responds to user channel subscription anniversary
-	- onSubGift( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra )
-		Responds to user gift subscription
-	- onSubMysteryGift( gifterUser, numbOfSubs, senderCount, subTierInfo, extra )
-		Responds to user sending gift subscriptions
-	- onGiftSubContinue( user, sender, extra )
-		Responds to user continuing gift subscription
-	- onConnected( address, port, isFirstConnect )
-		Responds when connecting to the Twitch chat.
-	- onReconnect( reconnectCount )
-		Responds when attempting to reconnect to the Twitch chat.
-	- onError( error )
-		Hook for Errors
-*/
-
 export type TwitchChatHandler = ( context? : any ) => void;
+export type TwitchChatMode = {
+	emoteOnly : boolean;
+	followersOnly : boolean;
+	subscribersOnly : boolean;
+	r9k : boolean; // Unique Chat Mode
+	slow : boolean;
+	language : string;
+};
 
 export class TwitchChat {
 	#ws : WebSocket | undefined;
@@ -126,6 +20,7 @@ export class TwitchChat {
 	#pingTime : number = 0;
 	debug : boolean;
 	channels : string[];
+	chatModes : { [ channel : string ] : TwitchChatMode } = {};
 	handlers : Partial<{ [ key in TwitchEventType ] : TwitchChatHandler | undefined }> = {};
 
 	constructor( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) {
@@ -250,8 +145,16 @@ export class TwitchChat {
 			message.data = message.data || {};
 			message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
 		}
-		if( message.type === TwitchEventType.ChatMode ) {
-			// TODO: Keep track of chat modes
+		if( message.type === TwitchEventType.RoomState ) {
+			// Save ChatMode for the room at the first message and then diff the notifications afterwards
+			// e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
+			this.chatModes[ message.data.channel ] = {
+				...this.chatModes[ message.data.channel ],
+				...message.data,
+			};
+			if( this.handlers[ TwitchEventType.ChatMode ] ) {
+				this.handlers[ TwitchEventType.ChatMode ]!( this.chatModes[ message.data.channel ] );
+			}
 		}
 		// if( message.type === TwitchEventType.Reconnect ) {
 		// 	this.#connect();

@@ -8,8 +8,9 @@ export enum TwitchEventType {
 	Connect = "connect",
 	Reconnected = "reconnect",
 	Error = "error",
-	ChatMode = "roomstate",
-	Userstate = "userstate",
+	ChatMode = "chatmode",
+	RoomState = "roomstate",
+	UserState = "userstate",
 	Join = "join",
 	Leave = "leave",
 	Command = "command",
@@ -45,7 +46,7 @@ function parseUsername( source : string | null ) {
 
 export function processMessage( message : ParsedMessage ) : ProcessedMessage | null {
 	try {
-		if( message.command ) {
+		if( message.command ) { // Twitch-Specific Tags: https://dev.twitch.tv/docs/irc/tags/
 			const commandParts = message.command.split( " " );
 			const channel = commandParts[ 1 ];
 			switch( commandParts[ 0 ] ) {
@@ -67,10 +68,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					data: { channel, username: parseUsername( message.source ) },
 				}
 			case "ROOMSTATE":
-				// TODO: Save ChatMode for the room at the first message and then diff the notifications afterwards
-				//      e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
 				return {
-					type: TwitchEventType.ChatMode,
+					type: TwitchEventType.RoomState,
 					data: {
 						// Only add the properties if they exist
 						...( message.tags[ "broadcaster-lang" ] && { broadcasterLanguage: message.tags[ "broadcaster-lang" ] } ),
@@ -92,7 +91,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 				switch( message.tags[ "msg-id" ] ) {
 				default:
 					return {
-						type: TwitchEventType.Userstate,
+						type: TwitchEventType.UserState,
 						data: {
 							...message.tags,
 							channel: channel,
@@ -250,7 +249,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						message: message.parameters,
 					},
 				};
-			case "NOTICE":
+			case "NOTICE": // Notice Message IDs: https://dev.twitch.tv/docs/irc/msg-id/
 				console.log( "NOTICE!!!", message );
 				break;
 			case "CLEARCHAT":

@@ -48,7 +48,7 @@ describe( "processMessage", () => {
 	it( "should process a roomstate message", () => {
 		const processedMessage = processMessage( parseMessage( rawMessages.roomstate ) );
 		expect( processedMessage ).toEqual( {
-			"type": TwitchEventType.ChatMode,
+			"type": TwitchEventType.RoomState,
 			"data": {
 				"channel": "#instafluff",
 				"channelId": "83118047",
