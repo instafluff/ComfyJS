@@ -27,24 +27,8 @@ DONE:
 		Responds to a user being banned
 	! onTimeout( timedOutUsername, durationInSeconds, extra )
 		Responds to a user being timed out
-- APIs / channel points things
-	- Chat via IRC
-
-TODO:
-- all ComfyJS Events
-	? onCommand( user, command, message, flags, extra )
-		Responds to "!" commands
-	? onChat( user, message, flags, self, extra )
-		Responds to user chatting
-	? onWhisper( user, message, flags, self, extra )
-		Responds to user whisper event
-	? onChatMode()
-		Notifies changes to the chat room mode
-	- onReward( user, reward, cost, message, extra )
-		REQUIRES EXTRA PERMISSION SCOPES
-		Responds to Channel Point Redemptions
-	- onCheer( user, message, bits, flags, extra )
-		Responds to user cheering
+	! onAnnouncement( message, extra )
+		Responds to an announcement
 	- onSub( user, message, subTierInfo, extra )
 		Responds to user channel subscription
 	- onResub( user, message, streamMonths, cumulativeMonths, subTierInfo, extra )
@@ -55,6 +39,24 @@ TODO:
 		Responds to user sending gift subscriptions
 	- onGiftSubContinue( user, sender, extra )
 		Responds to user continuing gift subscription
+	! onCommand( user, command, message, flags, extra )
+		Responds to "!" commands
+	! onChat( user, message, flags, self, extra )
+		Responds to user chatting
+- APIs / channel points things
+	- Chat via IRC
+
+TODO:
+- all ComfyJS Events
+	? onWhisper( user, message, flags, self, extra )
+		Responds to user whisper event
+	? onChatMode()
+		Notifies changes to the chat room mode
+	- onReward( user, reward, cost, message, extra )
+		REQUIRES EXTRA PERMISSION SCOPES
+		Responds to Channel Point Redemptions
+	- onCheer( user, message, bits, flags, extra )
+		Responds to user cheering
 	- onReconnect( reconnectCount )
 		Responds when attempting to reconnect to the Twitch chat.
 - parsing tags to events (and parsing usernames and other context better)

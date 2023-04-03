@@ -22,6 +22,7 @@ export enum TwitchEventType {
 	AnonymousSubGift = "anonsubgift", // TODO: Confirm. This might not be called
 	MysterySubGift = "submysterygift", // Random Sub Gift. This is followed by a "subgift" event for each user
 	AnonymousMysterySubGift = "anonsubmysterygift", // TODO: Confirm. This might not be called
+	SubGiftContinue = "subgiftcontinue",
 	Raid = "raid",
 	Timeout = "Timeout",
 	Ban = "Ban",
@@ -144,7 +145,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							multiMonthDuration: parseInt( message.tags[ "msg-param-multimonth-duration" ] ),
 							multiMonthTenure: parseInt( message.tags[ "msg-param-multimonth-tenure" ] ),
-							streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ), // TODO: Handle NaN from undefined
+							...( message.tags[ "msg-param-streak-months" ] && { streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ) } ),
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
@@ -181,6 +182,21 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							giftMonths: parseInt( message.tags[ "msg-param-gift-months" ] ),
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "giftsubcontinue":
+					return {
+						type: TwitchEventType.SubGiftContinue,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							gifterDisplayName: message.tags[ "msg-param-sender-name" ] || message.tags[ "msg-param-sender-login" ],
+							gifterUsername: message.tags[ "msg-param-sender-login" ],
 							channel: channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
