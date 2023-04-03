@@ -68,6 +68,7 @@ TODO:
 	- Announce via API
 	- Delete Message via API
 	- Chat list via API
+- ComfyJS Instafluff hello log message
 - Backwards compat wrapper for previous ComfyJS
 	- onCommand( user, command, message, flags, extra )
 		Responds to "!" commands
@@ -266,6 +267,10 @@ export class TwitchChat {
 					message.data = message.data || {};
 					message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
 				}
+				if( message.type === TwitchEventType.ChatMode ) {
+					// TODO: Keep track of chat modes
+				}
+
 				// Send the event to handlers
 				if( this.handlers[ message.type ] ) {
 					this.handlers[ message.type ]!( message.data );

@@ -1,6 +1,5 @@
 import { ParsedMessage } from "./parse";
 
-
 export enum TwitchEventType {
 	None = "none",
 	Ping = "Ping",
@@ -16,6 +15,7 @@ export enum TwitchEventType {
 	Chat = "message",
 	Reply = "reply",
 	Whisper = "whisper",
+	Announcement = "announcement",
 	Subscribe = "sub",
 	Resubscribe = "resub",
 	SubscribeGift = "subgift",
@@ -66,14 +66,19 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 			case "ROOMSTATE":
 				// TODO: Save ChatMode for the room at the first message and then diff the notifications afterwards
 				//      e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
-				console.log( message );
 				return {
 					type: TwitchEventType.ChatMode,
 					data: {
-						emoteOnly: message.tags[ "emote-only" ] ? message.tags[ "emote-only" ] !== "0" : false,
-						followersOnly: message.tags[ "followers-only" ] ? message.tags[ "followers-only" ] !== "-1" : false,
-						...message.tags,
-						channel: commandParts[ 1 ],
+						// Only add the properties if they exist
+						...( message.tags[ "broadcaster-lang" ] && { broadcasterLanguage: message.tags[ "broadcaster-lang" ] } ),
+						...( message.tags[ "emote-only" ] && { emoteOnly: message.tags[ "emote-only" ] !== "0" } ),
+						...( message.tags[ "followers-only" ] && { followersOnly: message.tags[ "followers-only" ] !== "-1" } ),
+						...( message.tags[ "subs-only" ] && { subscribersOnly: message.tags[ "subs-only" ] !== "0" } ),
+						...( message.tags[ "r9k" ] && { r9k: message.tags[ "r9k" ] !== "0" } ),
+						...( message.tags[ "rituals" ] && { rituals: message.tags[ "rituals" ] !== "0" } ),
+						...( message.tags[ "slow" ] && { slow: message.tags[ "slow" ] !== "0" } ),
+						channel,
+						channelId: message.tags[ "room-id" ],
 					},
 				};
 			case "GLOBALUSERSTATE":
@@ -87,7 +92,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						type: TwitchEventType.Userstate,
 						data: {
 							...message.tags,
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: parseUsername( message.source ),
 							extra: message.tags,
 						},
@@ -96,6 +101,18 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 			case "HOSTTARGET":
 			case "USERNOTICE":
 				switch( message.tags[ "msg-id" ] ) {
+				case "announcement":
+					return {
+						type: TwitchEventType.Announcement,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							channel: channel,
+							username: message.tags[ "login" ],
+							message: message.parameters,
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
 				case "sub":
 					return {
 						type: TwitchEventType.Subscribe,
@@ -112,7 +129,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							goalDescription: message.tags[ "msg-param-goal-description" ],
 							goalTargetContributions: message.tags[ "msg-param-goal-target-contributions" ],
 							goalUserContributions: message.tags[ "msg-param-goal-user-contributions" ],
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: message.tags[ "login" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
@@ -131,7 +148,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: message.tags[ "login" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
@@ -145,7 +162,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							profileImageURL: message.tags[ "msg-param-profileImageURL" ],
 							displayName: message.tags[ "msg-param-displayName" ] || message.tags[ "display-name" ] || message.tags[ "msg-param-login" ] || message.tags[ "login" ],
 							viewers: parseInt( message.tags[ "msg-param-viewerCount" ] ),
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: message.tags[ "msg-param-login" ] || message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -160,12 +177,12 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 			case "WHISPER":
 				// TODO: Check for OAuth password and scope for reading whispers
 				console.log( message );
-				console.log( "Channel:", commandParts[ 1 ], message.parameters );
+				console.log( "Channel:", channel, message.parameters );
 				return {
 					type: TwitchEventType.Whisper,
 					data: {
 						...message.tags,
-						channel: commandParts[ 1 ],
+						channel: channel,
 						username: parseUsername( message.source ),
 						message: message.parameters,
 					},
@@ -181,7 +198,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							type: TwitchEventType.Timeout,
 							data: {
 								...message.tags,
-								channel: commandParts[ 1 ],
+								channel: channel,
 								username: message.parameters,
 								userId: message.tags[ "target-user-id" ],
 								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -194,7 +211,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							type: TwitchEventType.Ban,
 							data: {
 								...message.tags,
-								channel: commandParts[ 1 ],
+								channel: channel,
 								username: message.parameters,
 								userId: message.tags[ "target-user-id" ],
 								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -213,7 +230,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					type: TwitchEventType.MessageDeleted,
 					data: {
 						...message.tags,
-						channel: commandParts[ 1 ],
+						channel: channel,
 						displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 						username: message.tags[ "login" ],
 						message: message.parameters,
@@ -229,7 +246,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Command,
 						data: {
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: parseUsername( message.source ),
 							command: command,
 							message: msg,
@@ -244,7 +261,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Chat,
 						data: {
-							channel: commandParts[ 1 ],
+							channel: channel,
 							username: parseUsername( message.source ),
 							message: message.parameters,
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -267,7 +284,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						// Command & Reserved responses
 						switch( commandNumber ) {
 						case 1:  // Logged in (successfully authenticated). 
-							// console.debug( "Username:", commandParts[ 1 ] );
+							// console.debug( "Username:", channel );
 							return null;
 						case 2: // Ignoring all other numeric messages.
 						case 3:
