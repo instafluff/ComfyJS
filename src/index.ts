@@ -153,6 +153,7 @@ export class TwitchChat {
 				...this.chatModes[ message.data.channel ],
 				...message.data,
 			};
+			// TODO: delete chatMode when leaving a channel
 			if( this.handlers[ TwitchEventType.ChatMode ] ) {
 				this.handlers[ TwitchEventType.ChatMode ]!( this.chatModes[ message.data.channel ] );
 			}

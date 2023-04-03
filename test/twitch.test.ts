@@ -28,7 +28,7 @@ describe( "processMessage", () => {
 		expect( processedMessage ).toEqual( {
 			"type": TwitchEventType.Join,
 			"data": {
-				"channel": "#instafluff",
+				"channel": "instafluff",
 				"username": "justinfan48698855",
 			},
 		} );
@@ -39,7 +39,7 @@ describe( "processMessage", () => {
 		expect( processedMessage ).toEqual( {
 			"type": TwitchEventType.Leave,
 			"data": {
-				"channel": "#instafriend",
+				"channel": "instafriend",
 				"username": "instafluff",
 			},
 		} );
@@ -50,7 +50,7 @@ describe( "processMessage", () => {
 		expect( processedMessage ).toEqual( {
 			"type": TwitchEventType.RoomState,
 			"data": {
-				"channel": "#instafluff",
+				"channel": "instafluff",
 				"channelId": "83118047",
 				"emoteOnly": false,
 				"followersOnly": false,

@@ -1,6 +1,5 @@
 import { ParsedMessage } from "./parse";
 
-
 export enum TwitchEventType {
 	None = "none",
 	Ping = "Ping",
@@ -8,8 +7,11 @@ export enum TwitchEventType {
 	Connect = "connect",
 	Reconnected = "reconnect",
 	Error = "error",
+	Warning = "Warning",
 	ChatMode = "chatmode",
+	ClearChat = "ClearChat",
 	RoomState = "roomstate",
+	GlobalUserState = "globaluserstate",
 	UserState = "userstate",
 	Notice = "notice",
 	Join = "join",
@@ -34,6 +36,14 @@ export enum TwitchEventType {
 	All = "all",
 };
 
+const TwitchUserTypes : { [ key : string ] : string } = {
+	"": "Normal",
+	"admin": "Admin",
+	"global_mod": "Global Mod",
+	"staff": "Staff",
+	"mod": "Moderator",
+};
+
 export type ProcessedMessage = {
     type : TwitchEventType,
     data? : any,
@@ -45,11 +55,152 @@ function parseUsername( source : string | null ) {
 	return parts.length > 1 ? parts[ 0 ] : undefined;
 }
 
+function parseBadges( badgesTag : string ) {
+	const badgeList = badgesTag.split( "," );
+	const badges : { [ key : string ] : string } = {};
+	for( const badge of badgeList ) {
+		const [ name, version ] = badge.split( "/" );
+		badges[ name ] = version;
+	}
+	return badges;
+}
+
+function handleChatMessage( message : ParsedMessage, channel : string ) : ProcessedMessage {
+	const isAction = message.parameters?.startsWith( "\u0001ACTION" );
+	const sanitizedMessage = isAction ? message.parameters?.match( /^\u0001ACTION ([^\u0001]+)\u0001$/ )![ 1 ] : message.parameters;
+
+	const id = message.tags[ "id" ];
+	const channelId = message.tags[ "room-id" ];
+	const userId = message.tags[ "user-id" ];
+	const username = parseUsername( message.source );
+	const displayName = message.tags[ "display-name" ] || message.tags[ "login" ] || username;
+	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
+	const badges = parseBadges( message.tags[ "badges" ] || "" );
+	const userColor = message.tags[ "color" ];
+	const emotes = message.tags[ "emotes" ];
+	const isBroadcaster = username === channel;
+	const isMod = message.tags[ "mod" ] === "1";
+	const isFounder = !!badges[ "founder" ];
+	const isSubscriber = message.tags[ "subscriber" ] === "1";
+	const isTurbo = message.tags[ "turbo" ] === "1";
+	const isVIP = !!badges[ "vip" ];
+	const isPrime = !!badges[ "premium" ];
+	const isPartner = !!badges[ "partner" ];
+	const isGameDeveloper = !!badges[ "game-developer" ];
+	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
+	
+	const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
+	const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
+	const customRewardId = message.tags[ "custom-reward-id" ];
+
+	// TODO: Look into the "first-msg" and "returning-chatter" tags
+	const isFirstMessage = message.tags[ "first-msg" ] === "1";
+	const isReturningChatter = message.tags[ "returning-chatter" ] === "1";
+
+	const flags = {
+		broadcaster: isBroadcaster,
+		mod: isMod,
+		founder: isFounder,
+		subscriber: isSubscriber,
+		vip: isVIP,
+		partner: isPartner,
+		gameDeveloper: isGameDeveloper,
+		turbo: isTurbo,
+		prime: isPrime,
+		highlighted: isHighlightedMessage,
+		skipSubsMode: isSkipSubsModeMessage,
+		customReward: !!customRewardId,
+		firstMessage: isFirstMessage,
+		returningChatter: isReturningChatter,
+	}
+
+	if( message.tags[ "bits" ] ) {
+		return {
+			type: TwitchEventType.Cheer,
+			data: {
+				channel,
+				channelId,
+				displayName,
+				username,
+				userId,
+				userType,
+				id,
+				message: message.parameters,
+				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
+				messageEmotes: emotes,
+				userColor,
+				userBadges: badges,
+				customRewardId,
+				flags,
+				bits: parseInt( message.tags[ "bits" ] ),
+				timestamp,
+				extra: message.tags,
+			},
+		};
+	}
+	else {
+		if( sanitizedMessage?.startsWith( "!" ) ) {
+			const msgParts = sanitizedMessage!.split( / (.*)/ );
+			const command = msgParts[ 0 ].substring( 1 ).toLowerCase();
+			const msg = msgParts[ 1 ] || "";
+			return {
+				type: TwitchEventType.Command,
+				data: {
+					channel,
+					channelId,
+					displayName,
+					username,
+					userId,
+					userType,
+					command: command,
+					id,
+					message: msg,
+					messageType: isAction ? "action" : "chat",
+					messageEmotes: emotes,
+					userColor,
+					userBadges: badges,
+					customRewardId,
+					flags,
+					timestamp,
+					extra: {
+						...message.tags,
+					},
+				},
+			}
+		}
+		else {
+			return {
+				type: TwitchEventType.Chat,
+				data: {
+					channel,
+					channelId,
+					displayName,
+					username,
+					userId,
+					userType,
+					id,
+					message: sanitizedMessage,
+					messageType: isAction ? "action" : "chat",
+					messageEmotes: emotes,
+					userColor,
+					userBadges: badges,
+					customRewardId,
+					flags,
+					timestamp,
+					extra: {
+						...message.tags,
+					},
+				},
+			};
+		}
+	}
+}
+
 export function processMessage( message : ParsedMessage ) : ProcessedMessage | null {
 	try {
 		if( message.command ) { // Twitch-Specific Tags: https://dev.twitch.tv/docs/irc/tags/
 			const commandParts = message.command.split( " " );
-			const channel = commandParts[ 1 ];
+			const channel = commandParts.length > 1 ? commandParts[ 1 ].substring( 1 ) : undefined;
 			switch( commandParts[ 0 ] ) {
 			case "PING":
 				return { type: TwitchEventType.Ping	};
@@ -85,8 +236,19 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					},
 				};
 			case "GLOBALUSERSTATE":
-				console.log( "Global User State" );
-				break;
+				return {
+					type: TwitchEventType.GlobalUserState,
+					data: {
+						displayName: message.tags[ "display-name" ],
+						userId: message.tags[ "user-id" ],
+						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+						color: message.tags[ "color" ],
+						badges: message.tags[ "badges" ],
+						badgeInfo: message.tags[ "badge-info" ],
+						emoteSets: message.tags[ "emote-sets" ],
+						extra: message.tags,
+					},
+				};
 			case "USERSTATE":
 				console.log( message );
 				switch( message.tags[ "msg-id" ] ) {
@@ -95,13 +257,14 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						type: TwitchEventType.UserState,
 						data: {
 							...message.tags,
-							channel: channel,
+							channel,
 							username: parseUsername( message.source ),
 							extra: message.tags,
 						},
 					};
 				}
-			case "HOSTTARGET":
+			case "HOSTTARGET": // No longer supported
+				break;
 			case "USERNOTICE":
 				switch( message.tags[ "msg-id" ] ) {
 				case "announcement":
@@ -109,8 +272,10 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						type: TwitchEventType.Announcement,
 						data: {
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
-							channel: channel,
+							channel,
+							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
 							message: message.parameters,
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
@@ -132,8 +297,10 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
 							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
 							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
-							channel: channel,
+							channel,
+							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
@@ -151,8 +318,10 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
-							channel: channel,
+							channel,
+							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
@@ -170,7 +339,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
 							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
 							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
-							channel: channel,
+							channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
@@ -194,7 +363,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
 							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
 							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
-							channel: channel,
+							channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
@@ -209,7 +378,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							gifterDisplayName: message.tags[ "msg-param-sender-name" ] || message.tags[ "msg-param-sender-login" ],
 							gifterUsername: message.tags[ "msg-param-sender-login" ],
-							channel: channel,
+							channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
@@ -218,14 +387,14 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						},
 					};
 				case "raid":
-					// TODO: Should User be displayName || username || login?
 					return {
 						type: TwitchEventType.Raid,
 						data: {
 							profileImageURL: message.tags[ "msg-param-profileImageURL" ],
 							displayName: message.tags[ "msg-param-displayName" ] || message.tags[ "display-name" ] || message.tags[ "msg-param-login" ] || message.tags[ "login" ],
 							viewers: parseInt( message.tags[ "msg-param-viewerCount" ] ),
-							channel: channel,
+							channel,
+							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "msg-param-login" ] || message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -244,10 +413,17 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 				return {
 					type: TwitchEventType.Whisper,
 					data: {
-						...message.tags,
-						channel: channel,
+						displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
 						username: parseUsername( message.source ),
+						userId: message.tags[ "user-id" ],
+						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+						threadId: message.tags[ "thread-id" ],
+						messageId: message.tags[ "message-id" ],
 						message: message.parameters,
+						extra: {
+							...message.tags,
+							messageType: "whisper",
+						},
 					},
 				};
 			case "NOTICE": // Notice Message IDs: https://dev.twitch.tv/docs/irc/msg-id/
@@ -258,20 +434,20 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Error,
 						data: {
-							channel: channel,
+							channel,
 							message: message.parameters,
 						},
 					};
 				}
+				// General Notice Event
 				return {
 					type: TwitchEventType.Notice,
 					data: {
-						channel: channel,
+						channel,
 						msgId: message.tags[ "msg-id" ],
 						message: message.parameters,
 					},
 				};
-				break;
 			case "CLEARCHAT":
 				// Chat Cleared, User Timeout/Ban
 				if( message.tags[ "target-user-id" ] ) {
@@ -279,7 +455,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						return {
 							type: TwitchEventType.Timeout,
 							data: {
-								channel: channel,
+								channel,
 								channelId: message.tags[ "room-id" ],
 								duration: parseInt( message.tags[ "ban-duration" ] ),
 								username: message.parameters,
@@ -293,7 +469,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						return {
 							type: TwitchEventType.Ban,
 							data: {
-								channel: channel,
+								channel,
 								channelId: message.tags[ "room-id" ],
 								username: message.parameters,
 								userId: message.tags[ "target-user-id" ],
@@ -304,7 +480,15 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					}
 				}
 				else {
-					// TODO: Handle Chat Cleared
+					return {
+						type: TwitchEventType.ClearChat,
+						data: {
+							channel,
+							channelId: message.tags[ "room-id" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
 				}
 				break;
 			case "CLEARMSG":
@@ -312,72 +496,19 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 				return {
 					type: TwitchEventType.MessageDeleted,
 					data: {
-						...message.tags,
-						channel: channel,
+						channel,
+						channelId: message.tags[ "room-id" ], // Room ID seems to be empty for this event
 						displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 						username: message.tags[ "login" ],
+						id: message.tags[ "target-msg-id" ],
 						message: message.parameters,
+						timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 						extra: message.tags,
 					},
 				};
 			case "PRIVMSG":
 				// Chat Message
-				if( message.parameters?.startsWith( "!" ) ) {
-					const msgParts = message.parameters.split( / (.*)/ );
-					const command = msgParts[ 0 ].substring( 1 ).toLowerCase();
-					const msg = msgParts[ 1 ] || "";
-					return {
-						type: TwitchEventType.Command,
-						data: {
-							channel: channel,
-							channelId: message.tags[ "room-id" ],
-							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
-							username: parseUsername( message.source ),
-							userId: message.tags[ "user-id" ],
-							command: command,
-							message: msg,
-							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
-							extra: message.tags,
-						},
-					}
-				}
-				else if( message.tags[ "bits" ] ) {
-					return {
-						type: TwitchEventType.Cheer,
-						data: {
-							channel: channel,
-							channelId: message.tags[ "room-id" ],
-							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
-							username: parseUsername( message.source ),
-							userId: message.tags[ "user-id" ],
-							message: message.parameters,
-							bits: parseInt( message.tags[ "bits" ] ),
-							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
-							extra: message.tags,
-						},
-					};
-				}
-				else {
-					const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
-					const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
-					const customRewardId = message.tags[ "custom-reward-id" ];
-
-					// Replace dash to camelCase
-					// const tagKey = parts[ 0 ].replace( /(\-[a-z])/g, val => val.toUpperCase().replace( "-", "" ) );
-					return {
-						type: TwitchEventType.Chat,
-						data: {
-							channel: channel,
-							channelId: message.tags[ "room-id" ],
-							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
-							username: parseUsername( message.source ),
-							userId: message.tags[ "user-id" ],
-							message: message.parameters,
-							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
-							extra: message.tags,
-						},
-					};
-				}
+				return handleChatMessage( message, channel as string );
 			case "RECONNECT":  
 				console.log( "The Twitch IRC server is about to terminate the connection for maintenance." )
 				break;
@@ -415,13 +546,13 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 			}
 		}
 		else {
-			console.debug( "Commandless IRC message:", message.raw );
+			console.debug( "Unprocessed IRC message:", message.raw );
 		}
 	}
 	catch( error ) {
-		console.error( "ERROR:", error );
+		console.error( error );
 		return {
-			type: TwitchEventType.Error,
+			type: TwitchEventType.Warning,
 			data: error,
 		};
 	}
