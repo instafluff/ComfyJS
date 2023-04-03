@@ -1,5 +1,6 @@
 import { ParsedMessage } from "./parse";
 
+
 export enum TwitchEventType {
 	None = "none",
 	Ping = "Ping",
@@ -16,12 +17,13 @@ export enum TwitchEventType {
 	Reply = "reply",
 	Whisper = "whisper",
 	Announcement = "announcement",
+	Cheer = "Cheer",
 	Subscribe = "sub",
 	Resubscribe = "resub",
-	SubGift = "subgift", // Targeted Sub Gift
-	AnonymousSubGift = "anonsubgift", // TODO: Confirm. This might not be called
-	MysterySubGift = "submysterygift", // Random Sub Gift. This is followed by a "subgift" event for each user
-	AnonymousMysterySubGift = "anonsubmysterygift", // TODO: Confirm. This might not be called
+	SubGift = "subgift", // Note: Goal Contributions are not included if it is from a mysterysubgift and is included in the mysterysubgift event instead
+	AnonymousSubGift = "anonsubgift",
+	MysterySubGift = "submysterygift",
+	AnonymousMysterySubGift = "anonsubmysterygift",
 	SubGiftContinue = "subgiftcontinue",
 	Raid = "raid",
 	Timeout = "Timeout",
@@ -125,11 +127,11 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
-							goalContributionType: message.tags[ "msg-param-goal-contribution-type" ],
-							goalCurrentContributions: message.tags[ "msg-param-goal-current-contributions" ],
-							goalDescription: message.tags[ "msg-param-goal-description" ],
-							goalTargetContributions: message.tags[ "msg-param-goal-target-contributions" ],
-							goalUserContributions: message.tags[ "msg-param-goal-user-contributions" ],
+							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
+							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
+							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
 							channel: channel,
 							username: message.tags[ "login" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -163,6 +165,11 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							giftCount: parseInt( message.tags[ "msg-param-mass-gift-count" ] ),
 							senderCount: parseInt( message.tags[ "msg-param-sender-count" ] ),
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
+							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
+							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
 							channel: channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
@@ -182,6 +189,11 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							giftMonths: parseInt( message.tags[ "msg-param-gift-months" ] ),
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
+							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
+							...( message.tags[ "msg-param-goal-target-contributions" ] && { goalTargetContributions: parseInt( message.tags[ "msg-param-goal-target-contributions" ] ) } ),
+							...( message.tags[ "msg-param-goal-user-contributions" ] && { goalUserContributions: parseInt( message.tags[ "msg-param-goal-user-contributions" ] ) } ),
 							channel: channel,
 							channelId: message.tags[ "room-id" ],
 							username: message.tags[ "login" ],
@@ -248,8 +260,9 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						return {
 							type: TwitchEventType.Timeout,
 							data: {
-								...message.tags,
 								channel: channel,
+								channelId: message.tags[ "room-id" ],
+								duration: parseInt( message.tags[ "ban-duration" ] ),
 								username: message.parameters,
 								userId: message.tags[ "target-user-id" ],
 								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -261,8 +274,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						return {
 							type: TwitchEventType.Ban,
 							data: {
-								...message.tags,
 								channel: channel,
+								channelId: message.tags[ "room-id" ],
 								username: message.parameters,
 								userId: message.tags[ "target-user-id" ],
 								timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -298,7 +311,10 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						type: TwitchEventType.Command,
 						data: {
 							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
 							username: parseUsername( message.source ),
+							userId: message.tags[ "user-id" ],
 							command: command,
 							message: msg,
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -306,7 +322,27 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						},
 					}
 				}
-				else {					
+				else if( message.tags[ "bits" ] ) {
+					return {
+						type: TwitchEventType.Cheer,
+						data: {
+							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
+							username: parseUsername( message.source ),
+							userId: message.tags[ "user-id" ],
+							message: message.parameters,
+							bits: parseInt( message.tags[ "bits" ] ),
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				}
+				else {
+					const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
+					const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
+					const customRewardId = message.tags[ "custom-reward-id" ];
+
 					// Replace dash to camelCase
 					// const tagKey = parts[ 0 ].replace( /(\-[a-z])/g, val => val.toUpperCase().replace( "-", "" ) );
 					return {

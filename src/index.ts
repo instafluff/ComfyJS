@@ -29,6 +29,8 @@ DONE:
 		Responds to a user being timed out
 	! onAnnouncement( message, extra )
 		Responds to an announcement
+	- onCheer( user, message, bits, flags, extra )
+		Responds to user cheering
 	- onSub( user, message, subTierInfo, extra )
 		Responds to user channel subscription
 	- onResub( user, message, streamMonths, cumulativeMonths, subTierInfo, extra )
@@ -55,8 +57,6 @@ TODO:
 	- onReward( user, reward, cost, message, extra )
 		REQUIRES EXTRA PERMISSION SCOPES
 		Responds to Channel Point Redemptions
-	- onCheer( user, message, bits, flags, extra )
-		Responds to user cheering
 	- onReconnect( reconnectCount )
 		Responds when attempting to reconnect to the Twitch chat.
 - parsing tags to events (and parsing usernames and other context better)
