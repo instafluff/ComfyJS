@@ -18,10 +18,10 @@ export enum TwitchEventType {
 	Announcement = "announcement",
 	Subscribe = "sub",
 	Resubscribe = "resub",
-	SubscribeGift = "subgift",
-	SubscribeGiftAnonymous = "anonsubgift", // TODO: Confirm. This might not be called
-	SubscribeGiftMystery = "submysterygift",
-	SubscribeGiftMysteryAnonymous = "anonsubmysterygift", // TODO: Confirm. This might not be called
+	SubGift = "subgift", // Targeted Sub Gift
+	AnonymousSubGift = "anonsubgift", // TODO: Confirm. This might not be called
+	MysterySubGift = "submysterygift", // Random Sub Gift. This is followed by a "subgift" event for each user
+	AnonymousMysterySubGift = "anonsubmysterygift", // TODO: Confirm. This might not be called
 	Raid = "raid",
 	Timeout = "Timeout",
 	Ban = "Ban",
@@ -144,12 +144,47 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							multiMonthDuration: parseInt( message.tags[ "msg-param-multimonth-duration" ] ),
 							multiMonthTenure: parseInt( message.tags[ "msg-param-multimonth-tenure" ] ),
-							streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ),
+							streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ), // TODO: Handle NaN from undefined
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
 							channel: channel,
 							username: message.tags[ "login" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "submysterygift":
+					return {
+						type: TwitchEventType.MysterySubGift,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							giftCount: parseInt( message.tags[ "msg-param-mass-gift-count" ] ),
+							senderCount: parseInt( message.tags[ "msg-param-sender-count" ] ),
+							subPlan: message.tags[ "msg-param-sub-plan" ],
+							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "subgift":
+					return {
+						type: TwitchEventType.SubGift,
+						data: {
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							recipientDisplayName: message.tags[ "msg-param-recipient-display-name" ],
+							recipientId: message.tags[ "msg-param-recipient-id" ],
+							recipientUsername: message.tags[ "msg-param-recipient-user-name" ],
+							months: parseInt( message.tags[ "msg-param-months" ] ),
+							giftMonths: parseInt( message.tags[ "msg-param-gift-months" ] ),
+							subPlan: message.tags[ "msg-param-sub-plan" ],
+							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
@@ -262,7 +297,10 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						type: TwitchEventType.Chat,
 						data: {
 							channel: channel,
+							channelId: message.tags[ "room-id" ],
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ] || parseUsername( message.source ),
 							username: parseUsername( message.source ),
+							userId: message.tags[ "user-id" ],
 							message: message.parameters,
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,

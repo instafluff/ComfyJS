@@ -1,6 +1,6 @@
 import { parseMessage } from "./parse";
 import { createWebSocket } from "./socket";
-import { authenticate, joinChannel, leaveChannel, ping, pong, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
+import { authenticate, joinChannel, leaveChannel, ping, pong, ProcessedMessage, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
 
 /*
 DONE:
@@ -124,22 +124,7 @@ export class TwitchChat {
 	#pingTime : number = 0;
 	debug : boolean;
 	channels : string[];
-	handlers : Partial<{ [ key in TwitchEventType ] : TwitchChatHandler | undefined }> = {
-		[ TwitchEventType.None ]: undefined,
-		[ TwitchEventType.Ping ]: undefined,
-		[ TwitchEventType.Connect ]: undefined,
-		[ TwitchEventType.Reconnected ]: undefined,
-		[ TwitchEventType.Error ]: undefined,
-		[ TwitchEventType.ChatMode ]: undefined,
-		[ TwitchEventType.Userstate ]: undefined,
-		[ TwitchEventType.Join ]: undefined,
-		[ TwitchEventType.Leave ]: undefined,
-		[ TwitchEventType.Command ]: undefined,
-		[ TwitchEventType.Chat ]: undefined,
-		[ TwitchEventType.Whisper ]: undefined,
-		[ TwitchEventType.Raid ]: undefined,
-		[ TwitchEventType.All ]: undefined,
-	};
+	handlers : Partial<{ [ key in TwitchEventType ] : TwitchChatHandler | undefined }> = {};
 
 	constructor( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) {
 		this.#username = username;
@@ -237,8 +222,58 @@ export class TwitchChat {
 	#ping() {
 		if( !this.#ws ) { return; }
 		if( !this.#isConnected ) { return; }
+
 		this.#pingTime = Date.now();
 		ping( this.#ws );
+	}
+
+	#handleSpecialEvents( message : ProcessedMessage ) {
+		if( !this.#ws ) { return; }
+		if( !this.#isConnected ) { return; }
+
+		if( message.type === TwitchEventType.Connect ) {
+			// Setup the keep-alive ping timer
+			if( this.#pingTimer ) {
+				clearInterval( this.#pingTimer );
+			}
+			this.#pingTimer = setInterval( () => {
+				this.#ping();
+			}, 60000 );
+		}
+		if( message.type === TwitchEventType.Ping ) {
+			pong( this.#ws );
+		}
+		if( message.type === TwitchEventType.Pong ) {
+			// Calculate and attach latency to the data
+			message.data = message.data || {};
+			message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
+		}
+		if( message.type === TwitchEventType.ChatMode ) {
+			// TODO: Keep track of chat modes
+		}
+		// if( message.type === TwitchEventType.Reconnect ) {
+		// 	this.#connect();
+		// }
+		// if( message.type === TwitchEventType.Join ) {
+		// 	if( message.channel ) {
+		// 		this.channels.push( message.channel );
+		// 	}
+		// }
+		
+		// If it's a chat message and it has a reply-parent-msg-id, then it's a reply. Handle it as a reply.
+		if( message.type === TwitchEventType.Chat ) {
+			// Check if this is a reply message
+			if( this.handlers[ TwitchEventType.Reply ] && message.data.extra[ "reply-parent-msg-id" ] ) {
+				this.handlers[ TwitchEventType.Reply ]!( {
+					...message.data,
+					parentId: message.data.extra[ "reply-parent-msg-id" ],
+					parentUserId: message.data.extra[ "reply-parent-user-id" ],
+					parentUser: message.data.extra[ "reply-parent-user-login" ],
+					parentMessage: message.data.extra[ "reply-parent-msg-body" ],
+					parentDisplayName: message.data.extra[ "reply-parent-display-name" ] || message.data.extra[ "reply-parent-user-login" ],
+				} );
+			}
+		}
 	}
 
 	#onMessage( event : MessageEvent<any> ) {
@@ -250,43 +285,11 @@ export class TwitchChat {
 			const message = processMessage( parseMessage( str ) );
 			if( message && message.type !== TwitchEventType.None ) {
 				// Handle special events
-				if( message.type === TwitchEventType.Connect ) {
-					// Setup the keep-alive ping timer
-					if( this.#pingTimer ) {
-						clearInterval( this.#pingTimer );
-					}
-					this.#pingTimer = setInterval( () => {
-						this.#ping();
-					}, 60000 );
-				}
-				if( message.type === TwitchEventType.Ping ) {
-					pong( this.#ws );
-				}
-				if( message.type === TwitchEventType.Pong ) {
-					// Calculate and attach latency to the data
-					message.data = message.data || {};
-					message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
-				}
-				if( message.type === TwitchEventType.ChatMode ) {
-					// TODO: Keep track of chat modes
-				}
+				this.#handleSpecialEvents( message );
 
 				// Send the event to handlers
 				if( this.handlers[ message.type ] ) {
 					this.handlers[ message.type ]!( message.data );
-				}
-				if( message.type === TwitchEventType.Chat ) {
-					// Check if this is a reply message
-					if( this.handlers[ TwitchEventType.Reply ] && message.data.extra[ "reply-parent-msg-id" ] ) {
-						this.handlers[ TwitchEventType.Reply ]!( {
-							...message.data,
-							parentId: message.data.extra[ "reply-parent-msg-id" ],
-							parentUserId: message.data.extra[ "reply-parent-user-id" ],
-							parentUser: message.data.extra[ "reply-parent-user-login" ],
-							parentMessage: message.data.extra[ "reply-parent-msg-body" ],
-							parentDisplayName: message.data.extra[ "reply-parent-display-name" ],
-						} );
-					}
 				}
 				// Also send to the "all" event handler if it exists
 				if( this.handlers[ TwitchEventType.All ] ) {
