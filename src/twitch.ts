@@ -11,6 +11,7 @@ export enum TwitchEventType {
 	ChatMode = "chatmode",
 	RoomState = "roomstate",
 	UserState = "userstate",
+	Notice = "notice",
 	Join = "join",
 	Leave = "leave",
 	Command = "command",
@@ -250,7 +251,26 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					},
 				};
 			case "NOTICE": // Notice Message IDs: https://dev.twitch.tv/docs/irc/msg-id/
-				console.log( "NOTICE!!!", message );
+				// Check for errors
+				if( message.parameters?.includes( "Login unsuccessful" ) || message.parameters?.includes( "Login authentication failed" ) ||
+					message.parameters?.includes( "Error logging in" ) || message.parameters?.includes( "Improperly formatted auth" ) ||
+					message.parameters?.includes( "Invalid NICK" ) || message.parameters?.includes( "Invalid CAP REQ" ) ) {
+					return {
+						type: TwitchEventType.Error,
+						data: {
+							channel: channel,
+							message: message.parameters,
+						},
+					};
+				}
+				return {
+					type: TwitchEventType.Notice,
+					data: {
+						channel: channel,
+						msgId: message.tags[ "msg-id" ],
+						message: message.parameters,
+					},
+				};
 				break;
 			case "CLEARCHAT":
 				// Chat Cleared, User Timeout/Ban

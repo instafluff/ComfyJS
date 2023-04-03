@@ -106,11 +106,11 @@ export class TwitchChat {
 	}
 
 	#onError( event : Event ) {
-		console.log( "ERROR", event );
+		console.error( "ERROR", event );
 	}
 
 	#onClose( event : Event ) {
-		console.log( "CLOSE", event );
+		console.info( "CLOSE", event );
 		if( this.#pingTimer ) {
 			clearInterval( this.#pingTimer );
 		}
@@ -128,7 +128,8 @@ export class TwitchChat {
 		if( !this.#ws ) { return; }
 		if( !this.#isConnected ) { return; }
 
-		if( message.type === TwitchEventType.Connect ) {
+		switch( message.type ) {
+		case TwitchEventType.Connect:
 			// Setup the keep-alive ping timer
 			if( this.#pingTimer ) {
 				clearInterval( this.#pingTimer );
@@ -136,16 +137,16 @@ export class TwitchChat {
 			this.#pingTimer = setInterval( () => {
 				this.#ping();
 			}, 60000 );
-		}
-		if( message.type === TwitchEventType.Ping ) {
+			break;
+		case TwitchEventType.Ping:
 			pong( this.#ws );
-		}
-		if( message.type === TwitchEventType.Pong ) {
+			break;
+		case TwitchEventType.Pong:
 			// Calculate and attach latency to the data
 			message.data = message.data || {};
 			message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
-		}
-		if( message.type === TwitchEventType.RoomState ) {
+			break;
+		case TwitchEventType.RoomState:
 			// Save ChatMode for the room at the first message and then diff the notifications afterwards
 			// e.g. emoteOnly & followersOnly are both sent in the initial message but then enabling/disabling emoteOnly doesn't send the followersOnly mode flag
 			this.chatModes[ message.data.channel ] = {
@@ -155,18 +156,19 @@ export class TwitchChat {
 			if( this.handlers[ TwitchEventType.ChatMode ] ) {
 				this.handlers[ TwitchEventType.ChatMode ]!( this.chatModes[ message.data.channel ] );
 			}
-		}
-		// if( message.type === TwitchEventType.Reconnect ) {
+			break;
+		// case TwitchEventType.Reconnect:
 		// 	this.#connect();
-		// }
-		// if( message.type === TwitchEventType.Join ) {
+		// 	break;
+		// case TwitchEventType.Join:
 		// 	if( message.channel ) {
 		// 		this.channels.push( message.channel );
 		// 	}
-		// }
-		
-		// If it's a chat message and it has a reply-parent-msg-id, then it's a reply. Handle it as a reply.
-		if( message.type === TwitchEventType.Chat ) {
+		// 	break;
+		case TwitchEventType.Error:
+			this.#ws.close();
+			break;
+		case TwitchEventType.Chat:
 			// Check if this is a reply message
 			if( this.handlers[ TwitchEventType.Reply ] && message.data.extra[ "reply-parent-msg-id" ] ) {
 				this.handlers[ TwitchEventType.Reply ]!( {
@@ -178,6 +180,7 @@ export class TwitchChat {
 					parentDisplayName: message.data.extra[ "reply-parent-display-name" ] || message.data.extra[ "reply-parent-user-login" ],
 				} );
 			}
+			break;
 		}
 	}
 
