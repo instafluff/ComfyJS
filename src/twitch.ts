@@ -162,9 +162,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					customRewardId,
 					flags,
 					timestamp,
-					extra: {
-						...message.tags,
-					},
+					extra: message.tags,
 				},
 			}
 		}
@@ -187,9 +185,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					customRewardId,
 					flags,
 					timestamp,
-					extra: {
-						...message.tags,
-					},
+					extra: message.tags,
 				},
 			};
 		}
@@ -250,19 +246,24 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					},
 				};
 			case "USERSTATE":
-				console.log( message );
-				switch( message.tags[ "msg-id" ] ) {
-				default:
-					return {
-						type: TwitchEventType.UserState,
-						data: {
-							...message.tags,
-							channel,
-							username: parseUsername( message.source ),
-							extra: message.tags,
-						},
-					};
-				}
+				return {
+					type: TwitchEventType.UserState,
+					data: {
+						channel: channel,
+						displayName: message.tags[ "display-name" ],
+						userId: message.tags[ "user-id" ],
+						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+						color: message.tags[ "color" ],
+						badges: message.tags[ "badges" ],
+						badgeInfo: message.tags[ "badge-info" ],
+						emoteSets: message.tags[ "emote-sets" ],
+						...( message.tags[ "id" ] && { id: message.tags[ "id" ] } ),
+						mod: message.tags[ "mod" ] === "1",
+						subscriber: message.tags[ "subscriber" ] === "1",
+						turbo: message.tags[ "turbo" ] === "1",
+						extra: message.tags,
+					},
+				};
 			case "HOSTTARGET": // No longer supported
 				break;
 			case "USERNOTICE":
@@ -417,13 +418,15 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						username: parseUsername( message.source ),
 						userId: message.tags[ "user-id" ],
 						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+						color: message.tags[ "color" ],
+						badges: message.tags[ "badges" ],
+						emotes: message.tags[ "emotes" ],
+						turbo: message.tags[ "turbo" ] === "1",
 						threadId: message.tags[ "thread-id" ],
 						messageId: message.tags[ "message-id" ],
 						message: message.parameters,
-						extra: {
-							...message.tags,
-							messageType: "whisper",
-						},
+						messageType: "whisper",
+						extra: message.tags,
 					},
 				};
 			case "NOTICE": // Notice Message IDs: https://dev.twitch.tv/docs/irc/msg-id/
