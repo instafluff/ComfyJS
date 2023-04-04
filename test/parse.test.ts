@@ -3,6 +3,56 @@ import { rawMessages } from "./const";
 import { parseMessage } from "../src/parse";
 
 describe( "parseMessage", () => {
+	it( "should return an object with the correct raw property", () => {
+		const message = "test";
+		const result = parseMessage( message );
+		expect( result.raw ).toEqual( message );
+	} );
+  
+	it( "should parse tags correctly", () => {
+		const message = "@emote-only=0;followers-only=-1;r9k=0;room-id=83118047;slow=0;subs-only=0 test";
+		const result = parseMessage( message );
+		expect( result.tags ).toEqual( {
+			"emote-only": "0",
+			"followers-only": "-1",
+			"r9k": "0",
+			"room-id": "83118047",
+			"slow": "0",
+			"subs-only": "0",
+		} );
+	} );
+  
+	it( "should parse source correctly", () => {
+		const message = ":nick!user@host test";
+		const result = parseMessage( message );
+		expect( result.source ).toEqual( "nick!user@host" );
+	} );
+  
+	it( "should parse command correctly", () => {
+		const message = "test";
+		const result = parseMessage( message );
+		expect( result.command ).toEqual( "test" );
+	} );
+  
+	it( "should parse parameters correctly", () => {
+		const message = "test :parameters";
+		const result = parseMessage( message );
+		expect( result.parameters ).toEqual( "parameters" );
+	} );
+  
+	it( "should handle messages with no tags or source", () => {
+		const message = "test";
+		const result = parseMessage( message );
+		expect( result.tags ).toEqual( {} );
+		expect( result.source ).toEqual( null );
+	} );
+  
+	it( "should handle messages with no parameters", () => {
+		const message = ":nick!user@host test";
+		const result = parseMessage( message );
+		expect( result.parameters ).toEqual( null );
+	} );
+
 	it( "should parse a ping message", () => {
 		const parsedMessage = parseMessage( rawMessages[ "ping" ] );
 		expect( parsedMessage ).toEqual( {

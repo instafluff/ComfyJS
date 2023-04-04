@@ -241,7 +241,7 @@ export type EmoteSet = {
  * Callback Definitions
  */
 export type OnErrorHandler = {
-  (error: any): void;
+  ( error: any ): void;
 };
 
 export type OnCommandHandler = {
@@ -275,27 +275,27 @@ export type OnWhisperHandler = {
 };
 
 export type OnMessageDeletedHandler = {
-  (id: string, extra: OnMessageDeletedExtra): void;
+  ( id: string, extra: OnMessageDeletedExtra ): void;
 };
 
 export type OnJoinHandler = {
-  (user: string, self: boolean, extra: OnJoinExtra): void;
+  ( user: string, self: boolean, extra: OnJoinExtra ): void;
 };
 
 export type OnPartHandler = {
-  (user: string, self: boolean, extra: OnPartExtra): void;
+  ( user: string, self: boolean, extra: OnPartExtra ): void;
 };
 
 export type OnHostedHandler = {
-  (user: string, viewers: number, autohost: boolean, extra: OnHostExtra): void;
+  ( user: string, viewers: number, autohost: boolean, extra: OnHostExtra ): void;
 };
 
 export type OnRaidHandler = {
-  (user: string, viewers: number, extra: OnRaidExtra): void;
+  ( user: string, viewers: number, extra: OnRaidExtra ): void;
 };
 
 export type OnSubHandler = {
-  (user: string, message: string, subTierInfo: SubMethods, extra: OnSubExtra): void;
+  ( user: string, message: string, subTierInfo: SubMethods, extra: OnSubExtra ): void;
 };
 
 export type OnResubHandler = {
@@ -331,7 +331,7 @@ export type OnSubMysteryGiftHandler = {
 };
 
 export type OnGiftSubContinueHandler = {
-  (user: string, sender: string, extra: OnGiftSubContinueExtra): void;
+  ( user: string, sender: string, extra: OnGiftSubContinueExtra ): void;
 };
 
 export type OnCheerHandler = {
@@ -345,19 +345,19 @@ export type OnCheerHandler = {
 };
 
 export type OnChatModeHandler = {
-  (flags: RoomState, channel: string): void;
+  ( flags: RoomState, channel: string ): void;
 };
 
 export type OnRewardHandler = {
-  (user: string, reward: string, cost: string, message: string, extra: OnRewardExtra): void;
+  ( user: string, reward: string, cost: string, message: string, extra: OnRewardExtra ): void;
 }
 
 export type OnConnectedHandler = {
-  (address: string, port: number, isFirstConnect: boolean): void;
+  ( address: string, port: number, isFirstConnect: boolean ): void;
 };
 
 export type OnReconnectHandler = {
-  (reconnectCount: number): void;
+  ( reconnectCount: number ): void;
 };
 
 /**
@@ -367,10 +367,10 @@ export interface ComfyJSInstance {
   version(): string;
 
   // Functions
-  Say(message: string, channel: string): boolean;
-  Announce(message: string, channel: string): boolean;
-  Whisper(message: string, user: string): boolean;
-  DeleteMessage(id: string, channel: string): boolean;
+  Say( message: string, channel: string ): boolean;
+  Announce( message: string, channel: string ): boolean;
+  Whisper( message: string, user: string ): boolean;
+  DeleteMessage( id: string, channel: string ): boolean;
   GetClient(): Client;
   Init(
     username: string,

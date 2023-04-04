@@ -170,7 +170,7 @@ export class TwitchChat {
 			this.#ws.close();
 			break;
 		case TwitchEventType.Chat:
-			// Check if this is a reply message
+			// Check if there is a reply handler and this is a reply message
 			if( this.handlers[ TwitchEventType.Reply ] && message.data.extra[ "reply-parent-msg-id" ] ) {
 				this.handlers[ TwitchEventType.Reply ]!( {
 					...message.data,

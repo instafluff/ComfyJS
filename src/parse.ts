@@ -29,7 +29,7 @@ According to IRC v3.2 spec (https://ircv3.net/specs/extensions/message-tags) the
 <vendor>        ::= <host>
 */
 export function parseMessage( message : string ) : ParsedMessage {
-	let parsedMessage : ParsedMessage = {
+	const parsedMessage : ParsedMessage = {
 		raw: message,
 		tags: {},
 		source: null,
@@ -43,7 +43,7 @@ export function parseMessage( message : string ) : ParsedMessage {
 	// Check for tags at the beginning of the IRC message indicated by @
 	// e.g. @emote-only=0;followers-only=-1;r9k=0;room-id=83118047;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE #instafluff
 	// The above has tags and then the normal messages start after a space
-	if( message.charAt( 0 ) === "@" ) {
+	if( message[ 0 ] === "@" ) {
 		// console.debug( "This message contains tags" );
 		const { component, nextIndex } = extractComponent( message, 0 );
 		for( const tag of component.split( ";" ) ) {
@@ -56,7 +56,7 @@ export function parseMessage( message : string ) : ParsedMessage {
 	// --- Source Parsing ---
 	// Get the source component (nick and host) of the IRC message.
 	// The idx should point to the source part; otherwise, it's a PING command.
-	if( message.charAt( index ) === ":" ) {
+	if( message[ index ] === ":" ) {
 		// console.debug( "This message has a source component" );
 		const { component, nextIndex } = extractComponent( message, index );
 		parsedMessage.source = component;
@@ -81,31 +81,3 @@ export function parseMessage( message : string ) : ParsedMessage {
 
 	return parsedMessage;
 }
-
-// TODO: TURN INTO UNIT TESTS
-// const exampleMessages = [
-// 	// ":tmi.twitch.tv CAP * ACK :twitch.tv/tags twitch.tv/commands",
-
-// 	// ":tmi.twitch.tv 001 justinfan48698855 :Welcome, GLHF!",
-// 	// ":tmi.twitch.tv 002 justinfan48698855 :Your host is tmi.twitch.tv",
-// 	// ":tmi.twitch.tv 003 justinfan48698855 :This server is rather new",
-// 	// ":tmi.twitch.tv 004 justinfan48698855 :-",
-// 	// ":tmi.twitch.tv 375 justinfan48698855 :-",
-// 	// ":tmi.twitch.tv 372 justinfan48698855 :You are in a maze of twisty passages, all alike.",
-// 	// ":tmi.twitch.tv 376 justinfan48698855 :>",
-
-// 	// ":justinfan48698855!justinfan48698855@justinfan48698855.tmi.twitch.tv JOIN #instafluff",
-//  	// ":justinfan48698855.tmi.twitch.tv 353 justinfan48698855 = #instafluff :justinfan48698855",
-// 	// ":justinfan48698855.tmi.twitch.tv 366 justinfan48698855 #instafluff :End of /NAMES list",
-// 	// "@emote-only=0;followers-only=-1;r9k=0;room-id=83118047;slow=0;subs-only=0 :tmi.twitch.tv ROOMSTATE #instafluff",
-
-// 	"@badge-info=subscriber/67;badges=broadcaster/1,subscriber/3012,game-developer/1;client-nonce=76552d943fb9395ca816a8efc0a7c6cd;color=#FFD166;display-name=Instafluff;emotes=;first-msg=0;flags=;id=1ce5970f-8e96-4643-a61e-71e46fa44a9e;mod=0;returning-chatter=0;room-id=83118047;subscriber=1;tmi-sent-ts=1677879699984;turbo=0;user-id=83118047;user-type= :instafluff!instafluff@instafluff.tmi.twitch.tv PRIVMSG #instafluff :test message; hello",
-// 	"@badge-info=;badges=moderator/1,premium/1;client-nonce=9f37ae4c357ba94d8354bc9bf07dfe0d;color=#0AFF00;display-name=BungalowGlow;emotes=;first-msg=0;flags=;id=5ce83ba6-e7db-4d89-a2a0-f9a731078ad5;mod=1;returning-chatter=0;room-id=83118047;subscriber=0;tmi-sent-ts=1677879698429;turbo=0;user-id=123975421;user-type=mod :bungalowglow!bungalowglow@bungalowglow.tmi.twitch.tv PRIVMSG #instafluff :^^^",
-// ];
-
-// for( const msg of exampleMessages ) {
-// 	console.log( "Parsing:", msg );
-// 	const result = parseMessage( msg );
-// 	console.log( result );
-// 	console.log( "\n\n" );
-// }
