@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 export default defineConfig( {
 	build: {
 		lib: {
-			entry: resolve( __dirname, "src/example.ts" ),
+			entry: resolve( __dirname, "src/comfy.ts" ),
 			name: "comfy.js",
 			formats: [ "cjs", "es" ],
 			fileName: "comfy",

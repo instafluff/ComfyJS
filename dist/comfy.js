@@ -21,7 +21,7 @@ var __privateMethod = (obj, member, method) => {
   __accessCheck(obj, member, "access private method");
   return method;
 };
-var _ws, _username, _password, _pingTimer, _pingTime, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _onMessage, onMessage_fn;
+var _ws, _username, _password, _pingTimer, _pingTime, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
 function extractComponent(message, index) {
   const nextSpace = message.indexOf(" ", index);
   const rawComponent = message.slice(index + 1, nextSpace);
@@ -31,7 +31,7 @@ function extractComponent(message, index) {
   };
 }
 function parseMessage(message) {
-  let parsedMessage = {
+  const parsedMessage = {
     raw: message,
     tags: {},
     source: null,
@@ -39,7 +39,7 @@ function parseMessage(message) {
     parameters: null
   };
   let index = 0;
-  if (message.charAt(0) === "@") {
+  if (message[0] === "@") {
     const { component, nextIndex } = extractComponent(message, 0);
     for (const tag of component.split(";")) {
       const parts = tag.split("=");
@@ -47,7 +47,7 @@ function parseMessage(message) {
     }
     index = nextIndex;
   }
-  if (message.charAt(index) === ":") {
+  if (message[index] === ":") {
     const { component, nextIndex } = extractComponent(message, index);
     parsedMessage.source = component;
     index = nextIndex;
@@ -63,7 +63,7 @@ function parseMessage(message) {
   }
   return parsedMessage;
 }
-const _WebSocket = global.WebSocket || require("ws");
+const _WebSocket = globalThis.WebSocket || require("ws");
 function createWebSocket(server, protocols) {
   return new _WebSocket(server, protocols);
 }
@@ -74,14 +74,28 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["Connect"] = "connect";
   TwitchEventType2["Reconnected"] = "reconnect";
   TwitchEventType2["Error"] = "error";
-  TwitchEventType2["ChatMode"] = "roomstate";
-  TwitchEventType2["Userstate"] = "userstate";
+  TwitchEventType2["Warning"] = "Warning";
+  TwitchEventType2["ChatMode"] = "chatmode";
+  TwitchEventType2["ClearChat"] = "ClearChat";
+  TwitchEventType2["RoomState"] = "roomstate";
+  TwitchEventType2["GlobalUserState"] = "globaluserstate";
+  TwitchEventType2["UserState"] = "userstate";
+  TwitchEventType2["Notice"] = "notice";
   TwitchEventType2["Join"] = "join";
-  TwitchEventType2["Part"] = "part";
+  TwitchEventType2["Leave"] = "leave";
   TwitchEventType2["Command"] = "command";
   TwitchEventType2["Chat"] = "message";
   TwitchEventType2["Reply"] = "reply";
   TwitchEventType2["Whisper"] = "whisper";
+  TwitchEventType2["Announcement"] = "announcement";
+  TwitchEventType2["Cheer"] = "Cheer";
+  TwitchEventType2["Subscribe"] = "sub";
+  TwitchEventType2["Resubscribe"] = "resub";
+  TwitchEventType2["SubGift"] = "subgift";
+  TwitchEventType2["AnonymousSubGift"] = "anonsubgift";
+  TwitchEventType2["MysterySubGift"] = "submysterygift";
+  TwitchEventType2["AnonymousMysterySubGift"] = "anonsubmysterygift";
+  TwitchEventType2["SubGiftContinue"] = "subgiftcontinue";
   TwitchEventType2["Raid"] = "raid";
   TwitchEventType2["Timeout"] = "Timeout";
   TwitchEventType2["Ban"] = "Ban";
@@ -89,69 +103,430 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["All"] = "all";
   return TwitchEventType2;
 })(TwitchEventType || {});
+const TwitchUserTypes = {
+  "": "Normal",
+  "admin": "Admin",
+  "global_mod": "Global Mod",
+  "staff": "Staff",
+  "mod": "Moderator"
+};
 function parseUsername(source) {
   const parts = source.split("!");
   return parts.length > 1 ? parts[0] : void 0;
 }
+function parseBadges(badgesTag) {
+  if (!badgesTag) {
+    return "";
+  }
+  const badgeList = badgesTag.split(",");
+  const badges = {};
+  for (const badge of badgeList) {
+    const [name, version] = badge.split("/");
+    badges[name] = version;
+  }
+  return badges;
+}
+function handleChatMessage(message, channel) {
+  var _a, _b;
+  const isAction = (_a = message.parameters) == null ? void 0 : _a.startsWith("ACTION");
+  const sanitizedMessage = isAction ? (_b = message.parameters) == null ? void 0 : _b.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : message.parameters;
+  const id = message.tags["id"];
+  const channelId = message.tags["room-id"];
+  const userId = message.tags["user-id"];
+  const username = parseUsername(message.source);
+  const displayName = message.tags["display-name"] || message.tags["login"] || username;
+  const userType = TwitchUserTypes[message.tags["user-type"]];
+  const badgeInfo = parseBadges(message.tags["badge-info"] || "");
+  const badges = parseBadges(message.tags["badges"] || "");
+  const userColor = message.tags["color"];
+  const emotes = message.tags["emotes"];
+  const isBroadcaster = username === channel;
+  const isMod = message.tags["mod"] === "1";
+  const isFounder = !!badges["founder"];
+  const isSubscriber = message.tags["subscriber"] === "1";
+  const isTurbo = message.tags["turbo"] === "1";
+  const isVIP = !!badges["vip"];
+  const isPrime = !!badges["premium"];
+  const isPartner = !!badges["partner"];
+  const isGameDeveloper = !!badges["game-developer"];
+  const timestamp = parseInt(message.tags["tmi-sent-ts"]);
+  const isEmoteOnly = message.tags["emote-only"] === "1";
+  const isHighlightedMessage = message.tags["msg-id"] === "highlighted-message";
+  const isSkipSubsModeMessage = message.tags["msg-id"] === "skip-subs-mode-message";
+  const customRewardId = message.tags["custom-reward-id"] || null;
+  const isFirstMessage = message.tags["first-msg"] === "1";
+  const isReturningChatter = message.tags["returning-chatter"] === "1";
+  const flags = {
+    broadcaster: isBroadcaster,
+    mod: isMod,
+    founder: isFounder,
+    subscriber: isSubscriber,
+    vip: isVIP,
+    partner: isPartner,
+    gameDeveloper: isGameDeveloper,
+    turbo: isTurbo,
+    prime: isPrime,
+    highlighted: isHighlightedMessage,
+    skipSubsMode: isSkipSubsModeMessage,
+    customReward: !!customRewardId,
+    emoteOnly: isEmoteOnly,
+    firstMessage: isFirstMessage,
+    returningChatter: isReturningChatter
+  };
+  if (message.tags["bits"]) {
+    return {
+      type: "Cheer",
+      data: {
+        channel,
+        channelId,
+        displayName,
+        username,
+        userId,
+        userType,
+        id,
+        message: message.parameters,
+        messageType: isAction ? "action" : "chat",
+        // TODO: Can bits be an action?
+        messageEmotes: emotes,
+        isEmoteOnly,
+        userColor,
+        userBadgeInfo: badgeInfo,
+        userBadges: badges,
+        customRewardId,
+        flags,
+        bits: parseInt(message.tags["bits"]),
+        timestamp,
+        extra: message.tags
+      }
+    };
+  } else {
+    if (sanitizedMessage == null ? void 0 : sanitizedMessage.startsWith("!")) {
+      const msgParts = sanitizedMessage.split(/ (.*)/);
+      const command = msgParts[0].substring(1).toLowerCase();
+      const msg = msgParts[1] || "";
+      return {
+        type: "command",
+        data: {
+          channel,
+          channelId,
+          displayName,
+          username,
+          userId,
+          userType,
+          command,
+          id,
+          message: msg,
+          messageType: isAction ? "action" : "chat",
+          messageEmotes: emotes,
+          isEmoteOnly,
+          userColor,
+          userBadgeInfo: badgeInfo,
+          userBadges: badges,
+          customRewardId,
+          flags,
+          timestamp,
+          extra: message.tags
+        }
+      };
+    } else {
+      return {
+        type: "message",
+        data: {
+          channel,
+          channelId,
+          displayName,
+          username,
+          userId,
+          userType,
+          id,
+          message: sanitizedMessage,
+          messageType: isAction ? "action" : "chat",
+          messageEmotes: emotes,
+          isEmoteOnly,
+          userColor,
+          userBadgeInfo: badgeInfo,
+          userBadges: badges,
+          customRewardId,
+          flags,
+          timestamp,
+          extra: message.tags
+        }
+      };
+    }
+  }
+}
 function processMessage(message) {
-  var _a;
+  var _a, _b, _c, _d, _e, _f;
   try {
     if (message.command) {
       const commandParts = message.command.split(" ");
+      const channel = commandParts.length > 1 ? commandParts[1].substring(1) : void 0;
       switch (commandParts[0]) {
         case "PING":
           return {
-            type: "Ping",
-            data: {
-              timestamp: Date.now()
-            }
+            type: "Ping"
+            /* Ping */
           };
         case "PONG":
           return {
-            type: "Pong",
-            data: {
-              timestamp: Date.now()
-            }
+            type: "Pong"
+            /* Pong */
           };
         case "CAP":
           return null;
         case "JOIN":
           return {
             type: "join",
-            data: {
-              channel: commandParts[1],
-              username: parseUsername(message.source)
-            }
+            data: { channel, username: parseUsername(message.source) }
           };
         case "PART":
+          return {
+            type: "leave",
+            data: { channel, username: parseUsername(message.source) }
+          };
+        case "ROOMSTATE":
+          return {
+            type: "roomstate",
+            data: {
+              // Only add the properties if they exist
+              ...message.tags["broadcaster-lang"] && { broadcasterLanguage: message.tags["broadcaster-lang"] },
+              ...message.tags["emote-only"] && { emoteOnly: message.tags["emote-only"] !== "0" },
+              ...message.tags["followers-only"] && { followersOnly: message.tags["followers-only"] !== "-1" },
+              ...message.tags["subs-only"] && { subscribersOnly: message.tags["subs-only"] !== "0" },
+              ...message.tags["r9k"] && { r9k: message.tags["r9k"] !== "0" },
+              ...message.tags["rituals"] && { rituals: message.tags["rituals"] !== "0" },
+              ...message.tags["slow"] && { slow: message.tags["slow"] !== "0" },
+              channel,
+              channelId: message.tags["room-id"]
+            }
+          };
+        case "GLOBALUSERSTATE":
+          return {
+            type: "globaluserstate",
+            data: {
+              displayName: message.tags["display-name"],
+              userId: message.tags["user-id"],
+              userType: TwitchUserTypes[message.tags["user-type"]],
+              color: message.tags["color"],
+              badges: message.tags["badges"],
+              badgeInfo: message.tags["badge-info"],
+              emoteSets: message.tags["emote-sets"],
+              extra: message.tags
+            }
+          };
+        case "USERSTATE":
+          return {
+            type: "userstate",
+            data: {
+              channel,
+              displayName: message.tags["display-name"],
+              userId: message.tags["user-id"],
+              userType: TwitchUserTypes[message.tags["user-type"]],
+              color: message.tags["color"],
+              badgeInfo: parseBadges(message.tags["badge-info"] || ""),
+              badges: parseBadges(message.tags["badges"] || ""),
+              emoteSets: message.tags["emote-sets"],
+              ...message.tags["id"] && { id: message.tags["id"] },
+              mod: message.tags["mod"] === "1",
+              subscriber: message.tags["subscriber"] === "1",
+              turbo: message.tags["turbo"] === "1",
+              extra: message.tags
+            }
+          };
         case "HOSTTARGET":
+          break;
         case "USERNOTICE":
-          console.log("TODO IMPLEMENT COMMAND", message);
+          switch (message.tags["msg-id"]) {
+            case "announcement":
+              return {
+                type: "announcement",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  message: message.parameters,
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "sub":
+              return {
+                type: "sub",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  months: parseInt(message.tags["msg-param-months"]),
+                  multiMonthDuration: parseInt(message.tags["msg-param-multimonth-duration"]),
+                  multiMonthTenure: parseInt(message.tags["msg-param-multimonth-tenure"]),
+                  shouldShareStreak: message.tags["msg-param-should-share-streak"] === "1",
+                  subPlan: message.tags["msg-param-sub-plan"],
+                  wasGifted: message.tags["msg-param-was-gifted"] === "true",
+                  ...message.tags["msg-param-goal-contribution-type"] && { goalContributionType: message.tags["msg-param-goal-contribution-type"] },
+                  ...message.tags["msg-param-goal-current-contributions"] && { goalCurrentContributions: parseInt(message.tags["msg-param-goal-current-contributions"]) },
+                  ...message.tags["msg-param-goal-description"] && { goalDescription: message.tags["msg-param-goal-description"] },
+                  ...message.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(message.tags["msg-param-goal-target-contributions"]) },
+                  ...message.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(message.tags["msg-param-goal-user-contributions"]) },
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "resub":
+              return {
+                type: "resub",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  cumulativeMonths: parseInt(message.tags["msg-param-cumulative-months"]),
+                  months: parseInt(message.tags["msg-param-months"]),
+                  multiMonthDuration: parseInt(message.tags["msg-param-multimonth-duration"]),
+                  multiMonthTenure: parseInt(message.tags["msg-param-multimonth-tenure"]),
+                  ...message.tags["msg-param-streak-months"] && { streakMonths: parseInt(message.tags["msg-param-streak-months"]) },
+                  shouldShareStreak: message.tags["msg-param-should-share-streak"] === "1",
+                  subPlan: message.tags["msg-param-sub-plan"],
+                  wasGifted: message.tags["msg-param-was-gifted"] === "true",
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "submysterygift":
+              return {
+                type: "submysterygift",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  giftCount: parseInt(message.tags["msg-param-mass-gift-count"]),
+                  senderCount: parseInt(message.tags["msg-param-sender-count"]),
+                  subPlan: message.tags["msg-param-sub-plan"],
+                  ...message.tags["msg-param-goal-contribution-type"] && { goalContributionType: message.tags["msg-param-goal-contribution-type"] },
+                  ...message.tags["msg-param-goal-current-contributions"] && { goalCurrentContributions: parseInt(message.tags["msg-param-goal-current-contributions"]) },
+                  ...message.tags["msg-param-goal-description"] && { goalDescription: message.tags["msg-param-goal-description"] },
+                  ...message.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(message.tags["msg-param-goal-target-contributions"]) },
+                  ...message.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(message.tags["msg-param-goal-user-contributions"]) },
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "subgift":
+              return {
+                type: "subgift",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  recipientDisplayName: message.tags["msg-param-recipient-display-name"],
+                  recipientId: message.tags["msg-param-recipient-id"],
+                  recipientUsername: message.tags["msg-param-recipient-user-name"],
+                  months: parseInt(message.tags["msg-param-months"]),
+                  giftMonths: parseInt(message.tags["msg-param-gift-months"]),
+                  subPlan: message.tags["msg-param-sub-plan"],
+                  ...message.tags["msg-param-goal-contribution-type"] && { goalContributionType: message.tags["msg-param-goal-contribution-type"] },
+                  ...message.tags["msg-param-goal-current-contributions"] && { goalCurrentContributions: parseInt(message.tags["msg-param-goal-current-contributions"]) },
+                  ...message.tags["msg-param-goal-description"] && { goalDescription: message.tags["msg-param-goal-description"] },
+                  ...message.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(message.tags["msg-param-goal-target-contributions"]) },
+                  ...message.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(message.tags["msg-param-goal-user-contributions"]) },
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "giftsubcontinue":
+              return {
+                type: "subgiftcontinue",
+                data: {
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  gifterDisplayName: message.tags["msg-param-sender-name"] || message.tags["msg-param-sender-login"],
+                  gifterUsername: message.tags["msg-param-sender-login"],
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "raid":
+              return {
+                type: "raid",
+                data: {
+                  profileImageURL: message.tags["msg-param-profileImageURL"],
+                  displayName: message.tags["msg-param-displayName"] || message.tags["display-name"] || message.tags["msg-param-login"] || message.tags["login"],
+                  viewers: parseInt(message.tags["msg-param-viewerCount"]),
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["msg-param-login"] || message.tags["login"],
+                  userId: message.tags["user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            default:
+              console.log("TODO IMPLEMENT COMMAND", message);
+              break;
+          }
           break;
         case "WHISPER":
           console.log(message);
-          console.log("Channel:", commandParts[1], message.parameters);
+          console.log("Channel:", channel, message.parameters);
           return {
             type: "whisper",
             data: {
-              ...message.tags,
-              channel: commandParts[1],
+              displayName: message.tags["display-name"] || message.tags["login"] || parseUsername(message.source),
               username: parseUsername(message.source),
-              message: message.parameters
+              userId: message.tags["user-id"],
+              userType: TwitchUserTypes[message.tags["user-type"]],
+              color: message.tags["color"],
+              badges: message.tags["badges"],
+              emotes: message.tags["emotes"],
+              turbo: message.tags["turbo"] === "1",
+              threadId: message.tags["thread-id"],
+              messageId: message.tags["message-id"],
+              message: message.parameters,
+              messageType: "whisper",
+              extra: message.tags
             }
           };
         case "NOTICE":
-          console.log("NOTICE!!!", message);
-          break;
+          if (((_a = message.parameters) == null ? void 0 : _a.includes("Login unsuccessful")) || ((_b = message.parameters) == null ? void 0 : _b.includes("Login authentication failed")) || ((_c = message.parameters) == null ? void 0 : _c.includes("Error logging in")) || ((_d = message.parameters) == null ? void 0 : _d.includes("Improperly formatted auth")) || ((_e = message.parameters) == null ? void 0 : _e.includes("Invalid NICK")) || ((_f = message.parameters) == null ? void 0 : _f.includes("Invalid CAP REQ"))) {
+            return {
+              type: "error",
+              data: {
+                channel,
+                message: message.parameters
+              }
+            };
+          }
+          return {
+            type: "notice",
+            data: {
+              channel,
+              msgId: message.tags["msg-id"],
+              message: message.parameters
+            }
+          };
         case "CLEARCHAT":
           if (message.tags["target-user-id"]) {
             if (message.tags["ban-duration"]) {
               return {
                 type: "Timeout",
                 data: {
-                  ...message.tags,
-                  channel: commandParts[1],
+                  channel,
+                  channelId: message.tags["room-id"],
+                  duration: parseInt(message.tags["ban-duration"]),
                   username: message.parameters,
+                  userId: message.tags["target-user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
               };
@@ -159,94 +534,44 @@ function processMessage(message) {
               return {
                 type: "Ban",
                 data: {
-                  ...message.tags,
-                  channel: commandParts[1],
+                  channel,
+                  channelId: message.tags["room-id"],
                   username: message.parameters,
+                  userId: message.tags["target-user-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
               };
             }
           } else {
+            return {
+              type: "ClearChat",
+              data: {
+                channel,
+                channelId: message.tags["room-id"],
+                timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                extra: message.tags
+              }
+            };
           }
           break;
         case "CLEARMSG":
           return {
             type: "MessageDeleted",
             data: {
-              ...message.tags,
-              channel: commandParts[1],
-              username: parseUsername(message.source),
+              channel,
+              channelId: message.tags["room-id"],
+              // Room ID seems to be empty for this event
+              displayName: message.tags["display-name"] || message.tags["login"],
+              username: message.tags["login"],
+              id: message.tags["target-msg-id"],
               message: message.parameters,
+              timestamp: parseInt(message.tags["tmi-sent-ts"]),
               extra: message.tags
             }
           };
         case "PRIVMSG":
-          if ((_a = message.parameters) == null ? void 0 : _a.startsWith("!")) {
-            const msgParts = message.parameters.split(/ (.*)/);
-            const command = msgParts[0].substring(1).toLowerCase();
-            const msg = msgParts[1] || "";
-            return {
-              type: "command",
-              data: {
-                channel: commandParts[1],
-                username: parseUsername(message.source),
-                command,
-                message: msg,
-                timestamp: parseInt(message.tags["tmientTs"]),
-                extra: message.tags
-              }
-            };
-          } else {
-            return {
-              type: "message",
-              data: {
-                channel: commandParts[1],
-                username: parseUsername(message.source),
-                message: message.parameters,
-                timestamp: parseInt(message.tags["tmi-sent-ts"]),
-                extra: message.tags
-              }
-            };
-          }
-        case "GLOBALUSERSTATE":
-          console.log("Global User State");
-          break;
-        case "USERSTATE":
-          switch (message.tags["msg-id"]) {
-            case "raid":
-              return {
-                type: "raid",
-                data: {
-                  profileImageURL: message.tags["msg-param-profileImageURL"],
-                  displayName: message.tags["msg-param-displayName"],
-                  viewers: parseInt(message.tags["msg-param-viewerCount"]),
-                  channel: commandParts[1],
-                  username: parseUsername(message.source),
-                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
-                  extra: message.tags
-                }
-              };
-            default:
-              return {
-                type: "userstate",
-                data: {
-                  ...message.tags,
-                  channel: commandParts[1],
-                  username: parseUsername(message.source),
-                  extra: message.tags
-                }
-              };
-          }
-        case "ROOMSTATE":
-          return {
-            type: "roomstate",
-            data: {
-              emoteOnly: message.tags["emote-only"] ? message.tags["emote-only"] !== "0" : false,
-              followersOnly: message.tags["followers-only"] ? message.tags["followers-only"] !== "-1" : false,
-              ...message.tags,
-              channel: commandParts[1]
-            }
-          };
+          return handleChatMessage(message, channel);
         case "RECONNECT":
           console.log("The Twitch IRC server is about to terminate the connection for maintenance.");
           break;
@@ -269,10 +594,7 @@ function processMessage(message) {
                 case 375:
                   return null;
                 case 376:
-                  return {
-                    type: "connect"
-                    /* Connect */
-                  };
+                  return { type: "connect", data: { username: commandParts[1] } };
                 default:
                   console.debug("Unsupported numeric command", commandNumber);
                   return null;
@@ -282,12 +604,12 @@ function processMessage(message) {
           break;
       }
     } else {
-      console.debug("Commandless IRC message:", message.raw);
+      console.debug("Unprocessed IRC message:", message.raw);
     }
   } catch (error) {
-    console.error("ERROR:", error);
+    console.error(error);
     return {
-      type: "error",
+      type: "Warning",
       data: error
     };
   }
@@ -297,14 +619,17 @@ function processMessage(message) {
 function requestCapabilities(ws) {
   ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
 }
-function authenticate(ws, username, password2) {
-  const ircUsername = password2 ? username : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`;
-  const ircPassword = password2 || `INSTAFLUFF`;
+function authenticate(ws, username, password) {
+  const ircUsername = password ? username : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`;
+  const ircPassword = password || `INSTAFLUFF`;
   ws.send(`PASS ${ircPassword}`);
   ws.send(`NICK ${ircUsername}`);
 }
-function joinChannel(ws, channel2) {
-  ws.send(`JOIN #${channel2}`);
+function joinChannel(ws, channel) {
+  ws.send(`JOIN #${channel}`);
+}
+function leaveChannel(ws, channel) {
+  ws.send(`PART #${channel}`);
 }
 function ping(ws) {
   ws.send(`PING`);
@@ -312,14 +637,14 @@ function ping(ws) {
 function pong(ws) {
   ws.send(`PONG`);
 }
-function sendChat(ws, channel2, message) {
-  ws.send(`PRIVMSG #${channel2} :${message}`);
+function sendChat(ws, channel, message) {
+  ws.send(`PRIVMSG #${channel} :${message}`);
 }
-function replyChat(ws, channel2, messageId, message) {
-  ws.send(`@reply-parent-msg-id=${messageId} PRIVMSG #${channel2} :${message}`);
+function replyChat(ws, channel, messageId, message) {
+  ws.send(`@reply-parent-msg-id=${messageId} PRIVMSG #${channel} :${message}`);
 }
 class TwitchChat {
-  constructor(username, password2, channels, isDebug) {
+  constructor(username, password, channels, isDebug) {
     __privateAdd(this, _mainChannel);
     __privateAdd(this, _isConnected);
     __privateAdd(this, _connect);
@@ -327,6 +652,7 @@ class TwitchChat {
     __privateAdd(this, _onError);
     __privateAdd(this, _onClose);
     __privateAdd(this, _ping);
+    __privateAdd(this, _handleSpecialEvents);
     __privateAdd(this, _onMessage);
     __privateAdd(this, _ws, void 0);
     __privateAdd(this, _username, void 0);
@@ -334,24 +660,10 @@ class TwitchChat {
     __privateAdd(this, _pingTimer, void 0);
     __privateAdd(this, _pingTime, void 0);
     __privateSet(this, _pingTime, 0);
-    this.handlers = {
-      [TwitchEventType.None]: void 0,
-      [TwitchEventType.Ping]: void 0,
-      [TwitchEventType.Connect]: void 0,
-      [TwitchEventType.Reconnected]: void 0,
-      [TwitchEventType.Error]: void 0,
-      [TwitchEventType.ChatMode]: void 0,
-      [TwitchEventType.Userstate]: void 0,
-      [TwitchEventType.Join]: void 0,
-      [TwitchEventType.Part]: void 0,
-      [TwitchEventType.Command]: void 0,
-      [TwitchEventType.Chat]: void 0,
-      [TwitchEventType.Whisper]: void 0,
-      [TwitchEventType.Raid]: void 0,
-      [TwitchEventType.All]: void 0
-    };
+    this.chatModes = {};
+    this.handlers = {};
     __privateSet(this, _username, username);
-    __privateSet(this, _password, password2);
+    __privateSet(this, _password, password);
     this.debug = !!isDebug;
     if (typeof channels === "string" || channels instanceof String) {
       channels = [channels];
@@ -365,25 +677,43 @@ class TwitchChat {
   on(eventType, handler) {
     this.handlers[eventType] = handler;
   }
-  say(message, channel2) {
+  say(message, channel) {
     if (!__privateGet(this, _ws)) {
       return;
     }
     if (!__privateGet(this, _isConnected, isConnected_get)) {
       return;
     }
-    sendChat(__privateGet(this, _ws), channel2 || __privateGet(this, _mainChannel, mainChannel_get), message);
+    sendChat(__privateGet(this, _ws), channel || __privateGet(this, _mainChannel, mainChannel_get), message);
   }
-  reply(messageId, message, channel2) {
+  reply(messageId, message, channel) {
     if (!__privateGet(this, _ws)) {
       return;
     }
     if (!__privateGet(this, _isConnected, isConnected_get)) {
       return;
     }
-    replyChat(__privateGet(this, _ws), channel2 || __privateGet(this, _mainChannel, mainChannel_get), messageId, message);
+    replyChat(__privateGet(this, _ws), channel || __privateGet(this, _mainChannel, mainChannel_get), messageId, message);
   }
-  deleteMessage(messageId, channel2) {
+  join(channel) {
+    if (!__privateGet(this, _ws)) {
+      return;
+    }
+    if (!__privateGet(this, _isConnected, isConnected_get)) {
+      return;
+    }
+    joinChannel(__privateGet(this, _ws), channel);
+  }
+  leave(channel) {
+    if (!__privateGet(this, _ws)) {
+      return;
+    }
+    if (!__privateGet(this, _isConnected, isConnected_get)) {
+      return;
+    }
+    leaveChannel(__privateGet(this, _ws), channel);
+  }
+  deleteMessage(messageId, channel) {
     if (!__privateGet(this, _ws)) {
       return;
     }
@@ -444,11 +774,11 @@ onOpen_fn = function() {
 };
 _onError = new WeakSet();
 onError_fn = function(event) {
-  console.log("ERROR", event);
+  console.error("ERROR", event);
 };
 _onClose = new WeakSet();
 onClose_fn = function(event) {
-  console.log("CLOSE", event);
+  console.info("CLOSE", event);
   if (__privateGet(this, _pingTimer)) {
     clearInterval(__privateGet(this, _pingTimer));
   }
@@ -464,6 +794,58 @@ ping_fn = function() {
   __privateSet(this, _pingTime, Date.now());
   ping(__privateGet(this, _ws));
 };
+_handleSpecialEvents = new WeakSet();
+handleSpecialEvents_fn = function(message) {
+  if (!__privateGet(this, _ws)) {
+    return;
+  }
+  if (!__privateGet(this, _isConnected, isConnected_get)) {
+    return;
+  }
+  switch (message.type) {
+    case TwitchEventType.Connect:
+      __privateSet(this, _username, message.data.username);
+      if (__privateGet(this, _pingTimer)) {
+        clearInterval(__privateGet(this, _pingTimer));
+      }
+      __privateSet(this, _pingTimer, setInterval(() => {
+        __privateMethod(this, _ping, ping_fn).call(this);
+      }, 6e4));
+      break;
+    case TwitchEventType.Ping:
+      pong(__privateGet(this, _ws));
+      break;
+    case TwitchEventType.Pong:
+      message.data = message.data || {};
+      message.data["latency"] = Date.now() - __privateGet(this, _pingTime);
+      break;
+    case TwitchEventType.RoomState:
+      this.chatModes[message.data.channel] = {
+        ...this.chatModes[message.data.channel],
+        ...message.data
+      };
+      if (this.handlers[TwitchEventType.ChatMode]) {
+        this.handlers[TwitchEventType.ChatMode](this.chatModes[message.data.channel]);
+      }
+      break;
+    case TwitchEventType.Error:
+      __privateGet(this, _ws).close();
+      break;
+    case TwitchEventType.Chat:
+      message.data.self = message.data.username === __privateGet(this, _username);
+      if (this.handlers[TwitchEventType.Reply] && message.data.extra["reply-parent-msg-id"]) {
+        this.handlers[TwitchEventType.Reply]({
+          ...message.data,
+          parentId: message.data.extra["reply-parent-msg-id"],
+          parentUserId: message.data.extra["reply-parent-user-id"],
+          parentUser: message.data.extra["reply-parent-user-login"],
+          parentMessage: message.data.extra["reply-parent-msg-body"],
+          parentDisplayName: message.data.extra["reply-parent-display-name"] || message.data.extra["reply-parent-user-login"]
+        });
+      }
+      break;
+  }
+};
 _onMessage = new WeakSet();
 onMessage_fn = function(event) {
   if (!__privateGet(this, _ws)) {
@@ -477,92 +859,90 @@ onMessage_fn = function(event) {
   for (const str of parts) {
     const message = processMessage(parseMessage(str));
     if (message && message.type !== TwitchEventType.None) {
-      if (message.type === TwitchEventType.Connect) {
-        if (__privateGet(this, _pingTimer)) {
-          clearInterval(__privateGet(this, _pingTimer));
-        }
-        __privateSet(this, _pingTimer, setInterval(() => {
-          __privateMethod(this, _ping, ping_fn).call(this);
-        }, 6e4));
-      }
-      if (message.type === TwitchEventType.Ping) {
-        pong(__privateGet(this, _ws));
-      }
-      if (message.type === TwitchEventType.Pong) {
-        message.data["latency"] = message.data.timestamp - __privateGet(this, _pingTime);
-      }
+      __privateMethod(this, _handleSpecialEvents, handleSpecialEvents_fn).call(this, message);
       if (this.handlers[message.type]) {
         this.handlers[message.type](message.data);
       }
-      if (message.type === TwitchEventType.Chat) {
-        if (this.handlers[TwitchEventType.Reply] && message.data.extra["reply-parent-msg-id"]) {
-          this.handlers[TwitchEventType.Reply]({
-            ...message.data,
-            parentId: message.data.extra["reply-parent-msg-id"],
-            parentUserId: message.data.extra["reply-parent-user-id"],
-            parentUser: message.data.extra["reply-parent-user-login"],
-            parentMessage: message.data.extra["reply-parent-msg-body"],
-            parentDisplayName: message.data.extra["reply-parent-display-name"]
-          });
-        }
-      }
       if (this.handlers[TwitchEventType.All]) {
-        this.handlers[TwitchEventType.All](message.data);
+        this.handlers[TwitchEventType.All]({
+          event: message.type,
+          ...message.data
+        });
       }
     }
   }
 };
-const secretPassword = "oauth:bmifibqgh2tcmvx7i5a41bgbks3pt5";
-const channel = "instafluff";
-const password = secretPassword;
-const comfyJs = new TwitchChat(channel, password);
-comfyJs.on(TwitchEventType.Connect, () => {
-  console.log("Connected to Twitch Chat!");
-});
-comfyJs.on(TwitchEventType.Error, (context) => {
-  console.error("ERROR:", context);
-});
-comfyJs.on(TwitchEventType.ChatMode, (context) => {
-  console.error("ChatMode:", context);
-});
-comfyJs.on(TwitchEventType.Command, (context) => {
-  console.log(`${context.channel} - ${context.username} used command !${context.command} ${context.message}`, context);
-  if (context.command === "reply") {
-    console.log(context);
-    comfyJs.reply(context.extra.id, "Hello!");
+let comfyInstance;
+function parseMessageEmotes(messageEmotes) {
+  if (messageEmotes) {
+    const emotes = messageEmotes.split("/");
+    const emoteMap = {};
+    for (const emote of emotes) {
+      const [id, positions] = emote.split(":");
+      emoteMap[id] = positions.split(",");
+    }
+    return emoteMap;
   }
-  if (context.command === "delete") {
-    console.log(context);
-    comfyJs.deleteMessage(context.extra.id);
+  return null;
+}
+function convertContextToUserState(context) {
+  const userState = {};
+  for (const key in context.extra) {
+    if (context.extra[key] === "") {
+      userState[key] = null;
+    } else if (context.extra[key] === "1") {
+      userState[key] = true;
+    } else if (context.extra[key] === "0") {
+      userState[key] = false;
+    } else {
+      userState[key] = context.extra[key];
+    }
   }
-});
-comfyJs.on(TwitchEventType.Chat, (context) => {
-  console.log(`${context.channel} - ${context.username} : ${context.message}`, context);
-});
-comfyJs.on(TwitchEventType.Chat, (context) => {
-  console.log(`${context.channel} - ${context.username} : ${context.message}`, context);
-});
-comfyJs.on(TwitchEventType.Whisper, (context) => {
-  console.log(`${context.channel} - ${context.username} : ${context.message}`);
-});
-comfyJs.on(TwitchEventType.Raid, (context) => {
-  console.log(`${context.channel} - ${context.username} has raided!`, context);
-});
-comfyJs.on(TwitchEventType.Reply, (context) => {
-  console.log(`${context.channel} - ${context.username} replied to ${context.parentDisplayName} : ${context.message}`, context);
-  setTimeout(() => {
-    comfyJs.reply(context.extra.id, "Yes, I am replying to your message");
-  }, 3e3);
-});
-comfyJs.on(TwitchEventType.Pong, (context) => {
-  console.log(`PONG: ${context.latency} ms`);
-});
-comfyJs.on(TwitchEventType.MessageDeleted, (context) => {
-  console.log(`Message Deleted in ${context.channel}`, context);
-});
-comfyJs.on(TwitchEventType.Ban, (context) => {
-  console.log(`User Banned in ${context.channel}`, context);
-});
-comfyJs.on(TwitchEventType.Timeout, (context) => {
-  console.log(`User Timed Out in ${context.channel}`, context);
-});
+  userState["badge-info-raw"] = userState["badge-info"];
+  userState["badge-info"] = context.userBadgeInfo || null;
+  userState["badges-raw"] = userState.badges;
+  userState.badges = context.userBadges || null;
+  userState["emotes-raw"] = userState.emotes;
+  userState.emotes = parseMessageEmotes(context.messageEmotes);
+  userState.username = context.username;
+  userState["message-type"] = context.messageType;
+  return userState;
+}
+const comfyJS = {
+  version: () => {
+    return "2.0.0";
+  },
+  onError: (error) => {
+    console.error("Error:", error);
+  },
+  onCommand: (user, command, message, flags, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onCommand default handler");
+    }
+  },
+  onChat: (user, message, flags, self, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onChat default handler");
+    }
+  },
+  onWhisper: (user, message, flags, self, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onWhisper default handler");
+    }
+  },
+  Init: (username, password, channels, isDebug) => {
+    comfyInstance = new TwitchChat(username, password, channels, isDebug);
+    comfyInstance.on(TwitchEventType.Command, (context) => {
+      comfyJS.onCommand(context.displayName || context.username, context.command, context.message, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.Chat, (context) => {
+      comfyJS.onChat(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+  }
+};
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = comfyJS;
+}
+if (typeof window !== "undefined") {
+  window.ComfyJSNew = comfyJS;
+}

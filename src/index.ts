@@ -130,6 +130,7 @@ export class TwitchChat {
 
 		switch( message.type ) {
 		case TwitchEventType.Connect:
+			this.#username = message.data.username;
 			// Setup the keep-alive ping timer
 			if( this.#pingTimer ) {
 				clearInterval( this.#pingTimer );
@@ -170,6 +171,8 @@ export class TwitchChat {
 			this.#ws.close();
 			break;
 		case TwitchEventType.Chat:
+			// Add the self flag to the messageData
+			message.data.self = message.data.username === this.#username;
 			// Check if there is a reply handler and this is a reply message
 			if( this.handlers[ TwitchEventType.Reply ] && message.data.extra[ "reply-parent-msg-id" ] ) {
 				this.handlers[ TwitchEventType.Reply ]!( {
@@ -193,6 +196,7 @@ export class TwitchChat {
 		for( const str of parts ) {
 			const message = processMessage( parseMessage( str ) );
 			if( message && message.type !== TwitchEventType.None ) {
+				// console.log( message );
 				// Handle special events
 				this.#handleSpecialEvents( message );
 

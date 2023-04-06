@@ -56,6 +56,7 @@ function parseUsername( source : string | null ) {
 }
 
 function parseBadges( badgesTag : string ) {
+	if( !badgesTag ) { return ""; }
 	const badgeList = badgesTag.split( "," );
 	const badges : { [ key : string ] : string } = {};
 	for( const badge of badgeList ) {
@@ -75,6 +76,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const username = parseUsername( message.source );
 	const displayName = message.tags[ "display-name" ] || message.tags[ "login" ] || username;
 	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
+	const badgeInfo = parseBadges( message.tags[ "badge-info" ] || "" );
 	const badges = parseBadges( message.tags[ "badges" ] || "" );
 	const userColor = message.tags[ "color" ];
 	const emotes = message.tags[ "emotes" ];
@@ -89,9 +91,10 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const isGameDeveloper = !!badges[ "game-developer" ];
 	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
 	
+	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
 	const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
 	const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
-	const customRewardId = message.tags[ "custom-reward-id" ];
+	const customRewardId = message.tags[ "custom-reward-id" ] || null;
 
 	// TODO: Look into the "first-msg" and "returning-chatter" tags
 	const isFirstMessage = message.tags[ "first-msg" ] === "1";
@@ -110,6 +113,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 		highlighted: isHighlightedMessage,
 		skipSubsMode: isSkipSubsModeMessage,
 		customReward: !!customRewardId,
+		emoteOnly: isEmoteOnly,
 		firstMessage: isFirstMessage,
 		returningChatter: isReturningChatter,
 	}
@@ -128,7 +132,9 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				message: message.parameters,
 				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
 				messageEmotes: emotes,
+				isEmoteOnly,
 				userColor,
+				userBadgeInfo: badgeInfo,
 				userBadges: badges,
 				customRewardId,
 				flags,
@@ -157,7 +163,9 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					message: msg,
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
+					isEmoteOnly,
 					userColor,
+					userBadgeInfo: badgeInfo,
 					userBadges: badges,
 					customRewardId,
 					flags,
@@ -180,7 +188,9 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					message: sanitizedMessage,
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
+					isEmoteOnly,
 					userColor,
+					userBadgeInfo: badgeInfo,
 					userBadges: badges,
 					customRewardId,
 					flags,
@@ -254,8 +264,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						userId: message.tags[ "user-id" ],
 						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
 						color: message.tags[ "color" ],
-						badges: message.tags[ "badges" ],
-						badgeInfo: message.tags[ "badge-info" ],
+						badgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
+						badges: parseBadges( message.tags[ "badges" ] || "" ),
 						emoteSets: message.tags[ "emote-sets" ],
 						...( message.tags[ "id" ] && { id: message.tags[ "id" ] } ),
 						mod: message.tags[ "mod" ] === "1",
@@ -538,7 +548,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						case 375: // Message Of The Day Start
 							return null;
 						case 376: // End of Message Of The Day
-							return { type: TwitchEventType.Connect };
+							return { type: TwitchEventType.Connect, data: { username: commandParts[ 1 ] } };
 						default:
 							console.debug( "Unsupported numeric command", commandNumber );
 							return null;

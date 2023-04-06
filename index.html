@@ -1,16 +1,67 @@
 <html>
     <head>
         <script src="dist/comfy.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
     </head>
     <body>
         Press F12 for Debug
         <script type="text/javascript">
-            ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-                if( flags.broadcaster && command === "test" ) {
-                    console.log( "!test was typed in chat" );
+            let obj1 = null, obj2 = null;
+
+            function compareObjects(o1, o2) {
+                if (typeof o1 !== typeof o2) {
+                    return false;
+                }
+                if (typeof o1 !== 'object' || o1 === null || o2 === null) {
+                    return o1 === o2;
+                }
+                const keys1 = Object.keys(o1);
+                const keys2 = Object.keys(o2);
+                // if (keys1.length !== keys2.length) {
+                //     return false;
+                // }
+                for (const key of keys1) {
+                    if( key === "timestamp" ) { continue; } // Ignore timestamp
+                    if (!keys2.includes(key) || !compareObjects(o1[key], o2[key])) {
+                        console.error( `Key ${key} is not equal. ${o1[ key ]} ${o2[ key ]}` );
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            function checkObjectSuperset() {
+                if( obj1 && obj2 ) {
+                    if( compareObjects( obj1, obj2 ) ) {
+                        console.log( "Objects are equal." );
+                    }
+                    else {
+                        console.log( "Objects are not equal." );
+                        console.log( obj1, obj2 );
+                    }
+                    obj1 = null; obj2 = null;
                 }
             }
-            ComfyJS.Init( "instafluff" );
+
+            ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+                obj1 = { user, command, message, flags, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onChat = ( user, message, flags, self, extra ) => {
+                obj1 = { user, message, flags, self, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.Init( "instafriend" );
+
+            ComfyJSNew.onCommand = ( user, command, message, flags, extra ) => {
+                obj2 = { user, command, message, flags, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onChat = ( user, message, flags, self, extra ) => {
+                obj2 = { user, message, flags, self, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.Init( "instafriend" );
         </script>
     </body>
 </html>
