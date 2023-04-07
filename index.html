@@ -6,6 +6,7 @@
     <body>
         Press F12 for Debug
         <script type="text/javascript">
+            const channel = "instafluff";
             let obj1 = null, obj2 = null;
 
             function compareObjects(o1, o2) {
@@ -113,7 +114,7 @@
                 obj1 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
             }
-            ComfyJS.Init( "instafluff" );
+            ComfyJS.Init( channel );
 
             ComfyJSNew.onCommand = ( user, command, message, flags, extra ) => {
                 obj2 = { user, command, message, flags, extra };
@@ -139,7 +140,7 @@
                 obj2 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
             }
-            ComfyJSNew.Init( "instafluff" );
+            ComfyJSNew.Init( channel );
         </script>
     </body>
 </html>

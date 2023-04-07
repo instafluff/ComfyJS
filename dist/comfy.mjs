@@ -401,6 +401,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  message: message.parameters,
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -422,6 +423,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  message: message.parameters,
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }

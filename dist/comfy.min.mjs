@@ -312,6 +312,7 @@ function Ot(t) {
                   channelId: t.tags["room-id"],
                   username: t.tags.login,
                   userId: t.tags["user-id"],
+                  message: t.parameters,
                   timestamp: parseInt(t.tags["tmi-sent-ts"]),
                   extra: t.tags
                 }
@@ -333,6 +334,7 @@ function Ot(t) {
                   channelId: t.tags["room-id"],
                   username: t.tags.login,
                   userId: t.tags["user-id"],
+                  message: t.parameters,
                   timestamp: parseInt(t.tags["tmi-sent-ts"]),
                   extra: t.tags
                 }
