@@ -8,6 +8,10 @@ export type ComfyJSInstance = {
 	onCommand: ( user : string, command : string, message : string, flags : any, extra : any ) => void;
 	onChat: ( user : string, message : string, flags : any, self : boolean, extra : any ) => void;
 	onWhisper: ( user : string, message : string, flags : any, self : boolean, extra : any ) => void;
+	onSub: ( user : string, message : string, subTierInfo : any, extra : any ) => void;
+	onResub: ( user : string, message : string, streamMonths : number, cumulativeMonths : number, subTierInfo : any, extra : any ) => void;
+	onSubGift: ( gifterUser : string, streakMonths : number, recipientUser : string, senderCount : number, subTierInfo : any, extra : any ) => void;
+	onSubMysteryGift: ( gifterUser : string, numbOfSubs : number, senderCount : number, subTierInfo : any, extra : any ) => void;
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => void;
 };
 
@@ -73,6 +77,26 @@ const comfyJS : ComfyJSInstance = {
 			console.debug( "onWhisper default handler" );
 		}
 	},
+	onSub: ( user : string, message : string, subTierInfo : any, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onSub default handler" );
+		}
+	},
+	onResub: ( user : string, message : string, streamMonths : number, cumulativeMonths : number, subTierInfo : any, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onResub default handler" );
+		}
+	},
+	onSubGift: ( gifterUser : string, streakMonths : number, recipientUser : string, senderCount : number, subTierInfo : any, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onSubGift default handler" );
+		}
+	},
+	onSubMysteryGift: ( gifterUser : string, numbOfSubs : number, senderCount : number, subTierInfo : any, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onSubMysteryGift default handler" );
+		}
+	},
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => {
 		comfyInstance = new TwitchChat( username, password, channels, isDebug );
 		comfyInstance.on( TwitchEventType.Command, ( context? : any ) => {
@@ -80,6 +104,18 @@ const comfyJS : ComfyJSInstance = {
 		} );
 		comfyInstance.on( TwitchEventType.Chat, ( context? : any ) => {
 			comfyJS.onChat( context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+		} );
+		comfyInstance.on( TwitchEventType.Subscribe, ( context? : any ) => {
+			comfyJS.onSub( context.displayName || context.username, context.message, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+		} );
+		comfyInstance.on( TwitchEventType.Resubscribe, ( context? : any ) => {
+			comfyJS.onResub( context.displayName || context.username, context.message, context.streamMonths, context.cumulativeMonths, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+		} );
+		comfyInstance.on( TwitchEventType.SubGift, ( context? : any ) => {
+			comfyJS.onSubGift( context.displayName || context.username, context.streakMonths, context.recipientUser, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+		} );
+		comfyInstance.on( TwitchEventType.MysterySubGift, ( context? : any ) => {
+			comfyJS.onSubMysteryGift( context.displayName || context.username, context.numbOfSubs, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 	},
 };

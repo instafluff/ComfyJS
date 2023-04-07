@@ -1,3 +1,5 @@
+import { unescapeIRC } from "./util";
+
 export type ParsedMessage = {
 	raw : string,
 	tags : { [ name : string ] : string },
@@ -48,7 +50,7 @@ export function parseMessage( message : string ) : ParsedMessage {
 		const { component, nextIndex } = extractComponent( message, 0 );
 		for( const tag of component.split( ";" ) ) {
 			const parts = tag.split( "=" );
-			parsedMessage.tags[ parts[ 0 ] ] = parts[ 1 ];
+			parsedMessage.tags[ parts[ 0 ] ] = unescapeIRC( parts[ 1 ] );
 		}
 		index = nextIndex; // Should now point to source colon (:).
 	}

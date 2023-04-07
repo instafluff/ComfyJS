@@ -80,6 +80,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const badges = parseBadges( message.tags[ "badges" ] || "" );
 	const userColor = message.tags[ "color" ];
 	const emotes = message.tags[ "emotes" ];
+	const messageFlags = parseBadges( message.tags[ "flags" ] );
 	const isBroadcaster = username === channel;
 	const isMod = message.tags[ "mod" ] === "1";
 	const isFounder = !!badges[ "founder" ];
@@ -132,6 +133,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				message: message.parameters,
 				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
 				messageEmotes: emotes,
+				messageFlags,
 				isEmoteOnly,
 				userColor,
 				userBadgeInfo: badgeInfo,
@@ -140,7 +142,10 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				flags,
 				bits: parseInt( message.tags[ "bits" ] ),
 				timestamp,
-				extra: message.tags,
+				extra: {
+					...message.tags,
+					flags: messageFlags,
+				},
 			},
 		};
 	}
@@ -163,6 +168,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					message: msg,
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
+					messageFlags,
 					isEmoteOnly,
 					userColor,
 					userBadgeInfo: badgeInfo,
@@ -170,7 +176,10 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					customRewardId,
 					flags,
 					timestamp,
-					extra: message.tags,
+					extra: {
+						...message.tags,
+						flags: messageFlags,
+					},
 				},
 			}
 		}
@@ -188,6 +197,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					message: sanitizedMessage,
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
+					messageFlags,
 					isEmoteOnly,
 					userColor,
 					userBadgeInfo: badgeInfo,
@@ -195,7 +205,10 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					customRewardId,
 					flags,
 					timestamp,
-					extra: message.tags,
+					extra: {
+						...message.tags,
+						flags: messageFlags,
+					},
 				},
 			};
 		}

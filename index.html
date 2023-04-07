@@ -44,14 +44,76 @@
             }
 
             ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+                // Address a flags bug in the old ComfyJS
+                flags = {
+                    ...flags,
+                    founder: !!flags.founder,
+                    subscriber: !!flags.subscriber,
+                };
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
                 obj1 = { user, command, message, flags, extra };
                 checkObjectSuperset();
             }
             ComfyJS.onChat = ( user, message, flags, self, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                flags = {
+                    ...flags,
+                    founder: !!flags.founder,
+                    subscriber: !!flags.subscriber,
+                };
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
                 obj1 = { user, message, flags, self, extra };
                 checkObjectSuperset();
             }
-            ComfyJS.Init( "instafriend" );
+            ComfyJS.onSub = ( user, message, subTierInfo, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
+                obj1 = { user, message, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onResub = ( user, message, streakMonths, cumulativeMonths, subTierInfo, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
+                obj1 = { user, message, streakMonths, cumulativeMonths, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onSubGift = ( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
+                obj1 = { gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onSubMysteryGift = ( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || "",
+                    userColor: extra.userColor || "",
+                };
+                obj1 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.Init( "instafluff" );
 
             ComfyJSNew.onCommand = ( user, command, message, flags, extra ) => {
                 obj2 = { user, command, message, flags, extra };
@@ -61,7 +123,23 @@
                 obj2 = { user, message, flags, self, extra };
                 checkObjectSuperset();
             }
-            ComfyJSNew.Init( "instafriend" );
+            ComfyJSNew.onSub = ( user, message, subTierInfo, extra ) => {
+                obj2 = { user, message, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onResub = ( user, message, streakMonths, cumulativeMonths, subTierInfo, extra ) => {
+                obj2 = { user, message, streakMonths, cumulativeMonths, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onSubGift = ( gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra ) => {
+                obj2 = { gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onSubMysteryGift = ( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) => {
+                obj2 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.Init( "instafluff" );
         </script>
     </body>
 </html>

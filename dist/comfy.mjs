@@ -21,6 +21,24 @@ var __privateMethod = (obj, member, method) => {
   return method;
 };
 var _ws, _username, _password, _pingTimer, _pingTime, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
+function unescapeIRC(text) {
+  return text.replace(/\\(.)/g, (_, char) => {
+    switch (char) {
+      case "\\":
+        return "\\";
+      case ":":
+        return ";";
+      case "s":
+        return " ";
+      case "r":
+        return "\r";
+      case "n":
+        return "\n";
+      default:
+        return char;
+    }
+  });
+}
 function extractComponent(message, index) {
   const nextSpace = message.indexOf(" ", index);
   const rawComponent = message.slice(index + 1, nextSpace);
@@ -42,7 +60,7 @@ function parseMessage(message) {
     const { component, nextIndex } = extractComponent(message, 0);
     for (const tag of component.split(";")) {
       const parts = tag.split("=");
-      parsedMessage.tags[parts[0]] = parts[1];
+      parsedMessage.tags[parts[0]] = unescapeIRC(parts[1]);
     }
     index = nextIndex;
   }
@@ -139,6 +157,7 @@ function handleChatMessage(message, channel) {
   const badges = parseBadges(message.tags["badges"] || "");
   const userColor = message.tags["color"];
   const emotes = message.tags["emotes"];
+  const messageFlags = parseBadges(message.tags["flags"]);
   const isBroadcaster = username === channel;
   const isMod = message.tags["mod"] === "1";
   const isFounder = !!badges["founder"];
@@ -187,6 +206,7 @@ function handleChatMessage(message, channel) {
         messageType: isAction ? "action" : "chat",
         // TODO: Can bits be an action?
         messageEmotes: emotes,
+        messageFlags,
         isEmoteOnly,
         userColor,
         userBadgeInfo: badgeInfo,
@@ -195,7 +215,10 @@ function handleChatMessage(message, channel) {
         flags,
         bits: parseInt(message.tags["bits"]),
         timestamp,
-        extra: message.tags
+        extra: {
+          ...message.tags,
+          flags: messageFlags
+        }
       }
     };
   } else {
@@ -217,6 +240,7 @@ function handleChatMessage(message, channel) {
           message: msg,
           messageType: isAction ? "action" : "chat",
           messageEmotes: emotes,
+          messageFlags,
           isEmoteOnly,
           userColor,
           userBadgeInfo: badgeInfo,
@@ -224,7 +248,10 @@ function handleChatMessage(message, channel) {
           customRewardId,
           flags,
           timestamp,
-          extra: message.tags
+          extra: {
+            ...message.tags,
+            flags: messageFlags
+          }
         }
       };
     } else {
@@ -241,6 +268,7 @@ function handleChatMessage(message, channel) {
           message: sanitizedMessage,
           messageType: isAction ? "action" : "chat",
           messageEmotes: emotes,
+          messageFlags,
           isEmoteOnly,
           userColor,
           userBadgeInfo: badgeInfo,
@@ -248,7 +276,10 @@ function handleChatMessage(message, channel) {
           customRewardId,
           flags,
           timestamp,
-          extra: message.tags
+          extra: {
+            ...message.tags,
+            flags: messageFlags
+          }
         }
       };
     }
@@ -929,6 +960,26 @@ const comfyJS = {
       console.debug("onWhisper default handler");
     }
   },
+  onSub: (user, message, subTierInfo, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onSub default handler");
+    }
+  },
+  onResub: (user, message, streamMonths, cumulativeMonths, subTierInfo, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onResub default handler");
+    }
+  },
+  onSubGift: (gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onSubGift default handler");
+    }
+  },
+  onSubMysteryGift: (gifterUser, numbOfSubs, senderCount, subTierInfo, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onSubMysteryGift default handler");
+    }
+  },
   Init: (username, password, channels, isDebug) => {
     comfyInstance = new TwitchChat(username, password, channels, isDebug);
     comfyInstance.on(TwitchEventType.Command, (context) => {
@@ -936,6 +987,18 @@ const comfyJS = {
     });
     comfyInstance.on(TwitchEventType.Chat, (context) => {
       comfyJS.onChat(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.Subscribe, (context) => {
+      comfyJS.onSub(context.displayName || context.username, context.message, context.subTierInfo, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
+      comfyJS.onResub(context.displayName || context.username, context.message, context.streamMonths, context.cumulativeMonths, context.subTierInfo, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.SubGift, (context) => {
+      comfyJS.onSubGift(context.displayName || context.username, context.streakMonths, context.recipientUser, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {
+      comfyJS.onSubMysteryGift(context.displayName || context.username, context.numbOfSubs, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
   }
 };
