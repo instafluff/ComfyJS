@@ -381,6 +381,7 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   message: message.parameters,
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -389,6 +390,7 @@ function processMessage(message) {
               return {
                 type: "sub",
                 data: {
+                  id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   months: parseInt(message.tags["msg-param-months"]),
                   multiMonthDuration: parseInt(message.tags["msg-param-multimonth-duration"]),
@@ -407,6 +409,7 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   message: message.parameters,
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -415,6 +418,7 @@ function processMessage(message) {
               return {
                 type: "resub",
                 data: {
+                  id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   cumulativeMonths: parseInt(message.tags["msg-param-cumulative-months"]),
                   months: parseInt(message.tags["msg-param-months"]),
@@ -430,6 +434,7 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   message: message.parameters,
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -438,6 +443,7 @@ function processMessage(message) {
               return {
                 type: "submysterygift",
                 data: {
+                  id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   giftCount: parseInt(message.tags["msg-param-mass-gift-count"]),
                   senderCount: parseInt(message.tags["msg-param-sender-count"]),
@@ -452,6 +458,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -460,6 +467,7 @@ function processMessage(message) {
               return {
                 type: "subgift",
                 data: {
+                  id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   recipientDisplayName: message.tags["msg-param-recipient-display-name"],
                   recipientId: message.tags["msg-param-recipient-id"],
@@ -477,6 +485,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -485,6 +494,7 @@ function processMessage(message) {
               return {
                 type: "subgiftcontinue",
                 data: {
+                  id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   gifterDisplayName: message.tags["msg-param-sender-name"] || message.tags["msg-param-sender-login"],
                   gifterUsername: message.tags["msg-param-sender-login"],
@@ -492,6 +502,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -500,6 +511,7 @@ function processMessage(message) {
               return {
                 type: "raid",
                 data: {
+                  id: message.tags["id"],
                   profileImageURL: message.tags["msg-param-profileImageURL"],
                   displayName: message.tags["msg-param-displayName"] || message.tags["display-name"] || message.tags["msg-param-login"] || message.tags["login"],
                   viewers: parseInt(message.tags["msg-param-viewerCount"]),
@@ -507,6 +519,7 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["msg-param-login"] || message.tags["login"],
                   userId: message.tags["user-id"],
+                  messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -594,7 +607,6 @@ function processMessage(message) {
               }
             };
           }
-          break;
         case "CLEARMSG":
           return {
             type: "MessageDeleted",
@@ -1017,9 +1029,11 @@ const comfyJS = {
       comfyJS.onCheer(context.displayName || context.username, context.message, context.bits, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Subscribe, (context) => {
+      console.log("SUB", context);
       comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
+      console.log("RESUB", context);
       comfyJS.onResub(context.displayName || context.username, context.message, context.months, context.cumulativeMonths, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.SubGift, (context) => {
