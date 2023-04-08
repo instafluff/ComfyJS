@@ -78,18 +78,18 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
 	const badgeInfo = parseBadges( message.tags[ "badge-info" ] || "" );
 	const badges = parseBadges( message.tags[ "badges" ] || "" );
-	const userColor = message.tags[ "color" ];
+	const userColor = message.tags[ "color" ] || undefined;
 	const emotes = message.tags[ "emotes" ];
-	const messageFlags = parseBadges( message.tags[ "flags" ] );
+	const messageFlags = message.tags[ "flags" ];
 	const isBroadcaster = username === channel;
 	const isMod = message.tags[ "mod" ] === "1";
-	const isFounder = badges![ "founder" ] === "1";
+	const isFounder = badges ? badges[ "founder" ] === "1" : false;
 	const isSubscriber = message.tags[ "subscriber" ] === "1";
 	const isTurbo = message.tags[ "turbo" ] === "1";
-	const isVIP = badges![ "vip" ] === "1";
-	const isPrime = badges![ "premium" ] === "1";
-	const isPartner = badges![ "partner" ] === "1";
-	const isGameDeveloper = badges![ "game-developer" ] === "1";
+	const isVIP = badges ? badges[ "vip" ] === "1" : false;
+	const isPrime = badges ? badges[ "premium" ] === "1" : false;
+	const isPartner = badges ? badges[ "partner" ] === "1" : false;
+	const isGameDeveloper = badges ? badges[ "game-developer" ] === "1" : false;
 	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
 	
 	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
@@ -135,6 +135,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				messageEmotes: emotes,
 				messageFlags,
 				isEmoteOnly,
+				subscriber: isSubscriber,
 				userColor,
 				userBadgeInfo: badgeInfo,
 				userBadges: badges,
@@ -315,6 +316,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							multiMonthTenure: parseInt( message.tags[ "msg-param-multimonth-tenure" ] ),
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							subPlanName: message.tags[ "msg-param-sub-plan-name" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
 							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
 							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
@@ -342,6 +344,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							...( message.tags[ "msg-param-streak-months" ] && { streakMonths: parseInt( message.tags[ "msg-param-streak-months" ] ) } ),
 							shouldShareStreak: message.tags[ "msg-param-should-share-streak" ] === "1",
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							subPlanName: message.tags[ "msg-param-sub-plan-name" ],
 							wasGifted: message.tags[ "msg-param-was-gifted" ] === "true",
 							channel,
 							channelId: message.tags[ "room-id" ],
@@ -360,6 +363,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							giftCount: parseInt( message.tags[ "msg-param-mass-gift-count" ] ),
 							senderCount: parseInt( message.tags[ "msg-param-sender-count" ] ),
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							subPlanName: message.tags[ "msg-param-sub-plan-name" ],
 							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
 							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
 							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),
@@ -384,6 +388,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							giftMonths: parseInt( message.tags[ "msg-param-gift-months" ] ),
 							subPlan: message.tags[ "msg-param-sub-plan" ],
+							subPlanName: message.tags[ "msg-param-sub-plan-name" ],
 							...( message.tags[ "msg-param-goal-contribution-type" ] && { goalContributionType: message.tags[ "msg-param-goal-contribution-type" ] } ),
 							...( message.tags[ "msg-param-goal-current-contributions" ] && { goalCurrentContributions: parseInt( message.tags[ "msg-param-goal-current-contributions" ] ) } ),
 							...( message.tags[ "msg-param-goal-description" ] && { goalDescription: message.tags[ "msg-param-goal-description" ] } ),

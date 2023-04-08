@@ -49,8 +49,10 @@ export function parseMessage( message : string ) : ParsedMessage {
 		// console.debug( "This message contains tags" );
 		const { component, nextIndex } = extractComponent( message, 0 );
 		for( const tag of component.split( ";" ) ) {
-			const parts = tag.split( "=" );
-			parsedMessage.tags[ parts[ 0 ] ] = unescapeIRC( parts[ 1 ] );
+			const tagSplitIndex = tag.indexOf( "=" );
+			const key = tag.substring( 0, tagSplitIndex );
+			const value = tag.substring( tagSplitIndex + 1 );
+			parsedMessage.tags[ key ] = unescapeIRC( value );
 		}
 		index = nextIndex; // Should now point to source colon (:).
 	}

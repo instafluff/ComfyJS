@@ -34,7 +34,7 @@
             function checkObjectSuperset() {
                 if( obj1 && obj2 ) {
                     if( compareObjects( obj1, obj2 ) ) {
-                        console.log( "Objects are equal." );
+                        // console.log( "Objects are equal." );
                     }
                     else {
                         console.log( "Objects are not equal." );
@@ -53,8 +53,8 @@
                 };
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { user, command, message, flags, extra };
                 checkObjectSuperset();
@@ -68,18 +68,33 @@
                 };
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { user, message, flags, self, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onCheer = ( user, message, bits, flags, extra ) => {
+                // Adjust for bugs in the old ComfyJS
+                flags = {
+                    ...flags,
+                    founder: !!flags.founder,
+                    subscriber: !!flags.subscriber,
+                };
+                extra = {
+                    ...extra,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
+                };
+                obj1 = { user, message, bits, flags, extra };
                 checkObjectSuperset();
             }
             ComfyJS.onSub = ( user, message, subTierInfo, extra ) => {
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { user, message, subTierInfo, extra };
                 checkObjectSuperset();
@@ -88,8 +103,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { user, message, streakMonths, cumulativeMonths, subTierInfo, extra };
                 checkObjectSuperset();
@@ -98,8 +113,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
@@ -108,8 +123,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || null,
-                    userColor: extra.userColor || null,
+                    userBadges: extra.userBadges || undefined,
+                    userColor: extra.userColor || undefined,
                 };
                 obj1 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
@@ -130,6 +145,10 @@
             }
             ComfyJSNew.onChat = ( user, message, flags, self, extra ) => {
                 obj2 = { user, message, flags, self, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onCheer = ( user, message, bits, flags, extra ) => {
+                obj2 = { user, message, bits, flags, extra };
                 checkObjectSuperset();
             }
             ComfyJSNew.onSub = ( user, message, subTierInfo, extra ) => {
