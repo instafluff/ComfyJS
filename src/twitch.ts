@@ -310,6 +310,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Subscribe,
 						data: {
+							id: message.tags[ "id" ],
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							months: parseInt( message.tags[ "msg-param-months" ] ),
 							multiMonthDuration: parseInt( message.tags[ "msg-param-multimonth-duration" ] ),
@@ -336,6 +337,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Resubscribe,
 						data: {
+							id: message.tags[ "id" ],
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							cumulativeMonths: parseInt( message.tags[ "msg-param-cumulative-months" ] ),
 							months: parseInt( message.tags[ "msg-param-months" ] ),
@@ -359,6 +361,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.MysterySubGift,
 						data: {
+							id: message.tags[ "id" ],
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							giftCount: parseInt( message.tags[ "msg-param-mass-gift-count" ] ),
 							senderCount: parseInt( message.tags[ "msg-param-sender-count" ] ),
@@ -381,6 +384,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.SubGift,
 						data: {
+							id: message.tags[ "id" ],
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							recipientDisplayName: message.tags[ "msg-param-recipient-display-name" ],
 							recipientId: message.tags[ "msg-param-recipient-id" ],
@@ -406,6 +410,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.SubGiftContinue,
 						data: {
+							id: message.tags[ "id" ],
 							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
 							gifterDisplayName: message.tags[ "msg-param-sender-name" ] || message.tags[ "msg-param-sender-login" ],
 							gifterUsername: message.tags[ "msg-param-sender-login" ],
@@ -421,6 +426,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					return {
 						type: TwitchEventType.Raid,
 						data: {
+							id: message.tags[ "id" ],
 							profileImageURL: message.tags[ "msg-param-profileImageURL" ],
 							displayName: message.tags[ "msg-param-displayName" ] || message.tags[ "display-name" ] || message.tags[ "msg-param-login" ] || message.tags[ "login" ],
 							viewers: parseInt( message.tags[ "msg-param-viewerCount" ] ),
@@ -523,7 +529,6 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						},
 					};
 				}
-				break;
 			case "CLEARMSG":
 				// Message Deleted
 				return {
