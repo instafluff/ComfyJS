@@ -114,6 +114,14 @@
                 obj1 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
             }
+            ComfyJS.onTimeout = ( user, duration, extra ) => {
+                obj1 = { user, duration, extra };
+                checkObjectSuperset();
+            }
+            ComfyJS.onBan = ( user, extra ) => {
+                obj1 = { user, extra };
+                checkObjectSuperset();
+            }
             ComfyJS.Init( channel );
 
             ComfyJSNew.onCommand = ( user, command, message, flags, extra ) => {
@@ -138,6 +146,14 @@
             }
             ComfyJSNew.onSubMysteryGift = ( gifterUser, numbOfSubs, senderCount, subTierInfo, extra ) => {
                 obj2 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onTimeout = ( user, duration, extra ) => {
+                obj2 = { user, duration, extra };
+                checkObjectSuperset();
+            }
+            ComfyJSNew.onBan = ( user, extra ) => {
+                obj2 = { user, extra };
                 checkObjectSuperset();
             }
             ComfyJSNew.Init( channel );

@@ -12,6 +12,8 @@ export type ComfyJSInstance = {
 	onResub: ( user : string, message : string, streamMonths : number, cumulativeMonths : number, subTierInfo : any, extra : any ) => void;
 	onSubGift: ( gifterUser : string, streakMonths : number, recipientUser : string, senderCount : number, subTierInfo : any, extra : any ) => void;
 	onSubMysteryGift: ( gifterUser : string, numbOfSubs : number, senderCount : number, subTierInfo : any, extra : any ) => void;
+	onTimeout: ( user : string, duration : number, extra : any ) => void;
+	onBan: ( user : string, extra : any ) => void;
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => void;
 };
 
@@ -97,6 +99,16 @@ const comfyJS : ComfyJSInstance = {
 			console.debug( "onSubMysteryGift default handler" );
 		}
 	},
+	onTimeout: ( user : string, duration : number, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onTimeout default handler" );
+		}
+	},
+	onBan: ( user : string, extra : any ) => {
+		if( comfyInstance && comfyInstance.debug ) {
+			console.debug( "onBan default handler" );
+		}
+	},
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => {
 		comfyInstance = new TwitchChat( username, password, channels, isDebug );
 		comfyInstance.on( TwitchEventType.Command, ( context? : any ) => {
@@ -109,13 +121,19 @@ const comfyJS : ComfyJSInstance = {
 			comfyJS.onSub( context.displayName || context.username, context.message, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 		comfyInstance.on( TwitchEventType.Resubscribe, ( context? : any ) => {
-			comfyJS.onResub( context.displayName || context.username, context.message, context.streamMonths, context.cumulativeMonths, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+			comfyJS.onResub( context.displayName || context.username, context.message, context.months, context.cumulativeMonths, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 		comfyInstance.on( TwitchEventType.SubGift, ( context? : any ) => {
 			comfyJS.onSubGift( context.displayName || context.username, context.streakMonths, context.recipientUser, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 		comfyInstance.on( TwitchEventType.MysterySubGift, ( context? : any ) => {
 			comfyJS.onSubMysteryGift( context.displayName || context.username, context.numbOfSubs, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
+		} );
+		comfyInstance.on( TwitchEventType.Timeout, ( context? : any ) => {
+			comfyJS.onTimeout( context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ), timedOutUserId: context.userId } );
+		} );
+		comfyInstance.on( TwitchEventType.Ban, ( context? : any ) => {
+			comfyJS.onBan( context.displayName || context.username, { ...context, userState: convertContextToUserState( context ), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ), bannedUserId: context.userId } );
 		} );
 	},
 };

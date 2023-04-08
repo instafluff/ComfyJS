@@ -982,6 +982,16 @@ const comfyJS = {
       console.debug("onSubMysteryGift default handler");
     }
   },
+  onTimeout: (user, duration, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onTimeout default handler");
+    }
+  },
+  onBan: (user, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onBan default handler");
+    }
+  },
   Init: (username, password, channels, isDebug) => {
     comfyInstance = new TwitchChat(username, password, channels, isDebug);
     comfyInstance.on(TwitchEventType.Command, (context) => {
@@ -1001,6 +1011,12 @@ const comfyJS = {
     });
     comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {
       comfyJS.onSubMysteryGift(context.displayName || context.username, context.numbOfSubs, context.senderCount, context.subTierInfo, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.Timeout, (context) => {
+      comfyJS.onTimeout(context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), timedOutUserId: context.userId });
+    });
+    comfyInstance.on(TwitchEventType.Ban, (context) => {
+      comfyJS.onBan(context.displayName || context.username, { ...context, userState: convertContextToUserState(context), extra: null, flags: null, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), bannedUserId: context.userId });
     });
   }
 };
