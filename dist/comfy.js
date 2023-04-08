@@ -114,7 +114,6 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["SubGift"] = "subgift";
   TwitchEventType2["AnonymousSubGift"] = "anonsubgift";
   TwitchEventType2["MysterySubGift"] = "submysterygift";
-  TwitchEventType2["AnonymousMysterySubGift"] = "anonsubmysterygift";
   TwitchEventType2["SubGiftContinue"] = "subgiftcontinue";
   TwitchEventType2["Raid"] = "raid";
   TwitchEventType2["Timeout"] = "Timeout";
@@ -382,6 +381,7 @@ function processMessage(message) {
                   userId: message.tags["user-id"],
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
+                  messageEmotes: message.tags["emotes"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -408,8 +408,12 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
+                  messageEmotes: message.tags["emotes"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -433,8 +437,12 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
+                  messageEmotes: message.tags["emotes"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -446,7 +454,7 @@ function processMessage(message) {
                   id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
                   giftCount: parseInt(message.tags["msg-param-mass-gift-count"]),
-                  senderCount: parseInt(message.tags["msg-param-sender-count"]),
+                  senderCount: parseInt(message.tags["msg-param-sender-count"] || "0"),
                   subPlan: message.tags["msg-param-sub-plan"],
                   subPlanName: message.tags["msg-param-sub-plan-name"],
                   ...message.tags["msg-param-goal-contribution-type"] && { goalContributionType: message.tags["msg-param-goal-contribution-type"] },
@@ -458,6 +466,9 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
@@ -474,6 +485,8 @@ function processMessage(message) {
                   recipientUsername: message.tags["msg-param-recipient-user-name"],
                   months: parseInt(message.tags["msg-param-months"]),
                   giftMonths: parseInt(message.tags["msg-param-gift-months"]),
+                  senderCount: parseInt(message.tags["msg-param-sender-count"] || "0"),
+                  // How many all-time total gift subs sender has sent the channel
                   subPlan: message.tags["msg-param-sub-plan"],
                   subPlanName: message.tags["msg-param-sub-plan-name"],
                   ...message.tags["msg-param-goal-contribution-type"] && { goalContributionType: message.tags["msg-param-goal-contribution-type"] },
@@ -485,6 +498,9 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
@@ -502,6 +518,9 @@ function processMessage(message) {
                   channelId: message.tags["room-id"],
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
@@ -1007,6 +1026,11 @@ const comfyJS = {
       console.debug("onSubMysteryGift default handler");
     }
   },
+  onGiftSubContinue: (user, sender, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onGiftSubContinue default handler");
+    }
+  },
   onTimeout: (user, duration, extra) => {
     if (comfyInstance && comfyInstance.debug) {
       console.debug("onTimeout default handler");
@@ -1035,17 +1059,22 @@ const comfyJS = {
     });
     comfyInstance.on(TwitchEventType.Subscribe, (context) => {
       console.log("SUB", context);
-      comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
       console.log("RESUB", context);
-      comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths, context.cumulativeMonths, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.SubGift, (context) => {
-      comfyJS.onSubGift(context.displayName || context.username, context.streakMonths, context.recipientUser, context.senderCount, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      console.log("SUBGIFT");
+      comfyJS.onSubGift(context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {
-      comfyJS.onSubMysteryGift(context.displayName || context.username, context.giftCount, context.senderCount, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      comfyJS.onSubMysteryGift(context.displayName || context.username, context.giftCount, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), userMassGiftCount: context.giftCount });
+    });
+    comfyInstance.on(TwitchEventType.SubGiftContinue, (context) => {
+      console.log("SUBGIFTCONTINUE");
+      comfyJS.onGiftSubContinue(context.displayName || context.username, context.gifterDisplayName, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Timeout, (context) => {
       comfyJS.onTimeout(context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), timedOutUserId: context.userId });
