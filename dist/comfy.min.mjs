@@ -81,7 +81,7 @@ function G(t) {
 }
 function U(t) {
   if (!t)
-    return "";
+    return;
   const a = t.split(","), n = {};
   for (const e of a) {
     const [r, d] = e.split("/");
@@ -91,7 +91,7 @@ function U(t) {
 }
 function Ot(t, a) {
   var X, Y;
-  const n = (X = t.parameters) == null ? void 0 : X.startsWith("ACTION"), e = n ? (Y = t.parameters) == null ? void 0 : Y.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : t.parameters, r = t.tags.id, d = t.tags["room-id"], b = t.tags["user-id"], p = G(t.source), u = t.tags["display-name"] || t.tags.login || p, I = B[t.tags["user-type"]], J = U(t.tags["badge-info"] || ""), y = U(t.tags.badges || ""), H = t.tags.color, _ = t.tags.emotes, O = U(t.tags.flags), ot = p === a, it = t.tags.mod === "1", ut = !!y.founder, lt = t.tags.subscriber === "1", dt = t.tags.turbo === "1", gt = !!y.vip, pt = !!y.premium, ct = !!y.partner, mt = !!y["game-developer"], q = parseInt(t.tags["tmi-sent-ts"]), E = t.tags["emote-only"] === "1", ft = t.tags["msg-id"] === "highlighted-message", bt = t.tags["msg-id"] === "skip-subs-mode-message", w = t.tags["custom-reward-id"] || null, ht = t.tags["first-msg"] === "1", It = t.tags["returning-chatter"] === "1", K = {
+  const n = (X = t.parameters) == null ? void 0 : X.startsWith("ACTION"), e = n ? (Y = t.parameters) == null ? void 0 : Y.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : t.parameters, r = t.tags.id, d = t.tags["room-id"], b = t.tags["user-id"], p = G(t.source), u = t.tags["display-name"] || t.tags.login || p, I = B[t.tags["user-type"]], J = U(t.tags["badge-info"] || ""), y = U(t.tags.badges || ""), H = t.tags.color, _ = t.tags.emotes, O = U(t.tags.flags), ot = p === a, it = t.tags.mod === "1", ut = y.founder === "1", lt = t.tags.subscriber === "1", dt = t.tags.turbo === "1", gt = y.vip === "1", pt = y.premium === "1", ct = y.partner === "1", mt = y["game-developer"] === "1", q = parseInt(t.tags["tmi-sent-ts"]), E = t.tags["emote-only"] === "1", ft = t.tags["msg-id"] === "highlighted-message", bt = t.tags["msg-id"] === "skip-subs-mode-message", w = t.tags["custom-reward-id"] || null, ht = t.tags["first-msg"] === "1", It = t.tags["returning-chatter"] === "1", K = {
     broadcaster: ot,
     mod: it,
     founder: ut,
@@ -134,7 +134,7 @@ function Ot(t, a) {
         timestamp: q,
         extra: {
           ...t.tags,
-          flags: O
+          flags: O || null
         }
       }
     };
@@ -164,7 +164,7 @@ function Ot(t, a) {
         timestamp: q,
         extra: {
           ...t.tags,
-          flags: O
+          flags: O || null
         }
       }
     };
@@ -192,7 +192,7 @@ function Ot(t, a) {
         timestamp: q,
         extra: {
           ...t.tags,
-          flags: O
+          flags: O || null
         }
       }
     };
@@ -563,7 +563,7 @@ function wt(t, a, n) {
 function Bt(t, a, n, e) {
   t.send(`@reply-parent-msg-id=${n} PRIVMSG #${a} :${e}`);
 }
-var o, R, A, N, P, k, D, c, m, L, x, W, tt, $, at, F, rt, V, nt, j, st, v, et;
+var o, R, A, N, P, k, D, c, m, L, x, W, tt, $, at, v, rt, F, nt, V, st, j, et;
 class Dt {
   constructor(a, n, e, r) {
     g(this, k);
@@ -571,10 +571,10 @@ class Dt {
     g(this, L);
     g(this, W);
     g(this, $);
+    g(this, v);
     g(this, F);
     g(this, V);
     g(this, j);
-    g(this, v);
     g(this, o, void 0);
     g(this, R, void 0);
     g(this, A, void 0);
@@ -617,26 +617,26 @@ o = new WeakMap(), R = new WeakMap(), A = new WeakMap(), N = new WeakMap(), P = 
   C(this, o, Rt("wss://irc-ws.chat.twitch.tv:443", "irc")), s(this, o).onopen = () => {
     S(this, W, tt).call(this);
   }, s(this, o).onmessage = (n) => {
-    S(this, v, et).call(this, n);
+    S(this, j, et).call(this, n);
   }, s(this, o).onerror = (n) => {
     S(this, $, at).call(this, n);
   }, s(this, o).onclose = (n) => {
-    S(this, F, rt).call(this, n);
+    S(this, v, rt).call(this, n);
   };
 }, W = new WeakSet(), tt = function() {
   s(this, o) && s(this, c, m) && (kt(s(this, o)), Gt(s(this, o), s(this, R), s(this, A)), T(s(this, o), s(this, k, D)));
 }, $ = new WeakSet(), at = function(a) {
   console.error("ERROR", a);
-}, F = new WeakSet(), rt = function(a) {
+}, v = new WeakSet(), rt = function(a) {
   console.info("CLOSE", a), s(this, N) && clearInterval(s(this, N));
-}, V = new WeakSet(), nt = function() {
+}, F = new WeakSet(), nt = function() {
   s(this, o) && s(this, c, m) && (C(this, P, Date.now()), At(s(this, o)));
-}, j = new WeakSet(), st = function(a) {
+}, V = new WeakSet(), st = function(a) {
   if (s(this, o) && s(this, c, m))
     switch (a.type) {
       case l.Connect:
         C(this, R, a.data.username), s(this, N) && clearInterval(s(this, N)), C(this, N, setInterval(() => {
-          S(this, V, nt).call(this);
+          S(this, F, nt).call(this);
         }, 6e4));
         break;
       case l.Ping:
@@ -665,14 +665,14 @@ o = new WeakMap(), R = new WeakMap(), A = new WeakMap(), N = new WeakMap(), P = 
         });
         break;
     }
-}, v = new WeakSet(), et = function(a) {
+}, j = new WeakSet(), et = function(a) {
   if (!s(this, o) || !s(this, c, m))
     return;
   const n = a.data.trim().split(`\r
 `);
   for (const e of n) {
     const r = Pt(Mt(e));
-    r && r.type !== l.None && (S(this, j, st).call(this, r), this.handlers[r.type] && this.handlers[r.type](r.data), this.handlers[l.All] && this.handlers[l.All]({
+    r && r.type !== l.None && (S(this, V, st).call(this, r), this.handlers[r.type] && this.handlers[r.type](r.data), this.handlers[l.All] && this.handlers[l.All]({
       event: r.type,
       ...r.data
     }));
@@ -736,7 +736,7 @@ const f = {
     }), i.on(l.Subscribe, (r) => {
       f.onSub(r.displayName || r.username, r.message, r.subTierInfo, { ...r, userState: M(r), extra: null, flags: null, roomId: r.channelId, messageEmotes: h(r.messageEmotes) });
     }), i.on(l.Resubscribe, (r) => {
-      f.onResub(r.displayName || r.username, r.message, r.streamMonths, r.cumulativeMonths, r.subTierInfo, { ...r, userState: M(r), extra: null, flags: null, roomId: r.channelId, messageEmotes: h(r.messageEmotes) });
+      f.onResub(r.displayName || r.username, r.message, r.months, r.cumulativeMonths, r.subTierInfo, { ...r, userState: M(r), extra: null, flags: null, roomId: r.channelId, messageEmotes: h(r.messageEmotes) });
     }), i.on(l.SubGift, (r) => {
       f.onSubGift(r.displayName || r.username, r.streakMonths, r.recipientUser, r.senderCount, r.subTierInfo, { ...r, userState: M(r), extra: null, flags: null, roomId: r.channelId, messageEmotes: h(r.messageEmotes) });
     }), i.on(l.MysterySubGift, (r) => {

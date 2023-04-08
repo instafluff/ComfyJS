@@ -55,8 +55,8 @@ function parseUsername( source : string | null ) {
 	return parts.length > 1 ? parts[ 0 ] : undefined;
 }
 
-function parseBadges( badgesTag : string ) {
-	if( !badgesTag ) { return ""; }
+function parseBadges( badgesTag : string ) : { [ key : string ] : string } | undefined {
+	if( !badgesTag ) { return undefined; }
 	const badgeList = badgesTag.split( "," );
 	const badges : { [ key : string ] : string } = {};
 	for( const badge of badgeList ) {
@@ -83,13 +83,13 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const messageFlags = parseBadges( message.tags[ "flags" ] );
 	const isBroadcaster = username === channel;
 	const isMod = message.tags[ "mod" ] === "1";
-	const isFounder = !!badges[ "founder" ];
+	const isFounder = badges![ "founder" ] === "1";
 	const isSubscriber = message.tags[ "subscriber" ] === "1";
 	const isTurbo = message.tags[ "turbo" ] === "1";
-	const isVIP = !!badges[ "vip" ];
-	const isPrime = !!badges[ "premium" ];
-	const isPartner = !!badges[ "partner" ];
-	const isGameDeveloper = !!badges[ "game-developer" ];
+	const isVIP = badges![ "vip" ] === "1";
+	const isPrime = badges![ "premium" ] === "1";
+	const isPartner = badges![ "partner" ] === "1";
+	const isGameDeveloper = badges![ "game-developer" ] === "1";
 	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
 	
 	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
@@ -144,7 +144,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				timestamp,
 				extra: {
 					...message.tags,
-					flags: messageFlags,
+					flags: messageFlags || null,
 				},
 			},
 		};
@@ -178,7 +178,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					timestamp,
 					extra: {
 						...message.tags,
-						flags: messageFlags,
+						flags: messageFlags || null,
 					},
 				},
 			}
@@ -207,7 +207,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					timestamp,
 					extra: {
 						...message.tags,
-						flags: messageFlags,
+						flags: messageFlags || null,
 					},
 				},
 			};

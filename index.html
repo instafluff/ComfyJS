@@ -6,7 +6,7 @@
     <body>
         Press F12 for Debug
         <script type="text/javascript">
-            const channel = "instafluff";
+            const channel = "instafriend";
             let obj1 = null, obj2 = null;
 
             function compareObjects(o1, o2) {
@@ -53,8 +53,8 @@
                 };
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { user, command, message, flags, extra };
                 checkObjectSuperset();
@@ -68,8 +68,8 @@
                 };
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { user, message, flags, self, extra };
                 checkObjectSuperset();
@@ -78,8 +78,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { user, message, subTierInfo, extra };
                 checkObjectSuperset();
@@ -88,8 +88,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { user, message, streakMonths, cumulativeMonths, subTierInfo, extra };
                 checkObjectSuperset();
@@ -98,8 +98,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
@@ -108,8 +108,8 @@
                 // Adjust for bugs in the old ComfyJS
                 extra = {
                     ...extra,
-                    userBadges: extra.userBadges || "",
-                    userColor: extra.userColor || "",
+                    userBadges: extra.userBadges || null,
+                    userColor: extra.userColor || null,
                 };
                 obj1 = { gifterUser, numbOfSubs, senderCount, subTierInfo, extra };
                 checkObjectSuperset();
