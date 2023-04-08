@@ -162,13 +162,13 @@ function handleChatMessage(message, channel) {
   const messageFlags = message.tags["flags"];
   const isBroadcaster = username === channel;
   const isMod = message.tags["mod"] === "1";
-  const isFounder = badges ? badges["founder"] === "1" : false;
+  const isFounder = badges ? !!badges["founder"] : false;
   const isSubscriber = message.tags["subscriber"] === "1";
   const isTurbo = message.tags["turbo"] === "1";
-  const isVIP = badges ? badges["vip"] === "1" : false;
-  const isPrime = badges ? badges["premium"] === "1" : false;
-  const isPartner = badges ? badges["partner"] === "1" : false;
-  const isGameDeveloper = badges ? badges["game-developer"] === "1" : false;
+  const isVIP = badges ? !!badges["vip"] : false;
+  const isPrime = badges ? !!badges["premium"] : false;
+  const isPartner = badges ? !!["partner"] : false;
+  const isGameDeveloper = badges ? !!badges["game-developer"] : false;
   const timestamp = parseInt(message.tags["tmi-sent-ts"]);
   const isEmoteOnly = message.tags["emote-only"] === "1";
   const isHighlightedMessage = message.tags["msg-id"] === "highlighted-message";
@@ -1016,6 +1016,11 @@ const comfyJS = {
       console.debug("onBan default handler");
     }
   },
+  onRaid: (user, viewers, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onRaid default handler");
+    }
+  },
   Init: (username, password, channels, isDebug) => {
     comfyInstance = new TwitchChat(username, password, channels, isDebug);
     comfyInstance.on(TwitchEventType.Command, (context) => {
@@ -1033,7 +1038,7 @@ const comfyJS = {
     });
     comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
       console.log("RESUB", context);
-      comfyJS.onResub(context.displayName || context.username, context.message, context.months, context.cumulativeMonths, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths, context.cumulativeMonths, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.SubGift, (context) => {
       comfyJS.onSubGift(context.displayName || context.username, context.streakMonths, context.recipientUser, context.senderCount, { prime: context.subPlan === "prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
@@ -1046,6 +1051,9 @@ const comfyJS = {
     });
     comfyInstance.on(TwitchEventType.Ban, (context) => {
       comfyJS.onBan(context.displayName || context.username, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), bannedUserId: context.userId });
+    });
+    comfyInstance.on(TwitchEventType.Raid, (context) => {
+      comfyJS.onRaid(context.displayName || context.username, context.viewers, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
   }
 };

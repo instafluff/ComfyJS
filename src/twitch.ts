@@ -83,13 +83,13 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const messageFlags = message.tags[ "flags" ];
 	const isBroadcaster = username === channel;
 	const isMod = message.tags[ "mod" ] === "1";
-	const isFounder = badges ? badges[ "founder" ] === "1" : false;
+	const isFounder = badges ? !!badges[ "founder" ] : false;
 	const isSubscriber = message.tags[ "subscriber" ] === "1";
 	const isTurbo = message.tags[ "turbo" ] === "1";
-	const isVIP = badges ? badges[ "vip" ] === "1" : false;
-	const isPrime = badges ? badges[ "premium" ] === "1" : false;
-	const isPartner = badges ? badges[ "partner" ] === "1" : false;
-	const isGameDeveloper = badges ? badges[ "game-developer" ] === "1" : false;
+	const isVIP = badges ? !!badges[ "vip" ] : false;
+	const isPrime = badges ? !!badges[ "premium" ] : false;
+	const isPartner = badges ? !![ "partner" ] : false;
+	const isGameDeveloper = badges ? !!badges[ "game-developer" ] : false;
 	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
 	
 	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
