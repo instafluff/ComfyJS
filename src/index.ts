@@ -19,6 +19,7 @@ export class TwitchChat {
 	#pingTimer : ReturnType<typeof setInterval> | undefined;
 	#pingTime : number = 0;
 	debug : boolean;
+	reconnects : number = 0;
 	channels : string[];
 	chatModes : { [ channel : string ] : TwitchChatMode } = {};
 	handlers : Partial<{ [ key in TwitchEventType ] : TwitchChatHandler | undefined }> = {};
@@ -138,6 +139,11 @@ export class TwitchChat {
 			this.#pingTimer = setInterval( () => {
 				this.#ping();
 			}, 60000 );
+			// Get the base hostname from the url
+			const hostUrl = new URL( this.#ws.url );
+			message.data[ "address" ] = hostUrl.host;
+			message.data[ "port" ] = hostUrl.protocol === "wss:" ? 443 : 80;
+			message.data[ "isFirstConnect" ] = this.reconnects === 0;
 			break;
 		case TwitchEventType.Ping:
 			pong( this.#ws );
@@ -169,6 +175,10 @@ export class TwitchChat {
 		// 	break;
 		case TwitchEventType.Error:
 			this.#ws.close();
+			break;
+		case TwitchEventType.Whisper:
+			// Add the self flag to the messageData
+			message.data.self = message.data.username === this.#username;
 			break;
 		case TwitchEventType.Chat:
 			// Add the self flag to the messageData
