@@ -111,7 +111,6 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["Subscribe"] = "sub";
   TwitchEventType2["Resubscribe"] = "resub";
   TwitchEventType2["SubGift"] = "subgift";
-  TwitchEventType2["AnonymousSubGift"] = "anonsubgift";
   TwitchEventType2["MysterySubGift"] = "submysterygift";
   TwitchEventType2["SubGiftContinue"] = "subgiftcontinue";
   TwitchEventType2["Raid"] = "raid";
@@ -544,6 +543,26 @@ function processMessage(message) {
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
                   messageType: message.tags["msg-id"],
+                  // TODO: Add flags and badges
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "viewermilestone":
+              return {
+                type: TwitchEventType.ViewerMilestone,
+                data: {
+                  id: message.tags["id"],
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  channel,
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  userType: TwitchUserTypes[message.tags["user-type"]],
+                  messageType: message.tags["msg-id"],
+                  category: message.tags["msg-param-category"],
+                  milestoneId: message.tags["msg-param-id"],
+                  milestoneValue: parseInt(message.tags["msg-param-value"]),
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -796,6 +815,15 @@ class TwitchChat {
     if (!__privateGet(this, _isConnected, isConnected_get)) {
       return;
     }
+  }
+  simulateIRCMessage(message) {
+    if (!__privateGet(this, _ws)) {
+      return;
+    }
+    if (!__privateGet(this, _isConnected, isConnected_get)) {
+      return;
+    }
+    __privateMethod(this, _onMessage, onMessage_fn).call(this, { "data": message });
   }
   destroy() {
     if (__privateGet(this, _ws) && __privateGet(this, _ws).readyState !== __privateGet(this, _ws).CLOSED) {
@@ -1073,6 +1101,11 @@ const comfyJS = {
       console.debug("onRaid default handler");
     }
   },
+  simulateIRCMessage: (message) => {
+    if (comfyInstance) {
+      comfyInstance.simulateIRCMessage(message);
+    }
+  },
   Init: (username, password, channels, isDebug) => {
     comfyInstance = new TwitchChat(username, password, channels, isDebug);
     comfyInstance.on(TwitchEventType.Connect, (context) => {
@@ -1103,7 +1136,6 @@ const comfyJS = {
       comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.SubGift, (context) => {
-      console.log("SUBGIFT", context);
       comfyJS.onSubGift(context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {

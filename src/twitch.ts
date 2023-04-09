@@ -25,7 +25,6 @@ export enum TwitchEventType {
 	Subscribe = "sub",
 	Resubscribe = "resub",
 	SubGift = "subgift", // Note: Goal Contributions are not included if it is from a mysterysubgift and is included in the mysterysubgift event instead
-	AnonymousSubGift = "anonsubgift",
 	MysterySubGift = "submysterygift",
 	SubGiftContinue = "subgiftcontinue",
 	Raid = "raid",
@@ -465,6 +464,26 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
 							messageType: message.tags[ "msg-id" ],
+							// TODO: Add flags and badges
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
+				case "viewermilestone":
+					return {
+						type: TwitchEventType.ViewerMilestone,
+						data: {
+							id: message.tags[ "id" ],
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							channel,
+							channelId: message.tags[ "room-id" ],
+							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
+							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+							messageType: message.tags[ "msg-id" ],
+							category: message.tags[ "msg-param-category" ],
+							milestoneId: message.tags[ "msg-param-id" ],
+							milestoneValue: parseInt( message.tags[ "msg-param-value" ] ),
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},

@@ -20,6 +20,7 @@ export type ComfyJSInstance = {
 	onBan: ( user : string, extra : any ) => void;
 	onMessageDeleted: ( messageId : string, extra : any ) => void;
 	onRaid: ( user : string, viewers : number, extra : any ) => void;
+	simulateIRCMessage: ( message : string ) => void;
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => void;
 };
 
@@ -145,6 +146,11 @@ const comfyJS : ComfyJSInstance = {
 			console.debug( "onRaid default handler" );
 		}
 	},
+	simulateIRCMessage: ( message : string ) => {
+		if( comfyInstance ) {
+			comfyInstance.simulateIRCMessage( message );
+		}
+	},
 	Init: ( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) => {
 		comfyInstance = new TwitchChat( username, password, channels, isDebug );
 		comfyInstance.on( TwitchEventType.Connect, ( context? : any ) => {
@@ -175,7 +181,6 @@ const comfyJS : ComfyJSInstance = {
 			comfyJS.onResub( context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState( context ), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 		comfyInstance.on( TwitchEventType.SubGift, ( context? : any ) => {
-			console.log( "SUBGIFT", context );
 			comfyJS.onSubGift( context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState( context ), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes( context.messageEmotes ) } );
 		} );
 		comfyInstance.on( TwitchEventType.MysterySubGift, ( context? : any ) => {

@@ -83,6 +83,13 @@ export class TwitchChat {
 		// https://dev.twitch.tv/docs/api/reference/#delete-chat-messages
 	}
 
+	simulateIRCMessage( message : string ) : void {
+		if( !this.#ws ) { return; }
+		if( !this.#isConnected ) { return; }
+
+		this.#onMessage( { "data": message } as MessageEvent );
+	}
+
 	#connect() {
 		if( this.#isConnected ) { return; } // Already connected
 
