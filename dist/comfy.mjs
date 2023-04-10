@@ -42,13 +42,11 @@ function unescapeIRC(text) {
     }
   });
 }
-function extractComponent(message, index) {
-  const nextSpace = message.indexOf(" ", index);
-  const rawComponent = message.slice(index + 1, nextSpace);
-  return {
-    component: rawComponent,
-    nextIndex: nextSpace + 1
-  };
+function parseTag(tag) {
+  const tagSplitIndex = tag.indexOf("=");
+  const key = tag.substring(0, tagSplitIndex);
+  const value = tag.substring(tagSplitIndex + 1);
+  return { key, value };
 }
 function parseMessage(message) {
   const parsedMessage = {
@@ -60,41 +58,28 @@ function parseMessage(message) {
   };
   let index = 0;
   if (message[0] === "@") {
-    const { component, nextIndex } = extractComponent(message, 0);
-    for (const tag of component.split(";")) {
-      const tagSplitIndex = tag.indexOf("=");
-      const key = tag.substring(0, tagSplitIndex);
-      const value = tag.substring(tagSplitIndex + 1);
-      switch (key) {
-        case "emote-sets":
-        case "ban-duration":
-        case "bits":
-        case "id":
-        case "room-id":
-        case "color":
-        case "login":
-          parsedMessage.tags[key] = value;
-          break;
-        default:
-          parsedMessage.tags[key] = unescapeIRC(value);
-          break;
-      }
+    index = message.indexOf(" ");
+    const tagString = message.substring(1, index);
+    const tagList = tagString.split(";");
+    for (const tag of tagList) {
+      const { key, value } = parseTag(tag);
+      parsedMessage.tags[key] = unescapeIRC(value);
     }
-    index = nextIndex;
   }
-  if (message[index] === ":") {
-    const { component, nextIndex } = extractComponent(message, index);
-    parsedMessage.source = component;
-    index = nextIndex;
+  if (message[index] === " ") {
+    index++;
   }
-  if (index < message.length) {
-    const rawCommand = message.slice(index).trim();
-    const commandEnd = rawCommand.indexOf(":");
-    parsedMessage.command = rawCommand.slice(0, commandEnd < 0 ? void 0 : commandEnd).trim();
-    const parameterIndex = message.indexOf(":", index);
-    if (parameterIndex >= 0) {
-      parsedMessage.parameters = message.slice(parameterIndex + 1);
-    }
+  const sourceStartIndex = message.indexOf(":", index);
+  if (sourceStartIndex >= 0 && sourceStartIndex < message.indexOf(" ", index)) {
+    const sourceEndIndex = message.indexOf(" ", sourceStartIndex);
+    parsedMessage.source = message.substring(sourceStartIndex + 1, sourceEndIndex);
+    index = sourceEndIndex + 1;
+  }
+  const commandEndIndex = message.indexOf(" :", index);
+  parsedMessage.command = message.substring(index, commandEndIndex >= 0 ? commandEndIndex : void 0).trim();
+  const parameterIndex = message.indexOf(":", index);
+  if (parameterIndex >= 0) {
+    parsedMessage.parameters = message.slice(parameterIndex + 1);
   }
   return parsedMessage;
 }
@@ -732,7 +717,7 @@ function processMessage(message) {
         case "PRIVMSG":
           return handleChatMessage(message, channel);
         case "RECONNECT":
-          console.log("The Twitch IRC server is about to terminate the connection for maintenance.");
+          console.info("The Twitch IRC server is about to terminate the connection for maintenance.");
           break;
         default:
           {

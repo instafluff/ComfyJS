@@ -837,7 +837,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 				// Chat Message
 				return handleChatMessage( message, channel as string );
 			case "RECONNECT":
-				console.log( "The Twitch IRC server is about to terminate the connection for maintenance." )
+				console.info( "The Twitch IRC server is about to terminate the connection for maintenance." );
 				break;
 			default:
 				{

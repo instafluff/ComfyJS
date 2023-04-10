@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import { rawMessages } from "./const";
-import { parseMessage } from "../src/parse";
+import { parseMessage } from "../src/parseFast";
 
 describe( "parseMessage", () => {
 	it( "should return an object with the correct raw property", () => {

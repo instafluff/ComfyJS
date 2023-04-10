@@ -1,4 +1,4 @@
-import { parseMessage } from "./parse";
+import { parseMessage } from "./parseFast";
 import { createWebSocket } from "./socket";
 import { authenticate, joinChannel, leaveChannel, ping, pong, ProcessedMessage, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
 
@@ -217,6 +217,7 @@ export class TwitchEvents {
 
 		const parts = event.data.trim().split( `\r\n` );
 		for( const str of parts ) {
+			// console.debug( str );
 			const message = processMessage( parseMessage( str ) );
 			if( message && message.type !== TwitchEventType.None ) {
 				// console.log( message );

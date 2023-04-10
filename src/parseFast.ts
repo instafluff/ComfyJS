@@ -1,11 +1,40 @@
+export function unescapeIRC( text: string ): string {
+	if( !text || typeof text !== "string" || !text.includes( "\\" ) ) {
+		return text;
+	}
+	return text.replace( /\\(.)/g, ( _, char ) => {
+		switch( char ) {
+		case "\\":
+			return "\\";
+		case ":":
+			return ";";
+		case "s":
+			return " ";
+		case "r":
+			return "\r";
+		case "n":
+			return "\n";
+		default:
+			return char;
+		}
+	} );
+}
+	
 export type ParsedMessage = {
 	raw: string;
 	tags: { [name: string]: string };
 	source: string | null;
 	command: string | null;
 	parameters: string | null;
-};
+	};
 	
+function parseTag( tag: string ) {
+	const tagSplitIndex = tag.indexOf( "=" );
+	const key = tag.substring( 0, tagSplitIndex );
+	const value = tag.substring( tagSplitIndex + 1 );
+	return { key, value };
+}
+
 export function parseMessage( message: string ): ParsedMessage {
 	const parsedMessage: ParsedMessage = {
 		raw: message,
@@ -17,64 +46,34 @@ export function parseMessage( message: string ): ParsedMessage {
 	
 	let index = 0;
 	
-	// --- Tags Parsing ---
 	if( message[ 0 ] === "@" ) {
 		index = message.indexOf( " " );
-		const rawTags = message.slice( 1, index );
+		const tagString = message.substring( 1, index );
+		const tagList = tagString.split( ";" );
 	
-		for( const tag of rawTags.split( ";" ) ) {
-			const tagSplitIndex = tag.indexOf( "=" );
-			const key = tag.substring( 0, tagSplitIndex );
-			const value = tag.substring( tagSplitIndex + 1 );
-	
-			// Optimizations for common tags that won't be escaped
-			parsedMessage.tags[ key ] =
-			key === "emote-sets" ||
-			key === "ban-duration" ||
-			key === "bits" ||
-			key === "id" ||
-			key === "room-id" ||
-			key === "color" ||
-			key === "login"
-				? value
-				: value.includes( "\\" )
-					? value.replace( /\\(.)/g, ( _, char ) => {
-						switch( char ) {
-						case "\\":
-							return "\\";
-						case ":":
-							return ";";
-						case "s":
-							return " ";
-						case "r":
-							return "\r";
-						case "n":
-							return "\n";
-						default:
-							return char;
-						}
-					} )
-					: value;
+		for( const tag of tagList ) {
+			const { key, value } = parseTag( tag );
+			parsedMessage.tags[ key ] = unescapeIRC( value );
 		}
 	}
 	
-	// --- Source Parsing ---
-	if( message[ ++index ] === ":" ) {
-		const nextSpace = message.indexOf( " ", index );
-		parsedMessage.source = message.slice( index + 1, nextSpace );
-		index = nextSpace + 1;
+	if( message[ index ] === " " ) { index++; }
+	
+	const sourceStartIndex = message.indexOf( ":", index );
+	if( sourceStartIndex >= 0 && sourceStartIndex < message.indexOf( " ", index ) ) {
+		const sourceEndIndex = message.indexOf( " ", sourceStartIndex );
+		parsedMessage.source = message.substring( sourceStartIndex + 1, sourceEndIndex );
+		index = sourceEndIndex + 1;
 	}
 	
-	// --- Command Parsing ---
-	if( index < message.length ) {
-		const commandEnd = message.indexOf( ":", index );
-		parsedMessage.command = message.slice( index, commandEnd < 0 ? undefined : commandEnd ).trim();
+	const commandEndIndex = message.indexOf( " :", index );
+	parsedMessage.command = message.substring( index, commandEndIndex >= 0 ? commandEndIndex : undefined ).trim();
 	
-		// Parse the parameters
-		if( commandEnd >= 0 ) {
-			parsedMessage.parameters = message.slice( commandEnd + 1 );
-		}
+	const parameterIndex = message.indexOf( ":", index );
+	if( parameterIndex >= 0 ) {
+		parsedMessage.parameters = message.slice( parameterIndex + 1 );
 	}
 	
 	return parsedMessage;
 }
+	
