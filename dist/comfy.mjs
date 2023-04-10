@@ -22,6 +22,9 @@ var __privateMethod = (obj, member, method) => {
 };
 var _ws, _username, _password, _pingTimer, _pingTime, _latency, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
 function unescapeIRC(text) {
+  if (!text || typeof text !== "string" || !text.includes("\\")) {
+    return text;
+  }
   return text.replace(/\\(.)/g, (_, char) => {
     switch (char) {
       case "\\":
@@ -223,7 +226,7 @@ function handleChatMessage(message, channel) {
   const userColor = message.tags["color"] || void 0;
   const emotes = message.tags["emotes"];
   const messageFlags = message.tags["flags"];
-  const contentFlags = parseMessageFlags(messageFlags);
+  const contentFlags = void 0;
   const isBroadcaster = username === channel;
   const isMod = message.tags["mod"] === "1";
   const isFounder = badges ? !!badges["founder"] : false;

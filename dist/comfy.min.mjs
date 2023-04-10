@@ -9,7 +9,7 @@ var e = (a, r, s) => (Q(a, r, "read from private field"), s ? s.call(a) : r.get(
 }, N = (a, r, s, i) => (Q(a, r, "write to private field"), i ? i.call(a, s) : r.set(a, s), s);
 var M = (a, r, s) => (Q(a, r, "access private method"), s);
 function Pa(a) {
-  return a.replace(/\\(.)/g, (r, s) => {
+  return !a || typeof a != "string" || !a.includes("\\") ? a : a.replace(/\\(.)/g, (r, s) => {
     switch (s) {
       case "\\":
         return "\\";
@@ -27,7 +27,7 @@ function Pa(a) {
     }
   });
 }
-function ra(a, r) {
+function ta(a, r) {
   const s = a.indexOf(" ", r);
   return {
     component: a.slice(r + 1, s),
@@ -44,7 +44,7 @@ function Ra(a) {
   };
   let s = 0;
   if (a[0] === "@") {
-    const { component: i, nextIndex: t } = ra(a, 0);
+    const { component: i, nextIndex: t } = ta(a, 0);
     for (const n of i.split(";")) {
       const b = n.indexOf("="), p = n.substring(0, b), d = n.substring(b + 1);
       switch (p) {
@@ -65,7 +65,7 @@ function Ra(a) {
     s = t;
   }
   if (a[s] === ":") {
-    const { component: i, nextIndex: t } = ra(a, s);
+    const { component: i, nextIndex: t } = ta(a, s);
     r.source = i, s = t;
   }
   if (s < a.length) {
@@ -76,9 +76,9 @@ function Ra(a) {
   }
   return r;
 }
-const Ea = globalThis.WebSocket || require("ws");
-function va(a, r) {
-  return new Ea(a, r);
+const va = globalThis.WebSocket || require("ws");
+function Ea(a, r) {
+  return new va(a, r);
 }
 var l = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Unraid = "unraid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.ViewerMilestone = "ViewerMilestone", a.All = "all", a))(l || {});
 const C = {
@@ -102,7 +102,7 @@ function m(a) {
   }
   return s;
 }
-function X(a) {
+function ra(a) {
   if (!a)
     return;
   const r = a.split(","), s = {};
@@ -132,12 +132,12 @@ function X(a) {
   return s;
 }
 function ka(a, r) {
-  var x, aa;
-  const s = (x = a.parameters) == null ? void 0 : x.startsWith("ACTION"), i = s ? (aa = a.parameters) == null ? void 0 : aa.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, n = a.tags["room-id"], b = a.tags["user-id"], p = U(a.source), d = a.tags["display-name"] || a.tags.login || p, P = C[a.tags["user-type"]], j = a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0, y = a.tags.badges ? m(a.tags.badges) : void 0, J = a.tags.color || void 0, H = a.tags.emotes, v = a.tags.flags, _ = X(v), da = p === r, ga = a.tags.mod === "1", pa = y ? !!y.founder : !1, z = a.tags.subscriber === "1", ma = a.tags.turbo === "1", ca = y ? !!y.vip : !1, fa = y ? !!y.premium : !1, ba = y ? !!["partner"] : !1, ha = y ? !!y["game-developer"] : !1, q = parseInt(a.tags["tmi-sent-ts"]), A = a.tags["emote-only"] === "1", Ia = a.tags["msg-id"] === "highlighted-message", ya = a.tags["msg-id"] === "skip-subs-mode-message", D = a.tags["custom-reward-id"] || null, Ca = a.tags["first-msg"] === "1", Sa = a.tags["returning-chatter"] === "1", K = {
+  var z, x;
+  const s = (z = a.parameters) == null ? void 0 : z.startsWith("ACTION"), i = s ? (x = a.parameters) == null ? void 0 : x.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, n = a.tags["room-id"], b = a.tags["user-id"], p = U(a.source), d = a.tags["display-name"] || a.tags.login || p, P = C[a.tags["user-type"]], j = a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0, y = a.tags.badges ? m(a.tags.badges) : void 0, J = a.tags.color || void 0, H = a.tags.emotes, E = a.tags.flags, _ = void 0, da = p === r, ga = a.tags.mod === "1", pa = y ? !!y.founder : !1, Z = a.tags.subscriber === "1", ma = a.tags.turbo === "1", ca = y ? !!y.vip : !1, fa = y ? !!y.premium : !1, ba = y ? !!["partner"] : !1, ha = y ? !!y["game-developer"] : !1, q = parseInt(a.tags["tmi-sent-ts"]), A = a.tags["emote-only"] === "1", Ia = a.tags["msg-id"] === "highlighted-message", ya = a.tags["msg-id"] === "skip-subs-mode-message", D = a.tags["custom-reward-id"] || null, Ca = a.tags["first-msg"] === "1", Sa = a.tags["returning-chatter"] === "1", K = {
     broadcaster: da,
     mod: ga,
     founder: pa,
-    subscriber: z,
+    subscriber: Z,
     vip: ca,
     partner: ba,
     gameDeveloper: ha,
@@ -165,10 +165,10 @@ function ka(a, r) {
         messageType: s ? "action" : "chat",
         // TODO: Can bits be an action?
         messageEmotes: H,
-        messageFlags: v,
+        messageFlags: E,
         contentFlags: _,
         isEmoteOnly: A,
-        subscriber: z,
+        subscriber: Z,
         userColor: J,
         userBadgeInfo: j,
         userBadges: y,
@@ -178,12 +178,12 @@ function ka(a, r) {
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: v || null
+          flags: E || null
         }
       }
     };
   if (i != null && i.startsWith("!")) {
-    const ta = i.split(/ (.*)/), Na = ta[0].substring(1).toLowerCase(), Ma = ta[1] || "";
+    const aa = i.split(/ (.*)/), Na = aa[0].substring(1).toLowerCase(), Ma = aa[1] || "";
     return {
       type: "command",
       data: {
@@ -198,7 +198,7 @@ function ka(a, r) {
         message: Ma,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: v,
+        messageFlags: E,
         contentFlags: _,
         isEmoteOnly: A,
         userColor: J,
@@ -209,7 +209,7 @@ function ka(a, r) {
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: v || null
+          flags: E || null
         }
       }
     };
@@ -227,7 +227,7 @@ function ka(a, r) {
         message: i,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: v,
+        messageFlags: E,
         contentFlags: _,
         isEmoteOnly: A,
         userColor: J,
@@ -238,7 +238,7 @@ function ka(a, r) {
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: v || null
+          flags: E || null
         }
       }
     };
@@ -370,7 +370,7 @@ function Oa(a) {
                   messageType: a.tags["msg-id"],
                   messageEmotes: a.tags.emotes,
                   messageFlags: a.tags.flags,
-                  contentFlags: X(a.tags.flags),
+                  contentFlags: ra(a.tags.flags),
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
                   extra: a.tags
                 }
@@ -402,7 +402,7 @@ function Oa(a) {
                   messageType: a.tags["msg-id"],
                   messageEmotes: a.tags.emotes,
                   messageFlags: a.tags.flags,
-                  contentFlags: X(a.tags.flags),
+                  contentFlags: ra(a.tags.flags),
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
                   extra: a.tags
                 }
@@ -700,7 +700,7 @@ function Da(a, r, s) {
 function La(a, r, s, i) {
   a.send(`@reply-parent-msg-id=${s} PRIVMSG #${r} :${i}`);
 }
-var u, R, B, E, k, O, w, Y, I, S, L, na, W, ea, F, oa, $, ia, T, ua, V, la, G, Z;
+var u, R, B, v, k, O, w, X, I, S, L, na, W, ea, F, oa, $, ia, T, ua, V, la, G, Y;
 class Wa {
   constructor(r, s, i, t) {
     c(this, w);
@@ -715,7 +715,7 @@ class Wa {
     c(this, u, void 0);
     c(this, R, void 0);
     c(this, B, void 0);
-    c(this, E, void 0);
+    c(this, v, void 0);
     c(this, k, void 0);
     c(this, O, void 0);
     N(this, k, 0), N(this, O, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, B, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, L, na).call(this);
@@ -733,10 +733,10 @@ class Wa {
     this.handlers[r] = s;
   }
   say(r, s) {
-    e(this, u) && e(this, I, S) && Da(e(this, u), s || e(this, w, Y), r);
+    e(this, u) && e(this, I, S) && Da(e(this, u), s || e(this, w, X), r);
   }
   reply(r, s, i) {
-    e(this, u) && e(this, I, S) && La(e(this, u), i || e(this, w, Y), r, s);
+    e(this, u) && e(this, I, S) && La(e(this, u), i || e(this, w, X), r, s);
   }
   join(r) {
     e(this, u) && e(this, I, S) && sa(e(this, u), r);
@@ -748,23 +748,23 @@ class Wa {
     e(this, u) && e(this, I, S);
   }
   simulateIRCMessage(r) {
-    e(this, u) && e(this, I, S) && M(this, G, Z).call(this, { data: r });
+    e(this, u) && e(this, I, S) && M(this, G, Y).call(this, { data: r });
   }
   destroy() {
     e(this, u) && e(this, u).readyState !== e(this, u).CLOSED && e(this, u).close();
   }
 }
-u = new WeakMap(), R = new WeakMap(), B = new WeakMap(), E = new WeakMap(), k = new WeakMap(), O = new WeakMap(), w = new WeakSet(), Y = function() {
+u = new WeakMap(), R = new WeakMap(), B = new WeakMap(), v = new WeakMap(), k = new WeakMap(), O = new WeakMap(), w = new WeakSet(), X = function() {
   return this.channels[0];
 }, I = new WeakSet(), S = function() {
   return !!(e(this, u) && e(this, u).readyState === e(this, u).OPEN);
 }, L = new WeakSet(), na = function() {
   if (e(this, I, S))
     return;
-  N(this, u, va("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, u).onopen = () => {
+  N(this, u, Ea("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, u).onopen = () => {
     M(this, W, ea).call(this);
   }, e(this, u).onmessage = (s) => {
-    M(this, G, Z).call(this, s);
+    M(this, G, Y).call(this, s);
   }, e(this, u).onerror = (s) => {
     M(this, F, oa).call(this, s);
   }, e(this, u).onclose = (s) => {
@@ -775,14 +775,14 @@ u = new WeakMap(), R = new WeakMap(), B = new WeakMap(), E = new WeakMap(), k = 
 }, F = new WeakSet(), oa = function(r) {
   console.error("ERROR", r);
 }, $ = new WeakSet(), ia = function(r) {
-  console.info("CLOSE", r), e(this, E) && clearInterval(e(this, E));
+  console.info("CLOSE", r), e(this, v) && clearInterval(e(this, v));
 }, T = new WeakSet(), ua = function() {
   e(this, u) && e(this, I, S) && (N(this, k, Date.now()), Ga(e(this, u)));
 }, V = new WeakSet(), la = function(r) {
   if (e(this, u) && e(this, I, S))
     switch (r.type) {
       case l.Connect:
-        N(this, R, r.data.username), e(this, E) && clearInterval(e(this, E)), N(this, E, setInterval(() => {
+        N(this, R, r.data.username), e(this, v) && clearInterval(e(this, v)), N(this, v, setInterval(() => {
           M(this, T, ua).call(this);
         }, 6e4));
         const s = new URL(e(this, u).url);
@@ -817,7 +817,7 @@ u = new WeakMap(), R = new WeakMap(), B = new WeakMap(), E = new WeakMap(), k = 
         });
         break;
     }
-}, G = new WeakSet(), Z = function(r) {
+}, G = new WeakSet(), Y = function(r) {
   if (!e(this, u) || !e(this, I, S))
     return;
   const s = r.data.trim().split(`\r
