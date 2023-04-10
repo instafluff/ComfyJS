@@ -1,14 +1,14 @@
-var K = (a, r, s) => {
+var Q = (a, r, s) => {
   if (!r.has(a))
     throw TypeError("Cannot " + s);
 };
-var e = (a, r, s) => (K(a, r, "read from private field"), s ? s.call(a) : r.get(a)), f = (a, r, s) => {
+var e = (a, r, s) => (Q(a, r, "read from private field"), s ? s.call(a) : r.get(a)), c = (a, r, s) => {
   if (r.has(a))
     throw TypeError("Cannot add the same private member more than once");
   r instanceof WeakSet ? r.add(a) : r.set(a, s);
-}, R = (a, r, s, o) => (K(a, r, "write to private field"), o ? o.call(a, s) : r.set(a, s), s);
-var N = (a, r, s) => (K(a, r, "access private method"), s);
-function Sa(a) {
+}, N = (a, r, s, i) => (Q(a, r, "write to private field"), i ? i.call(a, s) : r.set(a, s), s);
+var M = (a, r, s) => (Q(a, r, "access private method"), s);
+function Pa(a) {
   return a.replace(/\\(.)/g, (r, s) => {
     switch (s) {
       case "\\":
@@ -27,14 +27,14 @@ function Sa(a) {
     }
   });
 }
-function x(a, r) {
+function ra(a, r) {
   const s = a.indexOf(" ", r);
   return {
     component: a.slice(r + 1, s),
     nextIndex: s + 1
   };
 }
-function Na(a) {
+function Ra(a) {
   const r = {
     raw: a,
     tags: {},
@@ -44,30 +44,30 @@ function Na(a) {
   };
   let s = 0;
   if (a[0] === "@") {
-    const { component: o, nextIndex: t } = x(a, 0);
-    for (const d of o.split(";")) {
-      const S = d.indexOf("="), p = d.substring(0, S), l = d.substring(S + 1);
-      r.tags[p] = Sa(l);
+    const { component: i, nextIndex: t } = ra(a, 0);
+    for (const n of i.split(";")) {
+      const b = n.indexOf("="), m = n.substring(0, b), d = n.substring(b + 1);
+      r.tags[m] = Pa(d);
     }
     s = t;
   }
   if (a[s] === ":") {
-    const { component: o, nextIndex: t } = x(a, s);
-    r.source = o, s = t;
+    const { component: i, nextIndex: t } = ra(a, s);
+    r.source = i, s = t;
   }
   if (s < a.length) {
-    const o = a.slice(s).trim(), t = o.indexOf(":");
-    r.command = o.slice(0, t < 0 ? void 0 : t).trim();
-    const d = a.indexOf(":", s);
-    d >= 0 && (r.parameters = a.slice(d + 1));
+    const i = a.slice(s).trim(), t = i.indexOf(":");
+    r.command = i.slice(0, t < 0 ? void 0 : t).trim();
+    const n = a.indexOf(":", s);
+    n >= 0 && (r.parameters = a.slice(n + 1));
   }
   return r;
 }
-const Ma = globalThis.WebSocket || require("ws");
-function Ra(a, r) {
-  return new Ma(a, r);
+const Ea = globalThis.WebSocket || require("ws");
+function ka(a, r) {
+  return new Ea(a, r);
 }
-var u = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.All = "all", a))(u || {});
+var l = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Unraid = "unraid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.ViewerMilestone = "ViewerMilestone", a.All = "all", a))(l || {});
 const C = {
   "": "Normal",
   admin: "Admin",
@@ -79,93 +79,124 @@ function B(a) {
   const r = a.split("!");
   return r.length > 1 ? r[0] : void 0;
 }
-function m(a) {
+function p(a) {
   if (!a)
     return;
   const r = a.split(","), s = {};
-  for (const o of r) {
-    const [t, d] = o.split("/");
-    s[t] = d;
+  for (const i of r) {
+    const [t, n] = i.split("/");
+    s[t] = n;
   }
   return s;
 }
-function Pa(a, r) {
-  var Y, Z;
-  const s = (Y = a.parameters) == null ? void 0 : Y.startsWith("ACTION"), o = s ? (Z = a.parameters) == null ? void 0 : Z.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, d = a.tags["room-id"], S = a.tags["user-id"], p = B(a.source), l = a.tags["display-name"] || a.tags.login || p, M = C[a.tags["user-type"]], j = m(a.tags["badge-info"] || ""), I = m(a.tags.badges || ""), J = a.tags.color || void 0, H = a.tags.emotes, O = a.tags.flags, ia = p === r, ua = a.tags.mod === "1", la = I ? !!I.founder : !1, X = a.tags.subscriber === "1", da = a.tags.turbo === "1", ga = I ? !!I.vip : !1, pa = I ? !!I.premium : !1, ma = I ? !!["partner"] : !1, fa = I ? !!I["game-developer"] : !1, _ = parseInt(a.tags["tmi-sent-ts"]), D = a.tags["emote-only"] === "1", ca = a.tags["msg-id"] === "highlighted-message", ba = a.tags["msg-id"] === "skip-subs-mode-message", A = a.tags["custom-reward-id"] || null, ha = a.tags["first-msg"] === "1", Ia = a.tags["returning-chatter"] === "1", q = {
-    broadcaster: ia,
-    mod: ua,
-    founder: la,
-    subscriber: X,
-    vip: ga,
-    partner: ma,
-    gameDeveloper: fa,
-    turbo: da,
-    prime: pa,
-    highlighted: ca,
-    skipSubsMode: ba,
-    customReward: !!A,
+function X(a) {
+  if (!a)
+    return;
+  const r = a.split(","), s = {};
+  for (const i of r) {
+    const [, t] = i.split(":"), [n, b] = t.split(".");
+    switch (n) {
+      case "A":
+        s.aggressive = Math.max(s.aggressive || 0, parseInt(b));
+        break;
+      case "I":
+        s[
+          "identity-hate"
+          /* IdentityBasedHate */
+        ] = Math.max(s[
+          "identity-hate"
+          /* IdentityBasedHate */
+        ] || 0, parseInt(b));
+        break;
+      case "P":
+        s.profane = Math.max(s.profane || 0, parseInt(b));
+        break;
+      case "S":
+        s.sexual = Math.max(s.sexual || 0, parseInt(b));
+        break;
+    }
+  }
+  return s;
+}
+function Oa(a, r) {
+  var x, aa;
+  const s = (x = a.parameters) == null ? void 0 : x.startsWith("ACTION"), i = s ? (aa = a.parameters) == null ? void 0 : aa.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, n = a.tags["room-id"], b = a.tags["user-id"], m = B(a.source), d = a.tags["display-name"] || a.tags.login || m, P = C[a.tags["user-type"]], j = p(a.tags["badge-info"] || ""), y = p(a.tags.badges || ""), J = a.tags.color || void 0, H = a.tags.emotes, k = a.tags.flags, _ = X(k), da = m === r, ga = a.tags.mod === "1", pa = y ? !!y.founder : !1, z = a.tags.subscriber === "1", ma = a.tags.turbo === "1", ca = y ? !!y.vip : !1, fa = y ? !!y.premium : !1, ba = y ? !!["partner"] : !1, ha = y ? !!y["game-developer"] : !1, q = parseInt(a.tags["tmi-sent-ts"]), D = a.tags["emote-only"] === "1", Ia = a.tags["msg-id"] === "highlighted-message", ya = a.tags["msg-id"] === "skip-subs-mode-message", v = a.tags["custom-reward-id"] || null, Ca = a.tags["first-msg"] === "1", Sa = a.tags["returning-chatter"] === "1", K = {
+    broadcaster: da,
+    mod: ga,
+    founder: pa,
+    subscriber: z,
+    vip: ca,
+    partner: ba,
+    gameDeveloper: ha,
+    turbo: ma,
+    prime: fa,
+    highlighted: Ia,
+    skipSubsMode: ya,
+    customReward: !!v,
     emoteOnly: D,
-    firstMessage: ha,
-    returningChatter: Ia
+    firstMessage: Ca,
+    returningChatter: Sa
   };
   if (a.tags.bits)
     return {
       type: "Cheer",
       data: {
         channel: r,
-        channelId: d,
-        displayName: l,
-        username: p,
-        userId: S,
-        userType: M,
+        channelId: n,
+        displayName: d,
+        username: m,
+        userId: b,
+        userType: P,
         id: t,
         message: a.parameters,
         messageType: s ? "action" : "chat",
         // TODO: Can bits be an action?
         messageEmotes: H,
-        messageFlags: O,
+        messageFlags: k,
+        contentFlags: _,
         isEmoteOnly: D,
-        subscriber: X,
+        subscriber: z,
         userColor: J,
         userBadgeInfo: j,
-        userBadges: I,
-        customRewardId: A,
-        flags: q,
+        userBadges: y,
+        customRewardId: v,
+        flags: K,
         bits: parseInt(a.tags.bits),
-        timestamp: _,
+        timestamp: q,
         extra: {
           ...a.tags,
-          flags: O || null
+          flags: k || null
         }
       }
     };
-  if (o != null && o.startsWith("!")) {
-    const z = o.split(/ (.*)/), ya = z[0].substring(1).toLowerCase(), Ca = z[1] || "";
+  if (i != null && i.startsWith("!")) {
+    const ta = i.split(/ (.*)/), Na = ta[0].substring(1).toLowerCase(), Ma = ta[1] || "";
     return {
       type: "command",
       data: {
         channel: r,
-        channelId: d,
-        displayName: l,
-        username: p,
-        userId: S,
-        userType: M,
-        command: ya,
+        channelId: n,
+        displayName: d,
+        username: m,
+        userId: b,
+        userType: P,
+        command: Na,
         id: t,
-        message: Ca,
+        message: Ma,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: O,
+        messageFlags: k,
+        contentFlags: _,
         isEmoteOnly: D,
         userColor: J,
         userBadgeInfo: j,
-        userBadges: I,
-        customRewardId: A,
-        flags: q,
-        timestamp: _,
+        userBadges: y,
+        customRewardId: v,
+        flags: K,
+        timestamp: q,
         extra: {
           ...a.tags,
-          flags: O || null
+          flags: k || null
         }
       }
     };
@@ -174,36 +205,37 @@ function Pa(a, r) {
       type: "message",
       data: {
         channel: r,
-        channelId: d,
-        displayName: l,
-        username: p,
-        userId: S,
-        userType: M,
+        channelId: n,
+        displayName: d,
+        username: m,
+        userId: b,
+        userType: P,
         id: t,
-        message: o,
+        message: i,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: O,
+        messageFlags: k,
+        contentFlags: _,
         isEmoteOnly: D,
         userColor: J,
         userBadgeInfo: j,
-        userBadges: I,
-        customRewardId: A,
-        flags: q,
-        timestamp: _,
+        userBadges: y,
+        customRewardId: v,
+        flags: K,
+        timestamp: q,
         extra: {
           ...a.tags,
-          flags: O || null
+          flags: k || null
         }
       }
     };
 }
-function Ea(a) {
-  var r, s, o, t, d, S;
+function Ua(a) {
+  var r, s, i, t, n, b;
   try {
     if (a.command) {
-      const p = a.command.split(" "), l = p.length > 1 ? p[1].substring(1) : void 0;
-      switch (p[0]) {
+      const m = a.command.split(" "), d = m.length > 1 ? m[1].substring(1) : void 0;
+      switch (m[0]) {
         case "PING":
           return {
             type: "Ping"
@@ -219,12 +251,12 @@ function Ea(a) {
         case "JOIN":
           return {
             type: "join",
-            data: { channel: l, username: B(a.source) }
+            data: { channel: d, username: B(a.source) }
           };
         case "PART":
           return {
             type: "leave",
-            data: { channel: l, username: B(a.source) }
+            data: { channel: d, username: B(a.source) }
           };
         case "ROOMSTATE":
           return {
@@ -238,7 +270,7 @@ function Ea(a) {
               ...a.tags.r9k && { r9k: a.tags.r9k !== "0" },
               ...a.tags.rituals && { rituals: a.tags.rituals !== "0" },
               ...a.tags.slow && { slow: a.tags.slow !== "0" },
-              channel: l,
+              channel: d,
               channelId: a.tags["room-id"]
             }
           };
@@ -260,13 +292,13 @@ function Ea(a) {
           return {
             type: "userstate",
             data: {
-              channel: l,
+              channel: d,
               displayName: a.tags["display-name"],
               userId: a.tags["user-id"],
               userType: C[a.tags["user-type"]],
               color: a.tags.color,
-              badgeInfo: m(a.tags["badge-info"] || ""),
-              badges: m(a.tags.badges || ""),
+              badgeInfo: p(a.tags["badge-info"] || ""),
+              badges: p(a.tags.badges || ""),
               emoteSets: a.tags["emote-sets"],
               ...a.tags.id && { id: a.tags.id },
               mod: a.tags.mod === "1",
@@ -284,7 +316,7 @@ function Ea(a) {
                 type: "announcement",
                 data: {
                   displayName: a.tags["display-name"] || a.tags.login,
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
@@ -313,17 +345,19 @@ function Ea(a) {
                   ...a.tags["msg-param-goal-description"] && { goalDescription: a.tags["msg-param-goal-description"] },
                   ...a.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(a.tags["msg-param-goal-target-contributions"]) },
                   ...a.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(a.tags["msg-param-goal-user-contributions"]) },
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: m(a.tags["badge-info"] || ""),
-                  userBadges: m(a.tags.badges || ""),
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
                   userColor: a.tags.color || void 0,
                   message: a.parameters,
                   messageType: a.tags["msg-id"],
                   messageEmotes: a.tags.emotes,
+                  messageFlags: a.tags.flags,
+                  contentFlags: X(a.tags.flags),
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
                   extra: a.tags
                 }
@@ -343,17 +377,19 @@ function Ea(a) {
                   subPlan: a.tags["msg-param-sub-plan"],
                   subPlanName: a.tags["msg-param-sub-plan-name"],
                   wasGifted: a.tags["msg-param-was-gifted"] === "true",
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: m(a.tags["badge-info"] || ""),
-                  userBadges: m(a.tags.badges || ""),
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
                   userColor: a.tags.color || void 0,
                   message: a.parameters,
                   messageType: a.tags["msg-id"],
                   messageEmotes: a.tags.emotes,
+                  messageFlags: a.tags.flags,
+                  contentFlags: X(a.tags.flags),
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
                   extra: a.tags
                 }
@@ -373,13 +409,13 @@ function Ea(a) {
                   ...a.tags["msg-param-goal-description"] && { goalDescription: a.tags["msg-param-goal-description"] },
                   ...a.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(a.tags["msg-param-goal-target-contributions"]) },
                   ...a.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(a.tags["msg-param-goal-user-contributions"]) },
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: m(a.tags["badge-info"] || ""),
-                  userBadges: m(a.tags.badges || ""),
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -406,20 +442,20 @@ function Ea(a) {
                   ...a.tags["msg-param-goal-description"] && { goalDescription: a.tags["msg-param-goal-description"] },
                   ...a.tags["msg-param-goal-target-contributions"] && { goalTargetContributions: parseInt(a.tags["msg-param-goal-target-contributions"]) },
                   ...a.tags["msg-param-goal-user-contributions"] && { goalUserContributions: parseInt(a.tags["msg-param-goal-user-contributions"]) },
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: m(a.tags["badge-info"] || ""),
-                  userBadges: m(a.tags.badges || ""),
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
                   extra: a.tags
                 }
               };
-            case "giftsubcontinue":
+            case "giftpaidupgrade":
               return {
                 type: "subgiftcontinue",
                 data: {
@@ -427,13 +463,13 @@ function Ea(a) {
                   displayName: a.tags["display-name"] || a.tags.login,
                   gifterDisplayName: a.tags["msg-param-sender-name"] || a.tags["msg-param-sender-login"],
                   gifterUsername: a.tags["msg-param-sender-login"],
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: m(a.tags["badge-info"] || ""),
-                  userBadges: m(a.tags.badges || ""),
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -448,7 +484,7 @@ function Ea(a) {
                   profileImageURL: a.tags["msg-param-profileImageURL"],
                   displayName: a.tags["msg-param-displayName"] || a.tags["display-name"] || a.tags["msg-param-login"] || a.tags.login,
                   viewers: parseInt(a.tags["msg-param-viewerCount"]),
-                  channel: l,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags["msg-param-login"] || a.tags.login,
                   userId: a.tags["user-id"],
@@ -459,13 +495,32 @@ function Ea(a) {
                   extra: a.tags
                 }
               };
-            case "viewermilestone":
-              return {
-                type: u.ViewerMilestone,
+            case "unraid":
+              return console.log(a), {
+                type: "unraid",
                 data: {
                   id: a.tags.id,
                   displayName: a.tags["display-name"] || a.tags.login,
-                  channel: l,
+                  channel: a.tags.login,
+                  channelId: a.tags["room-id"],
+                  username: a.tags.login,
+                  userId: a.tags["user-id"],
+                  userType: C[a.tags["user-type"]],
+                  userBadgeInfo: p(a.tags["badge-info"] || ""),
+                  userBadges: p(a.tags.badges || ""),
+                  userColor: a.tags.color || void 0,
+                  messageType: a.tags["msg-id"],
+                  timestamp: parseInt(a.tags["tmi-sent-ts"]),
+                  extra: a.tags
+                }
+              };
+            case "viewermilestone":
+              return console.log(a), {
+                type: "ViewerMilestone",
+                data: {
+                  id: a.tags.id,
+                  displayName: a.tags["display-name"] || a.tags.login,
+                  channel: d,
                   channelId: a.tags["room-id"],
                   username: a.tags.login,
                   userId: a.tags["user-id"],
@@ -492,8 +547,8 @@ function Ea(a) {
               userId: a.tags["user-id"],
               userType: C[a.tags["user-type"]],
               userColor: a.tags.color || void 0,
-              userBadgeInfo: m(a.tags["badge-info"] || ""),
-              userBadges: m(a.tags.badges || ""),
+              userBadgeInfo: p(a.tags["badge-info"] || ""),
+              userBadges: p(a.tags.badges || ""),
               messageEmotes: a.tags.emotes,
               turbo: a.tags.turbo === "1",
               threadId: a.tags["thread-id"],
@@ -504,16 +559,16 @@ function Ea(a) {
             }
           };
         case "NOTICE":
-          return (r = a.parameters) != null && r.includes("Login unsuccessful") || (s = a.parameters) != null && s.includes("Login authentication failed") || (o = a.parameters) != null && o.includes("Error logging in") || (t = a.parameters) != null && t.includes("Improperly formatted auth") || (d = a.parameters) != null && d.includes("Invalid NICK") || (S = a.parameters) != null && S.includes("Invalid CAP REQ") ? {
+          return (r = a.parameters) != null && r.includes("Login unsuccessful") || (s = a.parameters) != null && s.includes("Login authentication failed") || (i = a.parameters) != null && i.includes("Error logging in") || (t = a.parameters) != null && t.includes("Improperly formatted auth") || (n = a.parameters) != null && n.includes("Invalid NICK") || (b = a.parameters) != null && b.includes("Invalid CAP REQ") ? {
             type: "error",
             data: {
-              channel: l,
+              channel: d,
               message: a.parameters
             }
           } : {
             type: "notice",
             data: {
-              channel: l,
+              channel: d,
               msgId: a.tags["msg-id"],
               message: a.parameters
             }
@@ -522,7 +577,7 @@ function Ea(a) {
           return a.tags["target-user-id"] ? a.tags["ban-duration"] ? {
             type: "Timeout",
             data: {
-              channel: l,
+              channel: d,
               channelId: a.tags["room-id"],
               duration: parseInt(a.tags["ban-duration"]),
               username: a.parameters,
@@ -533,7 +588,7 @@ function Ea(a) {
           } : {
             type: "Ban",
             data: {
-              channel: l,
+              channel: d,
               channelId: a.tags["room-id"],
               username: a.parameters,
               userId: a.tags["target-user-id"],
@@ -543,7 +598,7 @@ function Ea(a) {
           } : {
             type: "ClearChat",
             data: {
-              channel: l,
+              channel: d,
               channelId: a.tags["room-id"],
               timestamp: parseInt(a.tags["tmi-sent-ts"]),
               extra: a.tags
@@ -553,7 +608,7 @@ function Ea(a) {
           return {
             type: "MessageDeleted",
             data: {
-              channel: l,
+              channel: d,
               channelId: a.tags["room-id"],
               // Room ID seems to be empty for this event
               displayName: a.tags["display-name"] || a.tags.login,
@@ -565,16 +620,16 @@ function Ea(a) {
             }
           };
         case "PRIVMSG":
-          return Pa(a, l);
+          return Oa(a, d);
         case "RECONNECT":
           console.log("The Twitch IRC server is about to terminate the connection for maintenance.");
           break;
         default:
           {
-            const M = parseInt(p[0]);
-            if (M >= 400)
-              return console.debug(`Error IRC command: ${M}`, a), null;
-            switch (M) {
+            const P = parseInt(m[0]);
+            if (P >= 400)
+              return console.debug(`Error IRC command: ${P}`, a), null;
+            switch (P) {
               case 1:
                 return null;
               case 2:
@@ -586,149 +641,157 @@ function Ea(a) {
               case 375:
                 return null;
               case 376:
-                return { type: "connect", data: { username: p[1] } };
+                return { type: "connect", data: { username: m[1] } };
               default:
-                return console.debug("Unsupported numeric command", M), null;
+                return console.debug("Unsupported numeric command", P), null;
             }
           }
           break;
       }
     } else
       console.debug("Unprocessed IRC message:", a.raw);
-  } catch (p) {
-    return console.error(p), {
+  } catch (m) {
+    return console.error(m), {
       type: "Warning",
-      data: p
+      data: m
     };
   }
   return console.log(a), null;
 }
-function Oa(a) {
+function Ba(a) {
   a.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
 }
-function ka(a, r, s) {
-  const o = s ? r : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`, t = s || "INSTAFLUFF";
-  a.send(`PASS ${t}`), a.send(`NICK ${o}`);
+function Ga(a, r, s) {
+  const i = s ? r : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`, t = s || "INSTAFLUFF";
+  a.send(`PASS ${t}`), a.send(`NICK ${i}`);
 }
-function aa(a, r) {
-  a.send(`JOIN #${r}`);
+function sa(a, r) {
+  if (Array.isArray(r)) {
+    const s = r.map((i) => `#${i}`).join(",");
+    a.send(`JOIN ${s}`);
+  } else
+    a.send(`JOIN #${r}`);
 }
-function Ga(a, r) {
+function wa(a, r) {
   a.send(`PART #${r}`);
 }
-function Ba(a) {
+function Aa(a) {
   a.send("PING");
 }
-function Ua(a) {
+function Da(a) {
   a.send("PONG");
 }
-function wa(a, r, s) {
+function va(a, r, s) {
   a.send(`PRIVMSG #${r} :${s}`);
 }
-function Da(a, r, s, o) {
-  a.send(`@reply-parent-msg-id=${s} PRIVMSG #${r} :${o}`);
+function La(a, r, s, i) {
+  a.send(`@reply-parent-msg-id=${s} PRIVMSG #${r} :${i}`);
 }
-var i, P, U, E, k, G, v, b, y, L, ta, W, ra, T, sa, $, ea, F, na, V, oa, w, Q;
-class Aa {
-  constructor(r, s, o, t) {
-    f(this, G);
-    f(this, b);
-    f(this, L);
-    f(this, W);
-    f(this, T);
-    f(this, $);
-    f(this, F);
-    f(this, V);
-    f(this, w);
-    f(this, i, void 0);
-    f(this, P, void 0);
-    f(this, U, void 0);
-    f(this, E, void 0);
-    f(this, k, void 0);
-    R(this, k, 0), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, R(this, P, r), R(this, U, s), this.debug = !!t, (typeof o == "string" || o instanceof String) && (o = [o]), this.channels = o || [r], N(this, L, ta).call(this);
+var u, R, G, E, O, U, w, Y, I, S, L, na, W, ea, F, oa, $, ia, T, ua, V, la, A, Z;
+class Wa {
+  constructor(r, s, i, t) {
+    c(this, w);
+    c(this, I);
+    c(this, L);
+    c(this, W);
+    c(this, F);
+    c(this, $);
+    c(this, T);
+    c(this, V);
+    c(this, A);
+    c(this, u, void 0);
+    c(this, R, void 0);
+    c(this, G, void 0);
+    c(this, E, void 0);
+    c(this, O, void 0);
+    c(this, U, void 0);
+    N(this, O, 0), N(this, U, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, G, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, L, na).call(this);
   }
   get version() {
     return "2.0.0";
+  }
+  get latency() {
+    return e(this, U);
   }
   on(r, s) {
     this.handlers[r] = s;
   }
   say(r, s) {
-    e(this, i) && e(this, b, y) && wa(e(this, i), s || e(this, G, v), r);
+    e(this, u) && e(this, I, S) && va(e(this, u), s || e(this, w, Y), r);
   }
-  reply(r, s, o) {
-    e(this, i) && e(this, b, y) && Da(e(this, i), o || e(this, G, v), r, s);
+  reply(r, s, i) {
+    e(this, u) && e(this, I, S) && La(e(this, u), i || e(this, w, Y), r, s);
   }
   join(r) {
-    e(this, i) && e(this, b, y) && aa(e(this, i), r);
+    e(this, u) && e(this, I, S) && sa(e(this, u), r);
   }
   leave(r) {
-    e(this, i) && e(this, b, y) && Ga(e(this, i), r);
+    e(this, u) && e(this, I, S) && wa(e(this, u), r);
   }
   deleteMessage(r, s) {
-    e(this, i) && e(this, b, y);
+    e(this, u) && e(this, I, S);
   }
   simulateIRCMessage(r) {
-    e(this, i) && e(this, b, y) && N(this, w, Q).call(this, { data: r });
+    e(this, u) && e(this, I, S) && M(this, A, Z).call(this, { data: r });
   }
   destroy() {
-    e(this, i) && e(this, i).readyState !== e(this, i).CLOSED && e(this, i).close();
+    e(this, u) && e(this, u).readyState !== e(this, u).CLOSED && e(this, u).close();
   }
 }
-i = new WeakMap(), P = new WeakMap(), U = new WeakMap(), E = new WeakMap(), k = new WeakMap(), G = new WeakSet(), v = function() {
+u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), E = new WeakMap(), O = new WeakMap(), U = new WeakMap(), w = new WeakSet(), Y = function() {
   return this.channels[0];
-}, b = new WeakSet(), y = function() {
-  return e(this, i) && e(this, i).readyState === e(this, i).OPEN;
-}, L = new WeakSet(), ta = function() {
-  if (e(this, b, y))
+}, I = new WeakSet(), S = function() {
+  return !!(e(this, u) && e(this, u).readyState === e(this, u).OPEN);
+}, L = new WeakSet(), na = function() {
+  if (e(this, I, S))
     return;
-  R(this, i, Ra("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, i).onopen = () => {
-    N(this, W, ra).call(this);
-  }, e(this, i).onmessage = (s) => {
-    N(this, w, Q).call(this, s);
-  }, e(this, i).onerror = (s) => {
-    N(this, T, sa).call(this, s);
-  }, e(this, i).onclose = (s) => {
-    N(this, $, ea).call(this, s);
+  N(this, u, ka("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, u).onopen = () => {
+    M(this, W, ea).call(this);
+  }, e(this, u).onmessage = (s) => {
+    M(this, A, Z).call(this, s);
+  }, e(this, u).onerror = (s) => {
+    M(this, F, oa).call(this, s);
+  }, e(this, u).onclose = (s) => {
+    M(this, $, ia).call(this, s);
   };
-}, W = new WeakSet(), ra = function() {
-  e(this, i) && e(this, b, y) && (Oa(e(this, i)), ka(e(this, i), e(this, P), e(this, U)), aa(e(this, i), e(this, G, v)));
-}, T = new WeakSet(), sa = function(r) {
+}, W = new WeakSet(), ea = function() {
+  e(this, u) && e(this, I, S) && (Ba(e(this, u)), Ga(e(this, u), e(this, R), e(this, G)));
+}, F = new WeakSet(), oa = function(r) {
   console.error("ERROR", r);
-}, $ = new WeakSet(), ea = function(r) {
+}, $ = new WeakSet(), ia = function(r) {
   console.info("CLOSE", r), e(this, E) && clearInterval(e(this, E));
-}, F = new WeakSet(), na = function() {
-  e(this, i) && e(this, b, y) && (R(this, k, Date.now()), Ba(e(this, i)));
-}, V = new WeakSet(), oa = function(r) {
-  if (e(this, i) && e(this, b, y))
+}, T = new WeakSet(), ua = function() {
+  e(this, u) && e(this, I, S) && (N(this, O, Date.now()), Aa(e(this, u)));
+}, V = new WeakSet(), la = function(r) {
+  if (e(this, u) && e(this, I, S))
     switch (r.type) {
-      case u.Connect:
-        R(this, P, r.data.username), e(this, E) && clearInterval(e(this, E)), R(this, E, setInterval(() => {
-          N(this, F, na).call(this);
+      case l.Connect:
+        N(this, R, r.data.username), e(this, E) && clearInterval(e(this, E)), N(this, E, setInterval(() => {
+          M(this, T, ua).call(this);
         }, 6e4));
-        const s = new URL(e(this, i).url);
-        r.data.address = s.host, r.data.port = s.protocol === "wss:" ? 443 : 80, r.data.isFirstConnect = this.reconnects === 0;
+        const s = new URL(e(this, u).url);
+        r.data.address = s.host, r.data.port = s.protocol === "wss:" ? 443 : 80, r.data.isFirstConnect = this.reconnects === 0, sa(e(this, u), this.channels);
         break;
-      case u.Ping:
-        Ua(e(this, i));
+      case l.Ping:
+        Da(e(this, u));
         break;
-      case u.Pong:
-        r.data = r.data || {}, r.data.latency = Date.now() - e(this, k);
+      case l.Pong:
+        r.data = r.data || {}, N(this, U, r.data.latency = Date.now() - e(this, O));
         break;
-      case u.RoomState:
+      case l.RoomState:
         this.chatModes[r.data.channel] = {
           ...this.chatModes[r.data.channel],
           ...r.data
-        }, this.handlers[u.ChatMode] && this.handlers[u.ChatMode](this.chatModes[r.data.channel]);
+        }, this.handlers[l.ChatMode] && this.handlers[l.ChatMode](this.chatModes[r.data.channel]);
         break;
-      case u.Error:
-        e(this, i).close();
+      case l.Error:
+        e(this, u).close();
         break;
-      case u.Whisper:
-        r.data.self = r.data.username === e(this, P);
+      case l.Whisper:
+        r.data.self = r.data.username === e(this, R);
         break;
-      case u.Chat:
-        r.data.self = r.data.username === e(this, P), this.handlers[u.Reply] && r.data.extra["reply-parent-msg-id"] && this.handlers[u.Reply]({
+      case l.Chat:
+        r.data.self = r.data.username === e(this, R), this.handlers[l.Reply] && r.data.extra["reply-parent-msg-id"] && this.handlers[l.Reply]({
           ...r.data,
           parentId: r.data.extra["reply-parent-msg-id"],
           parentUserId: r.data.extra["reply-parent-user-id"],
@@ -738,26 +801,26 @@ i = new WeakMap(), P = new WeakMap(), U = new WeakMap(), E = new WeakMap(), k = 
         });
         break;
     }
-}, w = new WeakSet(), Q = function(r) {
-  if (!e(this, i) || !e(this, b, y))
+}, A = new WeakSet(), Z = function(r) {
+  if (!e(this, u) || !e(this, I, S))
     return;
   const s = r.data.trim().split(`\r
 `);
-  for (const o of s) {
-    const t = Ea(Na(o));
-    t && t.type !== u.None && (N(this, V, oa).call(this, t), this.handlers[t.type] && this.handlers[t.type](t.data), this.handlers[u.All] && this.handlers[u.All]({
+  for (const i of s) {
+    const t = Ua(Ra(i));
+    t && t.type !== l.None && (M(this, V, la).call(this, t), this.handlers[t.type] && this.handlers[t.type](t.data), this.handlers[l.All] && this.handlers[l.All]({
       event: t.type,
       ...t.data
     }));
   }
 };
-let n;
-function c(a) {
+let o;
+function f(a) {
   if (a) {
     const r = a.split("/"), s = {};
-    for (const o of r) {
-      const [t, d] = o.split(":");
-      s[t] = d.split(",");
+    for (const i of r) {
+      const [t, n] = i.split(":");
+      s[t] = n.split(",");
     }
     return s;
   }
@@ -767,94 +830,114 @@ function h(a) {
   const r = {};
   for (const s in a.extra)
     a.extra[s] === "" ? r[s] = null : a.extra[s] === "1" ? r[s] = !0 : a.extra[s] === "0" ? r[s] = !1 : r[s] = a.extra[s];
-  return r["badge-info-raw"] = r["badge-info"], r["badge-info"] = a.userBadgeInfo || null, r["badges-raw"] = r.badges, r.badges = a.userBadges || null, r["emotes-raw"] = r.emotes, r.emotes = c(a.messageEmotes), r.username = a.username, r["message-type"] = a.messageType, r;
+  return r["badge-info-raw"] = r["badge-info"], r["badge-info"] = a.userBadgeInfo || null, r["badges-raw"] = r.badges, r.badges = a.userBadges || null, r["emotes-raw"] = r.emotes, r.emotes = f(a.messageEmotes), r.username = a.username, r["message-type"] = a.messageType, r;
 }
 const g = {
   version: () => "2.0.0",
+  latency: () => o ? o.latency : -1,
   onConnected: (a, r, s) => {
-    n && n.debug && console.debug("onConnected default handler");
+    o && o.debug && console.debug("onConnected default handler");
   },
   onReconnect: (a) => {
-    n && n.debug && console.debug("onReconnect default handler");
+    o && o.debug && console.debug("onReconnect default handler");
   },
   onError: (a) => {
     console.error("Error:", a);
   },
-  onCommand: (a, r, s, o, t) => {
-    n && n.debug && console.debug("onCommand default handler");
+  onCommand: (a, r, s, i, t) => {
+    o && o.debug && console.debug("onCommand default handler");
   },
-  onChat: (a, r, s, o, t) => {
-    n && n.debug && console.debug("onChat default handler");
+  onChat: (a, r, s, i, t) => {
+    o && o.debug && console.debug("onChat default handler");
   },
-  onCheer: (a, r, s, o, t) => {
-    n && n.debug && console.debug("onCheer default handler");
+  onCheer: (a, r, s, i, t) => {
+    o && o.debug && console.debug("onCheer default handler");
   },
-  onWhisper: (a, r, s, o, t) => {
-    n && n.debug && console.debug("onWhisper default handler");
+  onWhisper: (a, r, s, i, t) => {
+    o && o.debug && console.debug("onWhisper default handler");
   },
-  onSub: (a, r, s, o) => {
-    n && n.debug && console.debug("onSub default handler");
+  onSub: (a, r, s, i) => {
+    o && o.debug && console.debug("onSub default handler");
   },
-  onResub: (a, r, s, o, t, d) => {
-    n && n.debug && console.debug("onResub default handler");
+  onResub: (a, r, s, i, t, n) => {
+    o && o.debug && console.debug("onResub default handler");
   },
-  onSubGift: (a, r, s, o, t, d) => {
-    n && n.debug && console.debug("onSubGift default handler");
+  onSubGift: (a, r, s, i, t, n) => {
+    o && o.debug && console.debug("onSubGift default handler");
   },
-  onSubMysteryGift: (a, r, s, o, t) => {
-    n && n.debug && console.debug("onSubMysteryGift default handler");
+  onSubMysteryGift: (a, r, s, i, t) => {
+    o && o.debug && console.debug("onSubMysteryGift default handler");
   },
   onGiftSubContinue: (a, r, s) => {
-    n && n.debug && console.debug("onGiftSubContinue default handler");
+    o && o.debug && console.debug("onGiftSubContinue default handler");
   },
   onTimeout: (a, r, s) => {
-    n && n.debug && console.debug("onTimeout default handler");
+    o && o.debug && console.debug("onTimeout default handler");
   },
   onBan: (a, r) => {
-    n && n.debug && console.debug("onBan default handler");
+    o && o.debug && console.debug("onBan default handler");
   },
   onMessageDeleted: (a, r) => {
-    n && n.debug && console.debug("onMessageDeleted default handler");
+    o && o.debug && console.debug("onMessageDeleted default handler");
   },
   onRaid: (a, r, s) => {
-    n && n.debug && console.debug("onRaid default handler");
+    o && o.debug && console.debug("onRaid default handler");
+  },
+  onUnraid: (a, r) => {
+    o && o.debug && console.debug("onUnraid default handler");
   },
   simulateIRCMessage: (a) => {
-    n && n.simulateIRCMessage(a);
+    o && o.simulateIRCMessage(a);
   },
-  Init: (a, r, s, o) => {
-    n = new Aa(a, r, s, o), n.on(u.Connect, (t) => {
-      g.onConnected(t.address, t.port, t.isFirstConnect);
-    }), n.on(u.Reconnect, (t) => {
-      g.onReconnect(t.reconnectCount);
-    }), n.on(u.Error, (t) => {
+  Init: (a, r, s, i) => {
+    o = new Wa(a, r, s, i), o.on(l.Connect, (t) => {
+      console.log("CONNECT"), g.onConnected(t.address, t.port, t.isFirstConnect);
+    }), o.on(l.Reconnect, (t) => {
+      console.log("RECONNECT"), g.onReconnect(t.reconnectCount);
+    }), o.on(l.Error, (t) => {
       g.onError(t);
-    }), n.on(u.Command, (t) => {
-      g.onCommand(t.displayName || t.username, t.command, t.message, t.flags, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Chat, (t) => {
-      g.onChat(t.displayName || t.username, t.message, t.flags, t.self, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Whisper, (t) => {
-      g.onWhisper(t.displayName || t.username, t.message, t.flags, t.self, { ...t, userState: h(t), extra: null, flags: t.extra.flags, channel: t.username, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Cheer, (t) => {
-      g.onCheer(t.displayName || t.username, t.message, t.bits, t.flags, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Subscribe, (t) => {
-      g.onSub(t.displayName || t.username, t.message, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Resubscribe, (t) => {
-      g.onResub(t.displayName || t.username, t.message, t.streakMonths || 0, t.cumulativeMonths, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.SubGift, (t) => {
-      g.onSubGift(t.displayName || t.username, t.streakMonths || 0, t.recipientDisplayName, t.senderCount, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.MysterySubGift, (t) => {
-      g.onSubMysteryGift(t.displayName || t.username, t.giftCount, t.senderCount, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes), userMassGiftCount: t.giftCount });
-    }), n.on(u.SubGiftContinue, (t) => {
-      console.log("SUBGIFTCONTINUE", t), g.onGiftSubContinue(t.displayName || t.username, t.gifterDisplayName, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Timeout, (t) => {
-      g.onTimeout(t.displayName || t.username, t.duration, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes), timedOutUserId: t.userId });
-    }), n.on(u.Ban, (t) => {
-      g.onBan(t.displayName || t.username, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes), bannedUserId: t.userId });
-    }), n.on(u.MessageDeleted, (t) => {
-      g.onMessageDeleted(t.id, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
-    }), n.on(u.Raid, (t) => {
-      console.log("RAID"), g.onRaid(t.displayName || t.username, t.viewers, { ...t, userState: h(t), extra: null, flags: t.extra.flags, roomId: t.channelId, messageEmotes: c(t.messageEmotes) });
+    }), o.on(l.Command, (t) => {
+      var n;
+      g.onCommand(t.displayName || t.username, t.command, t.message, t.flags, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Chat, (t) => {
+      var n;
+      g.onChat(t.displayName || t.username, t.message, t.flags, t.self, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Whisper, (t) => {
+      var n;
+      g.onWhisper(t.displayName || t.username, t.message, t.flags, t.self, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, channel: t.username, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Cheer, (t) => {
+      var n;
+      g.onCheer(t.displayName || t.username, t.message, t.bits, t.flags, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Subscribe, (t) => {
+      var n;
+      g.onSub(t.displayName || t.username, t.message, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Resubscribe, (t) => {
+      var n;
+      g.onResub(t.displayName || t.username, t.message, t.streakMonths || 0, t.cumulativeMonths, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.SubGift, (t) => {
+      var n;
+      g.onSubGift(t.displayName || t.username, t.streakMonths || 0, t.recipientDisplayName, t.senderCount, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.MysterySubGift, (t) => {
+      var n;
+      g.onSubMysteryGift(t.displayName || t.username, t.giftCount, t.senderCount, { prime: t.subPlan === "Prime", plan: t.subPlan, planName: t.subPlanName || null }, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes), userMassGiftCount: t.giftCount });
+    }), o.on(l.SubGiftContinue, (t) => {
+      var n;
+      g.onGiftSubContinue(t.displayName || t.username, t.gifterDisplayName, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Timeout, (t) => {
+      var n;
+      g.onTimeout(t.displayName || t.username, t.duration, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes), timedOutUserId: t.userId });
+    }), o.on(l.Ban, (t) => {
+      var n;
+      g.onBan(t.displayName || t.username, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes), bannedUserId: t.userId });
+    }), o.on(l.MessageDeleted, (t) => {
+      var n;
+      g.onMessageDeleted(t.id, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Raid, (t) => {
+      var n;
+      g.onRaid(t.displayName || t.username, t.viewers, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
+    }), o.on(l.Unraid, (t) => {
+      var n;
+      g.onUnraid(t.channel, { ...t, userState: h(t), extra: null, flags: (n = t.extra) == null ? void 0 : n.flags, roomId: t.channelId, messageEmotes: f(t.messageEmotes) });
     });
   }
 };

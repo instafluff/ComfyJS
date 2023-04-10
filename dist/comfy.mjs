@@ -20,7 +20,7 @@ var __privateMethod = (obj, member, method) => {
   __accessCheck(obj, member, "access private method");
   return method;
 };
-var _ws, _username, _password, _pingTimer, _pingTime, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
+var _ws, _username, _password, _pingTimer, _pingTime, _latency, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
 function unescapeIRC(text) {
   return text.replace(/\\(.)/g, (_, char) => {
     switch (char) {
@@ -114,9 +114,11 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["MysterySubGift"] = "submysterygift";
   TwitchEventType2["SubGiftContinue"] = "subgiftcontinue";
   TwitchEventType2["Raid"] = "raid";
+  TwitchEventType2["Unraid"] = "unraid";
   TwitchEventType2["Timeout"] = "Timeout";
   TwitchEventType2["Ban"] = "Ban";
   TwitchEventType2["MessageDeleted"] = "MessageDeleted";
+  TwitchEventType2["ViewerMilestone"] = "ViewerMilestone";
   TwitchEventType2["All"] = "all";
   return TwitchEventType2;
 })(TwitchEventType || {});
@@ -143,6 +145,56 @@ function parseBadges(badgesTag) {
   }
   return badges;
 }
+function parseMessageFlags(flagsTag) {
+  if (!flagsTag) {
+    return void 0;
+  }
+  const flagsList = flagsTag.split(",");
+  const flags = {};
+  for (const flag of flagsList) {
+    const [, label] = flag.split(":");
+    const [category, level] = label.split(".");
+    switch (category) {
+      case "A":
+        flags[
+          "aggressive"
+          /* AggressiveContent */
+        ] = Math.max(flags[
+          "aggressive"
+          /* AggressiveContent */
+        ] || 0, parseInt(level));
+        break;
+      case "I":
+        flags[
+          "identity-hate"
+          /* IdentityBasedHate */
+        ] = Math.max(flags[
+          "identity-hate"
+          /* IdentityBasedHate */
+        ] || 0, parseInt(level));
+        break;
+      case "P":
+        flags[
+          "profane"
+          /* ProfaneContent */
+        ] = Math.max(flags[
+          "profane"
+          /* ProfaneContent */
+        ] || 0, parseInt(level));
+        break;
+      case "S":
+        flags[
+          "sexual"
+          /* SexualContent */
+        ] = Math.max(flags[
+          "sexual"
+          /* SexualContent */
+        ] || 0, parseInt(level));
+        break;
+    }
+  }
+  return flags;
+}
 function handleChatMessage(message, channel) {
   var _a, _b;
   const isAction = (_a = message.parameters) == null ? void 0 : _a.startsWith("ACTION");
@@ -158,6 +210,7 @@ function handleChatMessage(message, channel) {
   const userColor = message.tags["color"] || void 0;
   const emotes = message.tags["emotes"];
   const messageFlags = message.tags["flags"];
+  const contentFlags = parseMessageFlags(messageFlags);
   const isBroadcaster = username === channel;
   const isMod = message.tags["mod"] === "1";
   const isFounder = badges ? !!badges["founder"] : false;
@@ -207,6 +260,7 @@ function handleChatMessage(message, channel) {
         // TODO: Can bits be an action?
         messageEmotes: emotes,
         messageFlags,
+        contentFlags,
         isEmoteOnly,
         subscriber: isSubscriber,
         userColor,
@@ -242,6 +296,7 @@ function handleChatMessage(message, channel) {
           messageType: isAction ? "action" : "chat",
           messageEmotes: emotes,
           messageFlags,
+          contentFlags,
           isEmoteOnly,
           userColor,
           userBadgeInfo: badgeInfo,
@@ -270,6 +325,7 @@ function handleChatMessage(message, channel) {
           messageType: isAction ? "action" : "chat",
           messageEmotes: emotes,
           messageFlags,
+          contentFlags,
           isEmoteOnly,
           userColor,
           userBadgeInfo: badgeInfo,
@@ -413,6 +469,8 @@ function processMessage(message) {
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
                   messageEmotes: message.tags["emotes"],
+                  messageFlags: message.tags["flags"],
+                  contentFlags: parseMessageFlags(message.tags["flags"]),
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -443,6 +501,8 @@ function processMessage(message) {
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
                   messageEmotes: message.tags["emotes"],
+                  messageFlags: message.tags["flags"],
+                  contentFlags: parseMessageFlags(message.tags["flags"]),
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
                   extra: message.tags
                 }
@@ -508,7 +568,7 @@ function processMessage(message) {
                   extra: message.tags
                 }
               };
-            case "giftsubcontinue":
+            case "giftpaidupgrade":
               return {
                 type: "subgiftcontinue",
                 data: {
@@ -548,9 +608,30 @@ function processMessage(message) {
                   extra: message.tags
                 }
               };
-            case "viewermilestone":
+            case "unraid":
+              console.log(message);
               return {
-                type: TwitchEventType.ViewerMilestone,
+                type: "unraid",
+                data: {
+                  id: message.tags["id"],
+                  displayName: message.tags["display-name"] || message.tags["login"],
+                  channel: message.tags["login"],
+                  channelId: message.tags["room-id"],
+                  username: message.tags["login"],
+                  userId: message.tags["user-id"],
+                  userType: TwitchUserTypes[message.tags["user-type"]],
+                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
+                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userColor: message.tags["color"] || void 0,
+                  messageType: message.tags["msg-id"],
+                  timestamp: parseInt(message.tags["tmi-sent-ts"]),
+                  extra: message.tags
+                }
+              };
+            case "viewermilestone":
+              console.log(message);
+              return {
+                type: "ViewerMilestone",
                 data: {
                   id: message.tags["id"],
                   displayName: message.tags["display-name"] || message.tags["login"],
@@ -720,7 +801,12 @@ function authenticate(ws, username, password) {
   ws.send(`NICK ${ircUsername}`);
 }
 function joinChannel(ws, channel) {
-  ws.send(`JOIN #${channel}`);
+  if (Array.isArray(channel)) {
+    const channels = channel.map((c) => `#${c}`).join(",");
+    ws.send(`JOIN ${channels}`);
+  } else {
+    ws.send(`JOIN #${channel}`);
+  }
 }
 function leaveChannel(ws, channel) {
   ws.send(`PART #${channel}`);
@@ -753,7 +839,9 @@ class TwitchChat {
     __privateAdd(this, _password, void 0);
     __privateAdd(this, _pingTimer, void 0);
     __privateAdd(this, _pingTime, void 0);
+    __privateAdd(this, _latency, void 0);
     __privateSet(this, _pingTime, 0);
+    __privateSet(this, _latency, -1);
     this.reconnects = 0;
     this.chatModes = {};
     this.handlers = {};
@@ -768,6 +856,9 @@ class TwitchChat {
   }
   get version() {
     return "2.0.0";
+  }
+  get latency() {
+    return __privateGet(this, _latency);
   }
   on(eventType, handler) {
     this.handlers[eventType] = handler;
@@ -836,13 +927,14 @@ _username = new WeakMap();
 _password = new WeakMap();
 _pingTimer = new WeakMap();
 _pingTime = new WeakMap();
+_latency = new WeakMap();
 _mainChannel = new WeakSet();
 mainChannel_get = function() {
   return this.channels[0];
 };
 _isConnected = new WeakSet();
 isConnected_get = function() {
-  return __privateGet(this, _ws) && __privateGet(this, _ws).readyState === __privateGet(this, _ws).OPEN;
+  return !!(__privateGet(this, _ws) && __privateGet(this, _ws).readyState === __privateGet(this, _ws).OPEN);
 };
 _connect = new WeakSet();
 connect_fn = function() {
@@ -874,7 +966,6 @@ onOpen_fn = function() {
   }
   requestCapabilities(__privateGet(this, _ws));
   authenticate(__privateGet(this, _ws), __privateGet(this, _username), __privateGet(this, _password));
-  joinChannel(__privateGet(this, _ws), __privateGet(this, _mainChannel, mainChannel_get));
 };
 _onError = new WeakSet();
 onError_fn = function(event) {
@@ -919,13 +1010,14 @@ handleSpecialEvents_fn = function(message) {
       message.data["address"] = hostUrl.host;
       message.data["port"] = hostUrl.protocol === "wss:" ? 443 : 80;
       message.data["isFirstConnect"] = this.reconnects === 0;
+      joinChannel(__privateGet(this, _ws), this.channels);
       break;
     case TwitchEventType.Ping:
       pong(__privateGet(this, _ws));
       break;
     case TwitchEventType.Pong:
       message.data = message.data || {};
-      message.data["latency"] = Date.now() - __privateGet(this, _pingTime);
+      __privateSet(this, _latency, message.data["latency"] = Date.now() - __privateGet(this, _pingTime));
       break;
     case TwitchEventType.RoomState:
       this.chatModes[message.data.channel] = {
@@ -1023,6 +1115,9 @@ const comfyJS = {
   version: () => {
     return "2.0.0";
   },
+  latency: () => {
+    return comfyInstance ? comfyInstance.latency : -1;
+  },
   onConnected: (address, port, isFirstConnect) => {
     if (comfyInstance && comfyInstance.debug) {
       console.debug("onConnected default handler");
@@ -1101,6 +1196,11 @@ const comfyJS = {
       console.debug("onRaid default handler");
     }
   },
+  onUnraid: (channel, extra) => {
+    if (comfyInstance && comfyInstance.debug) {
+      console.debug("onUnraid default handler");
+    }
+  },
   simulateIRCMessage: (message) => {
     if (comfyInstance) {
       comfyInstance.simulateIRCMessage(message);
@@ -1109,54 +1209,71 @@ const comfyJS = {
   Init: (username, password, channels, isDebug) => {
     comfyInstance = new TwitchChat(username, password, channels, isDebug);
     comfyInstance.on(TwitchEventType.Connect, (context) => {
+      console.log("CONNECT");
       comfyJS.onConnected(context.address, context.port, context.isFirstConnect);
     });
     comfyInstance.on(TwitchEventType.Reconnect, (context) => {
+      console.log("RECONNECT");
       comfyJS.onReconnect(context.reconnectCount);
     });
     comfyInstance.on(TwitchEventType.Error, (error) => {
       comfyJS.onError(error);
     });
     comfyInstance.on(TwitchEventType.Command, (context) => {
-      comfyJS.onCommand(context.displayName || context.username, context.command, context.message, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onCommand(context.displayName || context.username, context.command, context.message, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Chat, (context) => {
-      comfyJS.onChat(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onChat(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Whisper, (context) => {
-      comfyJS.onWhisper(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, channel: context.username, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onWhisper(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, channel: context.username, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Cheer, (context) => {
-      comfyJS.onCheer(context.displayName || context.username, context.message, context.bits, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onCheer(context.displayName || context.username, context.message, context.bits, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Subscribe, (context) => {
-      comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
-      comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.SubGift, (context) => {
-      comfyJS.onSubGift(context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onSubGift(context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {
-      comfyJS.onSubMysteryGift(context.displayName || context.username, context.giftCount, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), userMassGiftCount: context.giftCount });
+      var _a;
+      comfyJS.onSubMysteryGift(context.displayName || context.username, context.giftCount, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), userMassGiftCount: context.giftCount });
     });
     comfyInstance.on(TwitchEventType.SubGiftContinue, (context) => {
-      console.log("SUBGIFTCONTINUE", context);
-      comfyJS.onGiftSubContinue(context.displayName || context.username, context.gifterDisplayName, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onGiftSubContinue(context.displayName || context.username, context.gifterDisplayName, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Timeout, (context) => {
-      comfyJS.onTimeout(context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), timedOutUserId: context.userId });
+      var _a;
+      comfyJS.onTimeout(context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), timedOutUserId: context.userId });
     });
     comfyInstance.on(TwitchEventType.Ban, (context) => {
-      comfyJS.onBan(context.displayName || context.username, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), bannedUserId: context.userId });
+      var _a;
+      comfyJS.onBan(context.displayName || context.username, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), bannedUserId: context.userId });
     });
     comfyInstance.on(TwitchEventType.MessageDeleted, (context) => {
-      comfyJS.onMessageDeleted(context.id, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onMessageDeleted(context.id, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
     comfyInstance.on(TwitchEventType.Raid, (context) => {
-      console.log("RAID");
-      comfyJS.onRaid(context.displayName || context.username, context.viewers, { ...context, userState: convertContextToUserState(context), extra: null, flags: context.extra.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+      var _a;
+      comfyJS.onRaid(context.displayName || context.username, context.viewers, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
+    });
+    comfyInstance.on(TwitchEventType.Unraid, (context) => {
+      var _a;
+      comfyJS.onUnraid(context.channel, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
   }
 };

@@ -18,6 +18,7 @@ export class TwitchChat {
 	#password : string | undefined;
 	#pingTimer : ReturnType<typeof setInterval> | undefined;
 	#pingTime : number = 0;
+	#latency : number = -1;
 	debug : boolean;
 	reconnects : number = 0;
 	channels : string[];
@@ -39,9 +40,10 @@ export class TwitchChat {
 		this.#connect();
 	}
 
-	get #mainChannel() { return this.channels[ 0 ]; }
-	get #isConnected() { return this.#ws && this.#ws.readyState === this.#ws.OPEN; }
-	get version() { return "@VERSION"; }
+	get #mainChannel() : string { return this.channels[ 0 ]; }
+	get #isConnected() : boolean { return !!( this.#ws && this.#ws.readyState === this.#ws.OPEN ); }
+	get version() : string { return "@VERSION"; }
+	get latency() : number { return this.#latency; }
 
 	on( eventType : TwitchEventType, handler : ( context? : any ) => void ) {
 		this.handlers[ eventType ] = handler;
@@ -61,11 +63,12 @@ export class TwitchChat {
 		replyChat( this.#ws, channel || this.#mainChannel, messageId, message );
 	}
 
-	join( channel : string ) : void {
+	join( channel : string | string[] ) : void {
 		if( !this.#ws ) { return; }
 		if( !this.#isConnected ) { return; }
 
 		joinChannel( this.#ws, channel );
+		// TODO: add channel to this.channels
 	}
 
 	leave( channel : string ) : void {
@@ -73,6 +76,7 @@ export class TwitchChat {
 		if( !this.#isConnected ) { return; }
 
 		leaveChannel( this.#ws, channel );
+		// TODO: remove channel from this.channels
 	}
 
 	deleteMessage( messageId : string, channel? : string ) : void {
@@ -109,8 +113,6 @@ export class TwitchChat {
 
 		requestCapabilities( this.#ws );
 		authenticate( this.#ws, this.#username, this.#password );
-		// TODO: Join rooms after confirmation that we connected properly
-		joinChannel( this.#ws, this.#mainChannel );
 	}
 
 	#onError( event : Event ) {
@@ -151,6 +153,9 @@ export class TwitchChat {
 			message.data[ "address" ] = hostUrl.host;
 			message.data[ "port" ] = hostUrl.protocol === "wss:" ? 443 : 80;
 			message.data[ "isFirstConnect" ] = this.reconnects === 0;
+
+			// Join the channels
+			joinChannel( this.#ws, this.channels );
 			break;
 		case TwitchEventType.Ping:
 			pong( this.#ws );
@@ -158,7 +163,7 @@ export class TwitchChat {
 		case TwitchEventType.Pong:
 			// Calculate and attach latency to the data
 			message.data = message.data || {};
-			message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
+			this.#latency = message.data[ "latency" ] = ( Date.now() - this.#pingTime ); // Latency in milliseconds
 			break;
 		case TwitchEventType.RoomState:
 			// Save ChatMode for the room at the first message and then diff the notifications afterwards

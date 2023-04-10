@@ -24,14 +24,24 @@ export enum TwitchEventType {
 	Cheer = "Cheer",
 	Subscribe = "sub",
 	Resubscribe = "resub",
-	SubGift = "subgift", // Note: Goal Contributions are not included if it is from a mysterysubgift and is included in the mysterysubgift event instead
+	SubGift = "subgift",
 	MysterySubGift = "submysterygift",
 	SubGiftContinue = "subgiftcontinue",
 	Raid = "raid",
+	Unraid = "unraid",
 	Timeout = "Timeout",
 	Ban = "Ban",
 	MessageDeleted = "MessageDeleted",
+	// Experimental
+	ViewerMilestone = "ViewerMilestone",
 	All = "all",
+};
+
+export enum TwitchMessageFlag {
+	AggressiveContent = "aggressive",
+	IdentityBasedHate = "identity-hate",
+	ProfaneContent = "profane",
+	SexualContent = "sexual",
 };
 
 const TwitchUserTypes : { [ key : string ] : string } = {
@@ -64,6 +74,33 @@ function parseBadges( badgesTag : string ) : { [ key : string ] : string } | und
 	return badges;
 }
 
+function parseMessageFlags( flagsTag : string ) {
+	if( !flagsTag ) { return undefined; }
+	const flagsList = flagsTag.split( "," );
+	const flags : Partial<{ [ key in TwitchMessageFlag ] : number | undefined }> = {};
+	for( const flag of flagsList ) {
+		const [ , label ] = flag.split( ":" );
+		const [ category, level ] = label.split( "." );
+		switch( category ) {
+		case "A":
+			flags[ TwitchMessageFlag.AggressiveContent ] = Math.max( flags[ TwitchMessageFlag.AggressiveContent ] || 0, parseInt( level ) );
+			break;
+		case "I":
+			flags[ TwitchMessageFlag.IdentityBasedHate ] = Math.max( flags[ TwitchMessageFlag.IdentityBasedHate ] || 0, parseInt( level ) );
+			break;
+		case "P":
+			flags[ TwitchMessageFlag.ProfaneContent ] = Math.max( flags[ TwitchMessageFlag.ProfaneContent ] || 0, parseInt( level ) );
+			break;
+		case "S":
+			flags[ TwitchMessageFlag.SexualContent ] = Math.max( flags[ TwitchMessageFlag.SexualContent ] || 0, parseInt( level ) );
+			break;
+		default:
+			break;
+		}
+	}
+	return flags;
+}
+
 function handleChatMessage( message : ParsedMessage, channel : string ) : ProcessedMessage {
 	const isAction = message.parameters?.startsWith( "\u0001ACTION" );
 	const sanitizedMessage = isAction ? message.parameters?.match( /^\u0001ACTION ([^\u0001]+)\u0001$/ )![ 1 ] : message.parameters;
@@ -79,6 +116,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const userColor = message.tags[ "color" ] || undefined;
 	const emotes = message.tags[ "emotes" ];
 	const messageFlags = message.tags[ "flags" ];
+	const contentFlags = parseMessageFlags( messageFlags );
 	const isBroadcaster = username === channel;
 	const isMod = message.tags[ "mod" ] === "1";
 	const isFounder = badges ? !!badges[ "founder" ] : false;
@@ -132,6 +170,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
 				messageEmotes: emotes,
 				messageFlags,
+				contentFlags,
 				isEmoteOnly,
 				subscriber: isSubscriber,
 				userColor,
@@ -168,6 +207,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
 					messageFlags,
+					contentFlags,
 					isEmoteOnly,
 					userColor,
 					userBadgeInfo: badgeInfo,
@@ -197,6 +237,7 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 					messageType: isAction ? "action" : "chat",
 					messageEmotes: emotes,
 					messageFlags,
+					contentFlags,
 					isEmoteOnly,
 					userColor,
 					userBadgeInfo: badgeInfo,
@@ -335,6 +376,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							message: message.parameters,
 							messageType: message.tags[ "msg-id" ],
 							messageEmotes: message.tags[ "emotes" ],
+							messageFlags: message.tags[ "flags" ],
+							contentFlags: parseMessageFlags( message.tags[ "flags" ] ),
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
@@ -365,6 +408,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							message: message.parameters,
 							messageType: message.tags[ "msg-id" ],
 							messageEmotes: message.tags[ "emotes" ],
+							messageFlags: message.tags[ "flags" ],
+							contentFlags: parseMessageFlags( message.tags[ "flags" ] ),
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
 							extra: message.tags,
 						},
@@ -429,7 +474,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							extra: message.tags,
 						},
 					};
-				case "giftsubcontinue":
+				case "giftpaidupgrade":
 					return {
 						type: TwitchEventType.SubGiftContinue,
 						data: {
@@ -469,7 +514,28 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							extra: message.tags,
 						},
 					};
+				case "unraid":
+					console.log( message );
+					return {
+						type: TwitchEventType.Unraid,
+						data: {
+							id: message.tags[ "id" ],
+							displayName: message.tags[ "display-name" ] || message.tags[ "login" ],
+							channel: message.tags[ "login" ],
+							channelId: message.tags[ "room-id" ],
+							username: message.tags[ "login" ],
+							userId: message.tags[ "user-id" ],
+							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
+							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
+							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userColor: message.tags[ "color" ] || undefined,
+							messageType: message.tags[ "msg-id" ],
+							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
+							extra: message.tags,
+						},
+					};
 				case "viewermilestone":
+					console.log( message );
 					return {
 						type: TwitchEventType.ViewerMilestone,
 						data: {
@@ -660,8 +726,15 @@ export function authenticate( ws : WebSocket, username? : string, password? : st
 	ws.send( `NICK ${ircUsername}` );
 }
 
-export function joinChannel( ws : WebSocket, channel : string ) : void {
-	ws.send( `JOIN #${channel}` );
+export function joinChannel( ws : WebSocket, channel : string | string[] ) : void {
+	if( Array.isArray( channel ) ) {
+		// TODO: Check for too many channels and then split into multiple requests
+		const channels = channel.map( c => `#${c}` ).join( "," );
+		ws.send( `JOIN ${channels}` );
+	}
+	else {
+		ws.send( `JOIN #${channel}` );
+	}
 }
 
 export function leaveChannel( ws : WebSocket, channel : string ) : void {
