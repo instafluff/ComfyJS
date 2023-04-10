@@ -1,4 +1,4 @@
-import { ParsedMessage } from "./parse";
+import { ParsedMessage } from "./parseFast";
 
 export enum TwitchEventType {
 	None = "none",
@@ -53,90 +53,312 @@ const TwitchUserTypes : { [ key : string ] : string } = {
 };
 
 export type ProcessedMessage = {
-    type : TwitchEventType,
-    data? : any,
+		type : TwitchEventType,
+		data? : any,
 	extra? : any,
 };
 
-function parseUsername( source : string | null ) {
-	const parts = ( source as string ).split( "!" );
-	return parts.length > 1 ? parts[ 0 ] : undefined;
+// function parseUsername( source : string | null ) {
+// 	const parts = ( source as string ).split( "!" );
+// 	return parts.length > 1 ? parts[ 0 ] : undefined;
+// }
+
+// function parseBadges( badgesTag : string ) : { [ key : string ] : string } | undefined {
+// 	if( !badgesTag ) { return undefined; }
+// 	const badgeList = badgesTag.split( "," );
+// 	const badges : { [ key : string ] : string } = {};
+// 	for( const badge of badgeList ) {
+// 		const [ name, version ] = badge.split( "/" );
+// 		badges[ name ] = version;
+// 	}
+// 	return badges;
+// }
+
+// function parseMessageFlags( flagsTag : string ) {
+// 	if( !flagsTag ) { return undefined; }
+// 	const flagsList = flagsTag.split( "," );
+// 	const flags : Partial<{ [ key in TwitchMessageFlag ] : number | undefined }> = {};
+// 	for( const flag of flagsList ) {
+// 		const [ , label ] = flag.split( ":" );
+// 		const [ category, level ] = label.split( "." );
+// 		switch( category ) {
+// 		case "A":
+// 			flags[ TwitchMessageFlag.AggressiveContent ] = Math.max( flags[ TwitchMessageFlag.AggressiveContent ] || 0, parseInt( level ) );
+// 			break;
+// 		case "I":
+// 			flags[ TwitchMessageFlag.IdentityBasedHate ] = Math.max( flags[ TwitchMessageFlag.IdentityBasedHate ] || 0, parseInt( level ) );
+// 			break;
+// 		case "P":
+// 			flags[ TwitchMessageFlag.ProfaneContent ] = Math.max( flags[ TwitchMessageFlag.ProfaneContent ] || 0, parseInt( level ) );
+// 			break;
+// 		case "S":
+// 			flags[ TwitchMessageFlag.SexualContent ] = Math.max( flags[ TwitchMessageFlag.SexualContent ] || 0, parseInt( level ) );
+// 			break;
+// 		default:
+// 			break;
+// 		}
+// 	}
+// 	return flags;
+// }
+
+function parseUsername( source: string | null ): string | undefined {
+	if( !source ) { return undefined };
+	const userIndex = source.indexOf( "!" );
+	return userIndex !== -1 ? source.slice( 0, userIndex ) : undefined;
 }
 
-function parseBadges( badgesTag : string ) : { [ key : string ] : string } | undefined {
-	if( !badgesTag ) { return undefined; }
+function parseBadges( badgesTag: string ): { [key: string]: string } | undefined {
+	if( !badgesTag ) { return undefined };
 	const badgeList = badgesTag.split( "," );
-	const badges : { [ key : string ] : string } = {};
+	const badges: { [ key: string ]: string } = {};
+	
 	for( const badge of badgeList ) {
-		const [ name, version ] = badge.split( "/" );
-		badges[ name ] = version;
+		const splitIndex = badge.indexOf( "/" );
+		badges[ badge.slice( 0, splitIndex ) ] = badge.slice( splitIndex + 1 );
 	}
+	
 	return badges;
 }
 
-function parseMessageFlags( flagsTag : string ) {
-	if( !flagsTag ) { return undefined; }
+function parseMessageFlags( flagsTag: string ) {
+	if( !flagsTag ) { return undefined };
 	const flagsList = flagsTag.split( "," );
-	const flags : Partial<{ [ key in TwitchMessageFlag ] : number | undefined }> = {};
+	const flags: Partial<{ [key in TwitchMessageFlag]: number | undefined }> = {};
+	
 	for( const flag of flagsList ) {
-		const [ , label ] = flag.split( ":" );
-		const [ category, level ] = label.split( "." );
+		const colonIndex = flag.indexOf( ":" );
+		const dotIndex = flag.indexOf( "." );
+	
+		const category = flag.slice( colonIndex + 1, dotIndex );
+		const level = parseInt( flag.slice( dotIndex + 1 ) );
+	
 		switch( category ) {
 		case "A":
-			flags[ TwitchMessageFlag.AggressiveContent ] = Math.max( flags[ TwitchMessageFlag.AggressiveContent ] || 0, parseInt( level ) );
+			flags[ TwitchMessageFlag.AggressiveContent ] = Math.max(
+				flags[ TwitchMessageFlag.AggressiveContent ] || 0,
+				level,
+			);
 			break;
 		case "I":
-			flags[ TwitchMessageFlag.IdentityBasedHate ] = Math.max( flags[ TwitchMessageFlag.IdentityBasedHate ] || 0, parseInt( level ) );
+			flags[ TwitchMessageFlag.IdentityBasedHate ] = Math.max(
+				flags[ TwitchMessageFlag.IdentityBasedHate ] || 0,
+				level,
+			);
 			break;
 		case "P":
-			flags[ TwitchMessageFlag.ProfaneContent ] = Math.max( flags[ TwitchMessageFlag.ProfaneContent ] || 0, parseInt( level ) );
+			flags[ TwitchMessageFlag.ProfaneContent ] = Math.max(
+				flags[ TwitchMessageFlag.ProfaneContent ] || 0,
+				level,
+			);
 			break;
 		case "S":
-			flags[ TwitchMessageFlag.SexualContent ] = Math.max( flags[ TwitchMessageFlag.SexualContent ] || 0, parseInt( level ) );
+			flags[ TwitchMessageFlag.SexualContent ] = Math.max(
+				flags[ TwitchMessageFlag.SexualContent ] || 0,
+				level,
+			);
 			break;
 		default:
 			break;
 		}
 	}
+	
 	return flags;
 }
 
-function handleChatMessage( message : ParsedMessage, channel : string ) : ProcessedMessage {
-	const isAction = message.parameters?.startsWith( "\u0001ACTION" );
-	const sanitizedMessage = isAction ? message.parameters?.match( /^\u0001ACTION ([^\u0001]+)\u0001$/ )![ 1 ] : message.parameters;
+// function handleChatMessage( message : ParsedMessage, channel : string ) : ProcessedMessage {
+// 	const isAction = message.parameters?.startsWith( "\u0001ACTION" );
+// 	const sanitizedMessage = isAction ? message.parameters?.match( /^\u0001ACTION ([^\u0001]+)\u0001$/ )![ 1 ] : message.parameters;
 
-	const id = message.tags[ "id" ];
-	const channelId = message.tags[ "room-id" ];
-	const userId = message.tags[ "user-id" ];
+// 	const id = message.tags[ "id" ];
+// 	const channelId = message.tags[ "room-id" ];
+// 	const userId = message.tags[ "user-id" ];
+// 	const username = parseUsername( message.source );
+// 	const displayName = message.tags[ "display-name" ] || message.tags[ "login" ] || username;
+// 	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
+// 	const badgeInfo =	message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined;
+// 	const badges = message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined;
+// 	const userColor = message.tags[ "color" ] || undefined;
+// 	const emotes = message.tags[ "emotes" ];
+// 	const messageFlags = message.tags[ "flags" ];
+// 	const contentFlags = parseMessageFlags( messageFlags );
+// 	const isBroadcaster = username === channel;
+// 	const isMod = message.tags[ "mod" ] === "1";
+// 	const isFounder = badges ? !!badges[ "founder" ] : false;
+// 	const isSubscriber = message.tags[ "subscriber" ] === "1";
+// 	const isTurbo = message.tags[ "turbo" ] === "1";
+// 	const isVIP = badges ? !!badges[ "vip" ] : false;
+// 	const isPrime = badges ? !!badges[ "premium" ] : false;
+// 	const isPartner = badges ? !![ "partner" ] : false;
+// 	const isGameDeveloper = badges ? !!badges[ "game-developer" ] : false;
+// 	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
+	
+// 	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
+// 	const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
+// 	const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
+// 	const customRewardId = message.tags[ "custom-reward-id" ] || null;
+
+// 	// TODO: Look into the "first-msg" and "returning-chatter" tags
+// 	const isFirstMessage = message.tags[ "first-msg" ] === "1";
+// 	const isReturningChatter = message.tags[ "returning-chatter" ] === "1";
+
+// 	const flags = {
+// 		broadcaster: isBroadcaster,
+// 		mod: isMod,
+// 		founder: isFounder,
+// 		subscriber: isSubscriber,
+// 		vip: isVIP,
+// 		partner: isPartner,
+// 		gameDeveloper: isGameDeveloper,
+// 		turbo: isTurbo,
+// 		prime: isPrime,
+// 		highlighted: isHighlightedMessage,
+// 		skipSubsMode: isSkipSubsModeMessage,
+// 		customReward: !!customRewardId,
+// 		emoteOnly: isEmoteOnly,
+// 		firstMessage: isFirstMessage,
+// 		returningChatter: isReturningChatter,
+// 	};
+
+// 	if( message.tags[ "bits" ] ) {
+// 		return {
+// 			type: TwitchEventType.Cheer,
+// 			data: {
+// 				channel,
+// 				channelId,
+// 				displayName,
+// 				username,
+// 				userId,
+// 				userType,
+// 				id,
+// 				message: message.parameters,
+// 				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
+// 				messageEmotes: emotes,
+// 				messageFlags,
+// 				contentFlags,
+// 				isEmoteOnly,
+// 				subscriber: isSubscriber,
+// 				userColor,
+// 				userBadgeInfo: badgeInfo,
+// 				userBadges: badges,
+// 				customRewardId,
+// 				flags,
+// 				bits: parseInt( message.tags[ "bits" ] ),
+// 				timestamp,
+// 				extra: {
+// 					...message.tags,
+// 					flags: messageFlags || null,
+// 				},
+// 			},
+// 		};
+// 	}
+// 	else {
+// 		if( sanitizedMessage?.startsWith( "!" ) ) {
+// 			const msgParts = sanitizedMessage!.split( / (.*)/ );
+// 			const command = msgParts[ 0 ].substring( 1 ).toLowerCase();
+// 			const msg = msgParts[ 1 ] || "";
+// 			return {
+// 				type: TwitchEventType.Command,
+// 				data: {
+// 					channel,
+// 					channelId,
+// 					displayName,
+// 					username,
+// 					userId,
+// 					userType,
+// 					command: command,
+// 					id,
+// 					message: msg,
+// 					messageType: isAction ? "action" : "chat",
+// 					messageEmotes: emotes,
+// 					messageFlags,
+// 					contentFlags,
+// 					isEmoteOnly,
+// 					userColor,
+// 					userBadgeInfo: badgeInfo,
+// 					userBadges: badges,
+// 					customRewardId,
+// 					flags,
+// 					timestamp,
+// 					extra: {
+// 						...message.tags,
+// 						flags: messageFlags || null,
+// 					},
+// 				},
+// 			}
+// 		}
+// 		else {
+// 			return {
+// 				type: TwitchEventType.Chat,
+// 				data: {
+// 					channel,
+// 					channelId,
+// 					displayName,
+// 					username,
+// 					userId,
+// 					userType,
+// 					id,
+// 					message: sanitizedMessage,
+// 					messageType: isAction ? "action" : "chat",
+// 					messageEmotes: emotes,
+// 					messageFlags,
+// 					contentFlags,
+// 					isEmoteOnly,
+// 					userColor,
+// 					userBadgeInfo: badgeInfo,
+// 					userBadges: badges,
+// 					customRewardId,
+// 					flags,
+// 					timestamp,
+// 					extra: {
+// 						...message.tags,
+// 						flags: messageFlags || null,
+// 					},
+// 				},
+// 			};
+// 		}
+// 	}
+// }
+
+function handleChatMessage( message: ParsedMessage, channel: string ): ProcessedMessage {
+	const isAction = message.parameters?.startsWith( "\u0001ACTION" );
+	const sanitizedMessage = isAction
+		? message.parameters?.match( /^\u0001ACTION ([^\u0001]+)\u0001$/ )?.[ 1 ]
+		: message.parameters;
+	
+	const tags = message.tags;
+	const id = tags[ "id" ];
+	const channelId = tags[ "room-id" ];
+	const userId = tags[ "user-id" ];
 	const username = parseUsername( message.source );
-	const displayName = message.tags[ "display-name" ] || message.tags[ "login" ] || username;
-	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
-	const badgeInfo =  message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined;
-	const badges = message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined;
-	const userColor = message.tags[ "color" ] || undefined;
-	const emotes = message.tags[ "emotes" ];
-	const messageFlags = message.tags[ "flags" ];
-	const contentFlags = parseMessageFlags( messageFlags );
+	const displayName = tags[ "display-name" ] || tags[ "login" ] || username;
+	const userType = TwitchUserTypes[ tags[ "user-type" ] ];
+	const badgeInfo = tags[ "badge-info" ] ? parseBadges( tags[ "badge-info" ] ) : undefined;
+	const badges = tags[ "badges" ] ? parseBadges( tags[ "badges" ] ) : undefined;
+	const userColor = tags[ "color" ] || undefined;
+	const emotes = tags[ "emotes" ];
+	const messageFlags = tags[ "flags" ];
+	const contentFlags = undefined; // parseMessageFlags( messageFlags );
+	
 	const isBroadcaster = username === channel;
-	const isMod = message.tags[ "mod" ] === "1";
-	const isFounder = badges ? !!badges[ "founder" ] : false;
-	const isSubscriber = message.tags[ "subscriber" ] === "1";
-	const isTurbo = message.tags[ "turbo" ] === "1";
+	const isMod = tags[ "mod" ] === "1";
+	const isSubscriber = tags[ "subscriber" ] === "1";
+	const isTurbo = tags[ "turbo" ] === "1";
 	const isVIP = badges ? !!badges[ "vip" ] : false;
 	const isPrime = badges ? !!badges[ "premium" ] : false;
-	const isPartner = badges ? !![ "partner" ] : false;
+	const isPartner = badges ? !!badges[ "partner" ] : false;
 	const isGameDeveloper = badges ? !!badges[ "game-developer" ] : false;
-	const timestamp = parseInt( message.tags[ "tmi-sent-ts" ] );
+	const isFounder = badges ? !!badges[ "founder" ] : false;
+	const timestamp = parseInt( tags[ "tmi-sent-ts" ] );
 	
-	const isEmoteOnly = message.tags[ "emote-only" ] === "1";
-	const isHighlightedMessage = message.tags[ "msg-id" ] === "highlighted-message";
-	const isSkipSubsModeMessage = message.tags[ "msg-id" ] === "skip-subs-mode-message";
-	const customRewardId = message.tags[ "custom-reward-id" ] || null;
-
+	const isEmoteOnly = tags[ "emote-only" ] === "1";
+	const isHighlightedMessage = tags[ "msg-id" ] === "highlighted-message";
+	const isSkipSubsModeMessage = tags[ "msg-id" ] === "skip-subs-mode-message";
+	const customRewardId = tags[ "custom-reward-id" ] || null;
+	
 	// TODO: Look into the "first-msg" and "returning-chatter" tags
-	const isFirstMessage = message.tags[ "first-msg" ] === "1";
-	const isReturningChatter = message.tags[ "returning-chatter" ] === "1";
-
+	const isFirstMessage = tags[ "first-msg" ] === "1";
+	const isReturningChatter = tags[ "returning-chatter" ] === "1";
+	
 	const flags = {
 		broadcaster: isBroadcaster,
 		mod: isMod,
@@ -154,106 +376,58 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 		firstMessage: isFirstMessage,
 		returningChatter: isReturningChatter,
 	};
-
-	if( message.tags[ "bits" ] ) {
+	
+	const commonData = {
+		channel,
+		channelId,
+		displayName,
+		username,
+		userId,
+		userType,
+		id,
+		messageType: isAction ? "action" : "chat",
+		messageEmotes: emotes,
+		messageFlags,
+		contentFlags,
+		isEmoteOnly,
+		userColor,
+		userBadgeInfo: badgeInfo,
+		userBadges: badges,
+		customRewardId,
+		flags,
+		timestamp,
+		extra: {
+			...tags,
+			flags: messageFlags || null,
+		},
+	};
+	
+	if( tags[ "bits" ] ) {
 		return {
 			type: TwitchEventType.Cheer,
 			data: {
-				channel,
-				channelId,
-				displayName,
-				username,
-				userId,
-				userType,
-				id,
+				...commonData,
 				message: message.parameters,
-				messageType: isAction ? "action" : "chat", // TODO: Can bits be an action?
-				messageEmotes: emotes,
-				messageFlags,
-				contentFlags,
-				isEmoteOnly,
-				subscriber: isSubscriber,
-				userColor,
-				userBadgeInfo: badgeInfo,
-				userBadges: badges,
-				customRewardId,
-				flags,
-				bits: parseInt( message.tags[ "bits" ] ),
-				timestamp,
-				extra: {
-					...message.tags,
-					flags: messageFlags || null,
-				},
+				bits: parseInt( tags[ "bits" ] ),
 			},
 		};
 	}
 	else {
-		if( sanitizedMessage?.startsWith( "!" ) ) {
-			const msgParts = sanitizedMessage!.split( / (.*)/ );
-			const command = msgParts[ 0 ].substring( 1 ).toLowerCase();
-			const msg = msgParts[ 1 ] || "";
-			return {
-				type: TwitchEventType.Command,
-				data: {
-					channel,
-					channelId,
-					displayName,
-					username,
-					userId,
-					userType,
-					command: command,
-					id,
-					message: msg,
-					messageType: isAction ? "action" : "chat",
-					messageEmotes: emotes,
-					messageFlags,
-					contentFlags,
-					isEmoteOnly,
-					userColor,
-					userBadgeInfo: badgeInfo,
-					userBadges: badges,
-					customRewardId,
-					flags,
-					timestamp,
-					extra: {
-						...message.tags,
-						flags: messageFlags || null,
-					},
-				},
-			}
-		}
-		else {
-			return {
-				type: TwitchEventType.Chat,
-				data: {
-					channel,
-					channelId,
-					displayName,
-					username,
-					userId,
-					userType,
-					id,
-					message: sanitizedMessage,
-					messageType: isAction ? "action" : "chat",
-					messageEmotes: emotes,
-					messageFlags,
-					contentFlags,
-					isEmoteOnly,
-					userColor,
-					userBadgeInfo: badgeInfo,
-					userBadges: badges,
-					customRewardId,
-					flags,
-					timestamp,
-					extra: {
-						...message.tags,
-						flags: messageFlags || null,
-					},
-				},
-			};
-		}
+		const isCommand = sanitizedMessage?.startsWith( "!" );
+		const msgParts = isCommand ? sanitizedMessage!.split( / (.*)/ ) : null;
+		const command = isCommand ? msgParts![ 0 ].substring( 1 ).toLowerCase() : null;
+		const msg = isCommand ? msgParts![ 1 ] || "" : null;
+	
+		return {
+			type: isCommand ? TwitchEventType.Command : TwitchEventType.Chat,
+			data: {
+				...commonData,
+				message: isCommand ? msg : sanitizedMessage,
+				command,
+			},
+		};
 	}
-}
+}	
 
 export function processMessage( message : ParsedMessage ) : ProcessedMessage | null {
 	try {
@@ -662,7 +836,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 			case "PRIVMSG":
 				// Chat Message
 				return handleChatMessage( message, channel as string );
-			case "RECONNECT":  
+			case "RECONNECT":
 				console.log( "The Twitch IRC server is about to terminate the connection for maintenance." )
 				break;
 			default:
@@ -676,7 +850,7 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 					else {
 						// Command & Reserved responses
 						switch( commandNumber ) {
-						case 1:  // Logged in (successfully authenticated). 
+						case 1: // Logged in (successfully authenticated). 
 							// console.debug( "Username:", channel );
 							return null;
 						case 2: // Ignoring all other numeric messages.
@@ -751,7 +925,7 @@ export function pong( ws : WebSocket ) : void {
 
 export function sendChat( ws : WebSocket, channel : string, message : string ) : void {
 	// Note: If we want to send tags like client-nonce, then the chat message should look like
-	//       @client-nonce=asdf;reply-parent-msg-id PRIVMSG #channel :message text here
+	//		 @client-nonce=asdf;reply-parent-msg-id PRIVMSG #channel :message text here
 	ws.send( `PRIVMSG #${channel} :${message}` );
 }
 
