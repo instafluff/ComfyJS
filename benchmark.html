@@ -1,0 +1,47 @@
+<html>
+    <head>
+        <script src="dist/comfy.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+    </head>
+    <body>
+        Benchmarking ComfyJS v2.0.0 vs v1.0.0
+        <script type="text/javascript">
+            const channel = "instafriend";
+            const channels = [ "yourragegaming", "extraemily", "lacobraaa" ]
+            let iteration = 1;
+            let v1Count = 0, v2Count = 0;
+            let v1Time = 0, v2Time = 0;
+            console.log( "Printing benchmark results every 10 seconds" );
+            setInterval( () => {
+                console.log( `${iteration} - v1: ${v1Time.toFixed( 3 )}ms v2: ${v2Time.toFixed( 3 )}ms (${( 100 * ( 1 - v2Time / v1Time ) ).toFixed( 2 )}% Faster) - ${v1Count} vs. ${v2Count}` );
+                iteration++;
+            }, 10000 );
+
+            ComfyJS.onConnected = ( address, port, isFirstConnect ) => {
+                const tmi = ComfyJS.GetClient();
+                // console.log( tmi );
+                const proxyOnMessage = tmi.ws.onmessage;
+                tmi.ws.onmessage = ( event ) => {
+                    const start = performance.now();
+                    proxyOnMessage( event );
+                    v1Time += performance.now() - start;
+                    v1Count++;
+                }
+            }
+
+            ComfyJSNew.onConnected = ( address, port, isFirstConnect ) => {
+                const comfy = ComfyJSNew.getInstance();
+                // console.log( comfy );
+                const proxyOnMessage = comfy.ws.onmessage;
+                comfy.ws.onmessage = ( event ) => {
+                    const start = performance.now();
+                    proxyOnMessage( event );
+                    v2Time += performance.now() - start;
+                    v2Count++;
+                }
+            }
+            ComfyJS.Init( channel, undefined, channels.slice( 0 ) );
+            ComfyJSNew.Init( channel, undefined, channels.slice( 0 ) );
+        </script>
+    </body>
+</html>

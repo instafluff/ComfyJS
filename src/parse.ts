@@ -52,7 +52,21 @@ export function parseMessage( message : string ) : ParsedMessage {
 			const tagSplitIndex = tag.indexOf( "=" );
 			const key = tag.substring( 0, tagSplitIndex );
 			const value = tag.substring( tagSplitIndex + 1 );
-			parsedMessage.tags[ key ] = unescapeIRC( value );
+			// Optimizations for common tags that won't be escaped
+			switch( key ) {
+			case "emote-sets":
+			case "ban-duration":
+			case "bits":
+			case "id":
+			case "room-id":
+			case "color":
+			case "login":
+				parsedMessage.tags[ key ] = value;
+				break;
+			default:
+				parsedMessage.tags[ key ] = unescapeIRC( value );
+				break;
+			}
 		}
 		index = nextIndex; // Should now point to source colon (:).
 	}

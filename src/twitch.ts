@@ -111,8 +111,8 @@ function handleChatMessage( message : ParsedMessage, channel : string ) : Proces
 	const username = parseUsername( message.source );
 	const displayName = message.tags[ "display-name" ] || message.tags[ "login" ] || username;
 	const userType = TwitchUserTypes[ message.tags[ "user-type" ] ];
-	const badgeInfo = parseBadges( message.tags[ "badge-info" ] || "" );
-	const badges = parseBadges( message.tags[ "badges" ] || "" );
+	const badgeInfo =  message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined;
+	const badges = message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined;
 	const userColor = message.tags[ "color" ] || undefined;
 	const emotes = message.tags[ "emotes" ];
 	const messageFlags = message.tags[ "flags" ];
@@ -317,8 +317,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						userId: message.tags[ "user-id" ],
 						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
 						color: message.tags[ "color" ],
-						badgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-						badges: parseBadges( message.tags[ "badges" ] || "" ),
+						badgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+						badges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 						emoteSets: message.tags[ "emote-sets" ],
 						...( message.tags[ "id" ] && { id: message.tags[ "id" ] } ),
 						mod: message.tags[ "mod" ] === "1",
@@ -370,8 +370,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							message: message.parameters,
 							messageType: message.tags[ "msg-id" ],
@@ -402,8 +402,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							message: message.parameters,
 							messageType: message.tags[ "msg-id" ],
@@ -434,8 +434,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							messageType: message.tags[ "msg-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -466,8 +466,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							messageType: message.tags[ "msg-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -487,8 +487,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							messageType: message.tags[ "msg-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -526,8 +526,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 							username: message.tags[ "login" ],
 							userId: message.tags[ "user-id" ],
 							userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
-							userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-							userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+							userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+							userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 							userColor: message.tags[ "color" ] || undefined,
 							messageType: message.tags[ "msg-id" ],
 							timestamp: parseInt( message.tags[ "tmi-sent-ts" ] ),
@@ -569,8 +569,8 @@ export function processMessage( message : ParsedMessage ) : ProcessedMessage | n
 						userId: message.tags[ "user-id" ],
 						userType: TwitchUserTypes[ message.tags[ "user-type" ] ],
 						userColor: message.tags[ "color" ] || undefined,
-						userBadgeInfo: parseBadges( message.tags[ "badge-info" ] || "" ),
-						userBadges: parseBadges( message.tags[ "badges" ] || "" ),
+						userBadgeInfo: message.tags[ "badge-info" ] ? parseBadges( message.tags[ "badge-info" ] ) : undefined,
+						userBadges: message.tags[ "badges" ] ? parseBadges( message.tags[ "badges" ] ) : undefined,
 						messageEmotes: message.tags[ "emotes" ],
 						turbo: message.tags[ "turbo" ] === "1",
 						threadId: message.tags[ "thread-id" ],
