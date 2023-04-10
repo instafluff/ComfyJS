@@ -63,7 +63,20 @@ function parseMessage(message) {
       const tagSplitIndex = tag.indexOf("=");
       const key = tag.substring(0, tagSplitIndex);
       const value = tag.substring(tagSplitIndex + 1);
-      parsedMessage.tags[key] = unescapeIRC(value);
+      switch (key) {
+        case "emote-sets":
+        case "ban-duration":
+        case "bits":
+        case "id":
+        case "room-id":
+        case "color":
+        case "login":
+          parsedMessage.tags[key] = value;
+          break;
+        default:
+          parsedMessage.tags[key] = unescapeIRC(value);
+          break;
+      }
     }
     index = nextIndex;
   }
@@ -206,8 +219,8 @@ function handleChatMessage(message, channel) {
   const username = parseUsername(message.source);
   const displayName = message.tags["display-name"] || message.tags["login"] || username;
   const userType = TwitchUserTypes[message.tags["user-type"]];
-  const badgeInfo = parseBadges(message.tags["badge-info"] || "");
-  const badges = parseBadges(message.tags["badges"] || "");
+  const badgeInfo = message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0;
+  const badges = message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0;
   const userColor = message.tags["color"] || void 0;
   const emotes = message.tags["emotes"];
   const messageFlags = message.tags["flags"];
@@ -411,8 +424,8 @@ function processMessage(message) {
               userId: message.tags["user-id"],
               userType: TwitchUserTypes[message.tags["user-type"]],
               color: message.tags["color"],
-              badgeInfo: parseBadges(message.tags["badge-info"] || ""),
-              badges: parseBadges(message.tags["badges"] || ""),
+              badgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+              badges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
               emoteSets: message.tags["emote-sets"],
               ...message.tags["id"] && { id: message.tags["id"] },
               mod: message.tags["mod"] === "1",
@@ -464,8 +477,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
@@ -496,8 +509,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   message: message.parameters,
                   messageType: message.tags["msg-id"],
@@ -528,8 +541,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
@@ -561,8 +574,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
@@ -582,8 +595,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
@@ -621,8 +634,8 @@ function processMessage(message) {
                   username: message.tags["login"],
                   userId: message.tags["user-id"],
                   userType: TwitchUserTypes[message.tags["user-type"]],
-                  userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-                  userBadges: parseBadges(message.tags["badges"] || ""),
+                  userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+                  userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
                   userColor: message.tags["color"] || void 0,
                   messageType: message.tags["msg-id"],
                   timestamp: parseInt(message.tags["tmi-sent-ts"]),
@@ -663,8 +676,8 @@ function processMessage(message) {
               userId: message.tags["user-id"],
               userType: TwitchUserTypes[message.tags["user-type"]],
               userColor: message.tags["color"] || void 0,
-              userBadgeInfo: parseBadges(message.tags["badge-info"] || ""),
-              userBadges: parseBadges(message.tags["badges"] || ""),
+              userBadgeInfo: message.tags["badge-info"] ? parseBadges(message.tags["badge-info"]) : void 0,
+              userBadges: message.tags["badges"] ? parseBadges(message.tags["badges"]) : void 0,
               messageEmotes: message.tags["emotes"],
               turbo: message.tags["turbo"] === "1",
               threadId: message.tags["thread-id"],
@@ -824,7 +837,7 @@ function sendChat(ws, channel, message) {
 function replyChat(ws, channel, messageId, message) {
   ws.send(`@reply-parent-msg-id=${messageId} PRIVMSG #${channel} :${message}`);
 }
-class TwitchChat {
+class TwitchEvents {
   constructor(username, password, channels, isDebug) {
     __privateAdd(this, _mainChannel);
     __privateAdd(this, _isConnected);
@@ -860,6 +873,9 @@ class TwitchChat {
   }
   get latency() {
     return __privateGet(this, _latency);
+  }
+  get ws() {
+    return __privateGet(this, _ws);
   }
   on(eventType, handler) {
     this.handlers[eventType] = handler;
@@ -1076,7 +1092,7 @@ onMessage_fn = function(event) {
     }
   }
 };
-let comfyInstance;
+let twitchEvents;
 function parseMessageEmotes(messageEmotes) {
   if (messageEmotes) {
     const emotes = messageEmotes.split("/");
@@ -1117,15 +1133,18 @@ const comfyJS = {
     return "2.0.0";
   },
   latency: () => {
-    return comfyInstance ? comfyInstance.latency : -1;
+    return twitchEvents ? twitchEvents.latency : -1;
+  },
+  getInstance: () => {
+    return twitchEvents;
   },
   onConnected: (address, port, isFirstConnect) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onConnected default handler");
     }
   },
   onReconnect: (reconnectCount) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onReconnect default handler");
     }
   },
@@ -1133,146 +1152,145 @@ const comfyJS = {
     console.error("Error:", error);
   },
   onCommand: (user, command, message, flags, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onCommand default handler");
     }
   },
   onChat: (user, message, flags, self, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onChat default handler");
     }
   },
   onCheer: (user, message, bits, flags, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onCheer default handler");
     }
   },
   onWhisper: (user, message, flags, self, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onWhisper default handler");
     }
   },
   onSub: (user, message, subTierInfo, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onSub default handler");
     }
   },
   onResub: (user, message, streamMonths, cumulativeMonths, subTierInfo, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onResub default handler");
     }
   },
   onSubGift: (gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onSubGift default handler");
     }
   },
   onSubMysteryGift: (gifterUser, numbOfSubs, senderCount, subTierInfo, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onSubMysteryGift default handler");
     }
   },
   onGiftSubContinue: (user, sender, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onGiftSubContinue default handler");
     }
   },
   onTimeout: (user, duration, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onTimeout default handler");
     }
   },
   onBan: (user, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onBan default handler");
     }
   },
   onMessageDeleted: (messageID, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onMessageDeleted default handler");
     }
   },
   onRaid: (user, viewers, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onRaid default handler");
     }
   },
   onUnraid: (channel, extra) => {
-    if (comfyInstance && comfyInstance.debug) {
+    if (twitchEvents && twitchEvents.debug) {
       console.debug("onUnraid default handler");
     }
   },
   simulateIRCMessage: (message) => {
-    if (comfyInstance) {
-      comfyInstance.simulateIRCMessage(message);
+    if (twitchEvents) {
+      twitchEvents.simulateIRCMessage(message);
     }
   },
   Init: (username, password, channels, isDebug) => {
-    comfyInstance = new TwitchChat(username, password, channels, isDebug);
-    comfyInstance.on(TwitchEventType.Connect, (context) => {
-      console.log("CONNECT");
+    twitchEvents = new TwitchEvents(username, password, channels, isDebug);
+    twitchEvents.on(TwitchEventType.Connect, (context) => {
       comfyJS.onConnected(context.address, context.port, context.isFirstConnect);
     });
-    comfyInstance.on(TwitchEventType.Reconnect, (context) => {
+    twitchEvents.on(TwitchEventType.Reconnect, (context) => {
       console.log("RECONNECT");
       comfyJS.onReconnect(context.reconnectCount);
     });
-    comfyInstance.on(TwitchEventType.Error, (error) => {
+    twitchEvents.on(TwitchEventType.Error, (error) => {
       comfyJS.onError(error);
     });
-    comfyInstance.on(TwitchEventType.Command, (context) => {
+    twitchEvents.on(TwitchEventType.Command, (context) => {
       var _a;
       comfyJS.onCommand(context.displayName || context.username, context.command, context.message, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Chat, (context) => {
+    twitchEvents.on(TwitchEventType.Chat, (context) => {
       var _a;
       comfyJS.onChat(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Whisper, (context) => {
+    twitchEvents.on(TwitchEventType.Whisper, (context) => {
       var _a;
       comfyJS.onWhisper(context.displayName || context.username, context.message, context.flags, context.self, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, channel: context.username, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Cheer, (context) => {
+    twitchEvents.on(TwitchEventType.Cheer, (context) => {
       var _a;
       comfyJS.onCheer(context.displayName || context.username, context.message, context.bits, context.flags, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Subscribe, (context) => {
+    twitchEvents.on(TwitchEventType.Subscribe, (context) => {
       var _a;
       comfyJS.onSub(context.displayName || context.username, context.message, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Resubscribe, (context) => {
+    twitchEvents.on(TwitchEventType.Resubscribe, (context) => {
       var _a;
       comfyJS.onResub(context.displayName || context.username, context.message, context.streakMonths || 0, context.cumulativeMonths, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.SubGift, (context) => {
+    twitchEvents.on(TwitchEventType.SubGift, (context) => {
       var _a;
       comfyJS.onSubGift(context.displayName || context.username, context.streakMonths || 0, context.recipientDisplayName, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.MysterySubGift, (context) => {
+    twitchEvents.on(TwitchEventType.MysterySubGift, (context) => {
       var _a;
       comfyJS.onSubMysteryGift(context.displayName || context.username, context.giftCount, context.senderCount, { prime: context.subPlan === "Prime", plan: context.subPlan, planName: context.subPlanName || null }, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), userMassGiftCount: context.giftCount });
     });
-    comfyInstance.on(TwitchEventType.SubGiftContinue, (context) => {
+    twitchEvents.on(TwitchEventType.SubGiftContinue, (context) => {
       var _a;
       comfyJS.onGiftSubContinue(context.displayName || context.username, context.gifterDisplayName, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Timeout, (context) => {
+    twitchEvents.on(TwitchEventType.Timeout, (context) => {
       var _a;
       comfyJS.onTimeout(context.displayName || context.username, context.duration, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), timedOutUserId: context.userId });
     });
-    comfyInstance.on(TwitchEventType.Ban, (context) => {
+    twitchEvents.on(TwitchEventType.Ban, (context) => {
       var _a;
       comfyJS.onBan(context.displayName || context.username, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes), bannedUserId: context.userId });
     });
-    comfyInstance.on(TwitchEventType.MessageDeleted, (context) => {
+    twitchEvents.on(TwitchEventType.MessageDeleted, (context) => {
       var _a;
       comfyJS.onMessageDeleted(context.id, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Raid, (context) => {
+    twitchEvents.on(TwitchEventType.Raid, (context) => {
       var _a;
       comfyJS.onRaid(context.displayName || context.username, context.viewers, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });
-    comfyInstance.on(TwitchEventType.Unraid, (context) => {
+    twitchEvents.on(TwitchEventType.Unraid, (context) => {
       var _a;
       comfyJS.onUnraid(context.channel, { ...context, userState: convertContextToUserState(context), extra: null, flags: (_a = context.extra) == null ? void 0 : _a.flags, roomId: context.channelId, messageEmotes: parseMessageEmotes(context.messageEmotes) });
     });

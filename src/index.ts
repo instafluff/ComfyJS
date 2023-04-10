@@ -2,7 +2,7 @@ import { parseMessage } from "./parse";
 import { createWebSocket } from "./socket";
 import { authenticate, joinChannel, leaveChannel, ping, pong, ProcessedMessage, processMessage, replyChat, requestCapabilities, sendChat, TwitchEventType } from "./twitch";
 
-export type TwitchChatHandler = ( context? : any ) => void;
+export type TwitchEventHandler = ( context? : any ) => void;
 export type TwitchChatMode = {
 	emoteOnly : boolean;
 	followersOnly : boolean;
@@ -12,7 +12,7 @@ export type TwitchChatMode = {
 	language : string;
 };
 
-export class TwitchChat {
+export class TwitchEvents {
 	#ws : WebSocket | undefined;
 	#username : string;
 	#password : string | undefined;
@@ -23,7 +23,7 @@ export class TwitchChat {
 	reconnects : number = 0;
 	channels : string[];
 	chatModes : { [ channel : string ] : TwitchChatMode } = {};
-	handlers : Partial<{ [ key in TwitchEventType ] : TwitchChatHandler | undefined }> = {};
+	handlers : Partial<{ [ key in TwitchEventType ] : TwitchEventHandler | undefined }> = {};
 
 	constructor( username : string, password? : string, channels? : string[] | string, isDebug? : boolean ) {
 		this.#username = username;
@@ -44,6 +44,7 @@ export class TwitchChat {
 	get #isConnected() : boolean { return !!( this.#ws && this.#ws.readyState === this.#ws.OPEN ); }
 	get version() : string { return "@VERSION"; }
 	get latency() : number { return this.#latency; }
+	get ws() : WebSocket | undefined { return this.#ws; }
 
 	on( eventType : TwitchEventType, handler : ( context? : any ) => void ) {
 		this.handlers[ eventType ] = handler;

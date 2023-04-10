@@ -46,8 +46,21 @@ function Ra(a) {
   if (a[0] === "@") {
     const { component: i, nextIndex: t } = ra(a, 0);
     for (const n of i.split(";")) {
-      const b = n.indexOf("="), m = n.substring(0, b), d = n.substring(b + 1);
-      r.tags[m] = Pa(d);
+      const b = n.indexOf("="), p = n.substring(0, b), d = n.substring(b + 1);
+      switch (p) {
+        case "emote-sets":
+        case "ban-duration":
+        case "bits":
+        case "id":
+        case "room-id":
+        case "color":
+        case "login":
+          r.tags[p] = d;
+          break;
+        default:
+          r.tags[p] = Pa(d);
+          break;
+      }
     }
     s = t;
   }
@@ -64,7 +77,7 @@ function Ra(a) {
   return r;
 }
 const Ea = globalThis.WebSocket || require("ws");
-function ka(a, r) {
+function va(a, r) {
   return new Ea(a, r);
 }
 var l = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Unraid = "unraid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.ViewerMilestone = "ViewerMilestone", a.All = "all", a))(l || {});
@@ -75,11 +88,11 @@ const C = {
   staff: "Staff",
   mod: "Moderator"
 };
-function B(a) {
+function U(a) {
   const r = a.split("!");
   return r.length > 1 ? r[0] : void 0;
 }
-function p(a) {
+function m(a) {
   if (!a)
     return;
   const r = a.split(","), s = {};
@@ -118,9 +131,9 @@ function X(a) {
   }
   return s;
 }
-function Oa(a, r) {
+function ka(a, r) {
   var x, aa;
-  const s = (x = a.parameters) == null ? void 0 : x.startsWith("ACTION"), i = s ? (aa = a.parameters) == null ? void 0 : aa.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, n = a.tags["room-id"], b = a.tags["user-id"], m = B(a.source), d = a.tags["display-name"] || a.tags.login || m, P = C[a.tags["user-type"]], j = p(a.tags["badge-info"] || ""), y = p(a.tags.badges || ""), J = a.tags.color || void 0, H = a.tags.emotes, k = a.tags.flags, _ = X(k), da = m === r, ga = a.tags.mod === "1", pa = y ? !!y.founder : !1, z = a.tags.subscriber === "1", ma = a.tags.turbo === "1", ca = y ? !!y.vip : !1, fa = y ? !!y.premium : !1, ba = y ? !!["partner"] : !1, ha = y ? !!y["game-developer"] : !1, q = parseInt(a.tags["tmi-sent-ts"]), D = a.tags["emote-only"] === "1", Ia = a.tags["msg-id"] === "highlighted-message", ya = a.tags["msg-id"] === "skip-subs-mode-message", v = a.tags["custom-reward-id"] || null, Ca = a.tags["first-msg"] === "1", Sa = a.tags["returning-chatter"] === "1", K = {
+  const s = (x = a.parameters) == null ? void 0 : x.startsWith("ACTION"), i = s ? (aa = a.parameters) == null ? void 0 : aa.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)[1] : a.parameters, t = a.tags.id, n = a.tags["room-id"], b = a.tags["user-id"], p = U(a.source), d = a.tags["display-name"] || a.tags.login || p, P = C[a.tags["user-type"]], j = a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0, y = a.tags.badges ? m(a.tags.badges) : void 0, J = a.tags.color || void 0, H = a.tags.emotes, v = a.tags.flags, _ = X(v), da = p === r, ga = a.tags.mod === "1", pa = y ? !!y.founder : !1, z = a.tags.subscriber === "1", ma = a.tags.turbo === "1", ca = y ? !!y.vip : !1, fa = y ? !!y.premium : !1, ba = y ? !!["partner"] : !1, ha = y ? !!y["game-developer"] : !1, q = parseInt(a.tags["tmi-sent-ts"]), A = a.tags["emote-only"] === "1", Ia = a.tags["msg-id"] === "highlighted-message", ya = a.tags["msg-id"] === "skip-subs-mode-message", D = a.tags["custom-reward-id"] || null, Ca = a.tags["first-msg"] === "1", Sa = a.tags["returning-chatter"] === "1", K = {
     broadcaster: da,
     mod: ga,
     founder: pa,
@@ -132,8 +145,8 @@ function Oa(a, r) {
     prime: fa,
     highlighted: Ia,
     skipSubsMode: ya,
-    customReward: !!v,
-    emoteOnly: D,
+    customReward: !!D,
+    emoteOnly: A,
     firstMessage: Ca,
     returningChatter: Sa
   };
@@ -144,7 +157,7 @@ function Oa(a, r) {
         channel: r,
         channelId: n,
         displayName: d,
-        username: m,
+        username: p,
         userId: b,
         userType: P,
         id: t,
@@ -152,20 +165,20 @@ function Oa(a, r) {
         messageType: s ? "action" : "chat",
         // TODO: Can bits be an action?
         messageEmotes: H,
-        messageFlags: k,
+        messageFlags: v,
         contentFlags: _,
-        isEmoteOnly: D,
+        isEmoteOnly: A,
         subscriber: z,
         userColor: J,
         userBadgeInfo: j,
         userBadges: y,
-        customRewardId: v,
+        customRewardId: D,
         flags: K,
         bits: parseInt(a.tags.bits),
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: k || null
+          flags: v || null
         }
       }
     };
@@ -177,7 +190,7 @@ function Oa(a, r) {
         channel: r,
         channelId: n,
         displayName: d,
-        username: m,
+        username: p,
         userId: b,
         userType: P,
         command: Na,
@@ -185,18 +198,18 @@ function Oa(a, r) {
         message: Ma,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: k,
+        messageFlags: v,
         contentFlags: _,
-        isEmoteOnly: D,
+        isEmoteOnly: A,
         userColor: J,
         userBadgeInfo: j,
         userBadges: y,
-        customRewardId: v,
+        customRewardId: D,
         flags: K,
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: k || null
+          flags: v || null
         }
       }
     };
@@ -207,35 +220,35 @@ function Oa(a, r) {
         channel: r,
         channelId: n,
         displayName: d,
-        username: m,
+        username: p,
         userId: b,
         userType: P,
         id: t,
         message: i,
         messageType: s ? "action" : "chat",
         messageEmotes: H,
-        messageFlags: k,
+        messageFlags: v,
         contentFlags: _,
-        isEmoteOnly: D,
+        isEmoteOnly: A,
         userColor: J,
         userBadgeInfo: j,
         userBadges: y,
-        customRewardId: v,
+        customRewardId: D,
         flags: K,
         timestamp: q,
         extra: {
           ...a.tags,
-          flags: k || null
+          flags: v || null
         }
       }
     };
 }
-function Ua(a) {
+function Oa(a) {
   var r, s, i, t, n, b;
   try {
     if (a.command) {
-      const m = a.command.split(" "), d = m.length > 1 ? m[1].substring(1) : void 0;
-      switch (m[0]) {
+      const p = a.command.split(" "), d = p.length > 1 ? p[1].substring(1) : void 0;
+      switch (p[0]) {
         case "PING":
           return {
             type: "Ping"
@@ -251,12 +264,12 @@ function Ua(a) {
         case "JOIN":
           return {
             type: "join",
-            data: { channel: d, username: B(a.source) }
+            data: { channel: d, username: U(a.source) }
           };
         case "PART":
           return {
             type: "leave",
-            data: { channel: d, username: B(a.source) }
+            data: { channel: d, username: U(a.source) }
           };
         case "ROOMSTATE":
           return {
@@ -297,8 +310,8 @@ function Ua(a) {
               userId: a.tags["user-id"],
               userType: C[a.tags["user-type"]],
               color: a.tags.color,
-              badgeInfo: p(a.tags["badge-info"] || ""),
-              badges: p(a.tags.badges || ""),
+              badgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+              badges: a.tags.badges ? m(a.tags.badges) : void 0,
               emoteSets: a.tags["emote-sets"],
               ...a.tags.id && { id: a.tags.id },
               mod: a.tags.mod === "1",
@@ -350,8 +363,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   message: a.parameters,
                   messageType: a.tags["msg-id"],
@@ -382,8 +395,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   message: a.parameters,
                   messageType: a.tags["msg-id"],
@@ -414,8 +427,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -447,8 +460,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -468,8 +481,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -506,8 +519,8 @@ function Ua(a) {
                   username: a.tags.login,
                   userId: a.tags["user-id"],
                   userType: C[a.tags["user-type"]],
-                  userBadgeInfo: p(a.tags["badge-info"] || ""),
-                  userBadges: p(a.tags.badges || ""),
+                  userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+                  userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
                   userColor: a.tags.color || void 0,
                   messageType: a.tags["msg-id"],
                   timestamp: parseInt(a.tags["tmi-sent-ts"]),
@@ -542,13 +555,13 @@ function Ua(a) {
           return {
             type: "whisper",
             data: {
-              displayName: a.tags["display-name"] || a.tags.login || B(a.source),
-              username: B(a.source),
+              displayName: a.tags["display-name"] || a.tags.login || U(a.source),
+              username: U(a.source),
               userId: a.tags["user-id"],
               userType: C[a.tags["user-type"]],
               userColor: a.tags.color || void 0,
-              userBadgeInfo: p(a.tags["badge-info"] || ""),
-              userBadges: p(a.tags.badges || ""),
+              userBadgeInfo: a.tags["badge-info"] ? m(a.tags["badge-info"]) : void 0,
+              userBadges: a.tags.badges ? m(a.tags.badges) : void 0,
               messageEmotes: a.tags.emotes,
               turbo: a.tags.turbo === "1",
               threadId: a.tags["thread-id"],
@@ -620,13 +633,13 @@ function Ua(a) {
             }
           };
         case "PRIVMSG":
-          return Oa(a, d);
+          return ka(a, d);
         case "RECONNECT":
           console.log("The Twitch IRC server is about to terminate the connection for maintenance.");
           break;
         default:
           {
-            const P = parseInt(m[0]);
+            const P = parseInt(p[0]);
             if (P >= 400)
               return console.debug(`Error IRC command: ${P}`, a), null;
             switch (P) {
@@ -641,7 +654,7 @@ function Ua(a) {
               case 375:
                 return null;
               case 376:
-                return { type: "connect", data: { username: m[1] } };
+                return { type: "connect", data: { username: p[1] } };
               default:
                 return console.debug("Unsupported numeric command", P), null;
             }
@@ -650,18 +663,18 @@ function Ua(a) {
       }
     } else
       console.debug("Unprocessed IRC message:", a.raw);
-  } catch (m) {
-    return console.error(m), {
+  } catch (p) {
+    return console.error(p), {
       type: "Warning",
-      data: m
+      data: p
     };
   }
   return console.log(a), null;
 }
-function Ba(a) {
+function Ua(a) {
   a.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
 }
-function Ga(a, r, s) {
+function Ba(a, r, s) {
   const i = s ? r : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`, t = s || "INSTAFLUFF";
   a.send(`PASS ${t}`), a.send(`NICK ${i}`);
 }
@@ -675,19 +688,19 @@ function sa(a, r) {
 function wa(a, r) {
   a.send(`PART #${r}`);
 }
-function Aa(a) {
+function Ga(a) {
   a.send("PING");
 }
-function Da(a) {
+function Aa(a) {
   a.send("PONG");
 }
-function va(a, r, s) {
+function Da(a, r, s) {
   a.send(`PRIVMSG #${r} :${s}`);
 }
 function La(a, r, s, i) {
   a.send(`@reply-parent-msg-id=${s} PRIVMSG #${r} :${i}`);
 }
-var u, R, G, E, O, U, w, Y, I, S, L, na, W, ea, F, oa, $, ia, T, ua, V, la, A, Z;
+var u, R, B, E, k, O, w, Y, I, S, L, na, W, ea, F, oa, $, ia, T, ua, V, la, G, Z;
 class Wa {
   constructor(r, s, i, t) {
     c(this, w);
@@ -698,26 +711,29 @@ class Wa {
     c(this, $);
     c(this, T);
     c(this, V);
-    c(this, A);
+    c(this, G);
     c(this, u, void 0);
     c(this, R, void 0);
-    c(this, G, void 0);
+    c(this, B, void 0);
     c(this, E, void 0);
+    c(this, k, void 0);
     c(this, O, void 0);
-    c(this, U, void 0);
-    N(this, O, 0), N(this, U, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, G, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, L, na).call(this);
+    N(this, k, 0), N(this, O, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, B, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, L, na).call(this);
   }
   get version() {
     return "2.0.0";
   }
   get latency() {
-    return e(this, U);
+    return e(this, O);
+  }
+  get ws() {
+    return e(this, u);
   }
   on(r, s) {
     this.handlers[r] = s;
   }
   say(r, s) {
-    e(this, u) && e(this, I, S) && va(e(this, u), s || e(this, w, Y), r);
+    e(this, u) && e(this, I, S) && Da(e(this, u), s || e(this, w, Y), r);
   }
   reply(r, s, i) {
     e(this, u) && e(this, I, S) && La(e(this, u), i || e(this, w, Y), r, s);
@@ -732,36 +748,36 @@ class Wa {
     e(this, u) && e(this, I, S);
   }
   simulateIRCMessage(r) {
-    e(this, u) && e(this, I, S) && M(this, A, Z).call(this, { data: r });
+    e(this, u) && e(this, I, S) && M(this, G, Z).call(this, { data: r });
   }
   destroy() {
     e(this, u) && e(this, u).readyState !== e(this, u).CLOSED && e(this, u).close();
   }
 }
-u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), E = new WeakMap(), O = new WeakMap(), U = new WeakMap(), w = new WeakSet(), Y = function() {
+u = new WeakMap(), R = new WeakMap(), B = new WeakMap(), E = new WeakMap(), k = new WeakMap(), O = new WeakMap(), w = new WeakSet(), Y = function() {
   return this.channels[0];
 }, I = new WeakSet(), S = function() {
   return !!(e(this, u) && e(this, u).readyState === e(this, u).OPEN);
 }, L = new WeakSet(), na = function() {
   if (e(this, I, S))
     return;
-  N(this, u, ka("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, u).onopen = () => {
+  N(this, u, va("wss://irc-ws.chat.twitch.tv:443", "irc")), e(this, u).onopen = () => {
     M(this, W, ea).call(this);
   }, e(this, u).onmessage = (s) => {
-    M(this, A, Z).call(this, s);
+    M(this, G, Z).call(this, s);
   }, e(this, u).onerror = (s) => {
     M(this, F, oa).call(this, s);
   }, e(this, u).onclose = (s) => {
     M(this, $, ia).call(this, s);
   };
 }, W = new WeakSet(), ea = function() {
-  e(this, u) && e(this, I, S) && (Ba(e(this, u)), Ga(e(this, u), e(this, R), e(this, G)));
+  e(this, u) && e(this, I, S) && (Ua(e(this, u)), Ba(e(this, u), e(this, R), e(this, B)));
 }, F = new WeakSet(), oa = function(r) {
   console.error("ERROR", r);
 }, $ = new WeakSet(), ia = function(r) {
   console.info("CLOSE", r), e(this, E) && clearInterval(e(this, E));
 }, T = new WeakSet(), ua = function() {
-  e(this, u) && e(this, I, S) && (N(this, O, Date.now()), Aa(e(this, u)));
+  e(this, u) && e(this, I, S) && (N(this, k, Date.now()), Ga(e(this, u)));
 }, V = new WeakSet(), la = function(r) {
   if (e(this, u) && e(this, I, S))
     switch (r.type) {
@@ -773,10 +789,10 @@ u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), E = new WeakMap(), O = 
         r.data.address = s.host, r.data.port = s.protocol === "wss:" ? 443 : 80, r.data.isFirstConnect = this.reconnects === 0, sa(e(this, u), this.channels);
         break;
       case l.Ping:
-        Da(e(this, u));
+        Aa(e(this, u));
         break;
       case l.Pong:
-        r.data = r.data || {}, N(this, U, r.data.latency = Date.now() - e(this, O));
+        r.data = r.data || {}, N(this, O, r.data.latency = Date.now() - e(this, k));
         break;
       case l.RoomState:
         this.chatModes[r.data.channel] = {
@@ -801,13 +817,13 @@ u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), E = new WeakMap(), O = 
         });
         break;
     }
-}, A = new WeakSet(), Z = function(r) {
+}, G = new WeakSet(), Z = function(r) {
   if (!e(this, u) || !e(this, I, S))
     return;
   const s = r.data.trim().split(`\r
 `);
   for (const i of s) {
-    const t = Ua(Ra(i));
+    const t = Oa(Ra(i));
     t && t.type !== l.None && (M(this, V, la).call(this, t), this.handlers[t.type] && this.handlers[t.type](t.data), this.handlers[l.All] && this.handlers[l.All]({
       event: t.type,
       ...t.data
@@ -835,6 +851,7 @@ function h(a) {
 const g = {
   version: () => "2.0.0",
   latency: () => o ? o.latency : -1,
+  getInstance: () => o,
   onConnected: (a, r, s) => {
     o && o.debug && console.debug("onConnected default handler");
   },
@@ -891,7 +908,7 @@ const g = {
   },
   Init: (a, r, s, i) => {
     o = new Wa(a, r, s, i), o.on(l.Connect, (t) => {
-      console.log("CONNECT"), g.onConnected(t.address, t.port, t.isFirstConnect);
+      g.onConnected(t.address, t.port, t.isFirstConnect);
     }), o.on(l.Reconnect, (t) => {
       console.log("RECONNECT"), g.onReconnect(t.reconnectCount);
     }), o.on(l.Error, (t) => {
