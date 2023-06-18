@@ -1,13 +1,13 @@
-var V = (a, r, s) => {
+var J = (a, r, s) => {
   if (!r.has(a))
     throw TypeError("Cannot " + s);
 };
-var n = (a, r, s) => (V(a, r, "read from private field"), s ? s.call(a) : r.get(a)), f = (a, r, s) => {
+var n = (a, r, s) => (J(a, r, "read from private field"), s ? s.call(a) : r.get(a)), f = (a, r, s) => {
   if (r.has(a))
     throw TypeError("Cannot add the same private member more than once");
   r instanceof WeakSet ? r.add(a) : r.set(a, s);
-}, N = (a, r, s, i) => (V(a, r, "write to private field"), i ? i.call(a, s) : r.set(a, s), s);
-var M = (a, r, s) => (V(a, r, "access private method"), s);
+}, N = (a, r, s, i) => (J(a, r, "write to private field"), i ? i.call(a, s) : r.set(a, s), s);
+var M = (a, r, s) => (J(a, r, "access private method"), s);
 function va(a) {
   return !a || typeof a != "string" || !a.includes("\\") ? a : a.replace(/\\(.)/g, (r, s) => {
     switch (s) {
@@ -44,8 +44,8 @@ function Oa(a) {
     s = a.indexOf(" ");
     const m = a.substring(1, s).split(";");
     for (const l of m) {
-      const { key: P, value: T } = Ea(l);
-      r.tags[P] = va(T);
+      const { key: P, value: V } = Ea(l);
+      r.tags[P] = va(V);
     }
   }
   a[s] === " " && s++;
@@ -63,7 +63,7 @@ const ka = globalThis.WebSocket || require("ws");
 function Ua(a, r) {
   return new ka(a, r);
 }
-var d = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Unraid = "unraid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.ViewerMilestone = "ViewerMilestone", a.All = "all", a))(d || {});
+var d = /* @__PURE__ */ ((a) => (a.None = "none", a.Ping = "Ping", a.Pong = "Pong", a.Connect = "connect", a.Reconnect = "reconnect", a.Error = "error", a.Warning = "Warning", a.ChatMode = "chatmode", a.ClearChat = "ClearChat", a.RoomState = "roomstate", a.GlobalUserState = "globaluserstate", a.UserState = "userstate", a.Notice = "notice", a.Join = "join", a.Leave = "leave", a.Command = "command", a.Chat = "message", a.Reply = "reply", a.Whisper = "whisper", a.Announcement = "announcement", a.Cheer = "Cheer", a.Subscribe = "sub", a.Resubscribe = "resub", a.SubGift = "subgift", a.MysterySubGift = "submysterygift", a.SubGiftContinue = "subgiftcontinue", a.Raid = "raid", a.Unraid = "unraid", a.Timeout = "Timeout", a.Ban = "Ban", a.MessageDeleted = "MessageDeleted", a.ViewerMilestone = "ViewerMilestone", a.All = "all", a))(d || {}), Ga = /* @__PURE__ */ ((a) => (a.AggressiveContent = "aggressive", a.IdentityBasedHate = "identity-hate", a.ProfaneContent = "profane", a.SexualContent = "sexual", a))(Ga || {});
 const I = {
   "": "Normal",
   admin: "Admin",
@@ -128,15 +128,15 @@ function z(a) {
   }
   return s;
 }
-function Ga(a, r) {
+function Ba(a, r) {
   var Q, X, Y;
-  const s = (Q = a.parameters) == null ? void 0 : Q.startsWith("ACTION"), i = s ? (Y = (X = a.parameters) == null ? void 0 : X.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)) == null ? void 0 : Y[1] : a.parameters, t = a.tags, e = t.id, S = t["room-id"], m = t["user-id"], l = U(a.source), P = t["display-name"] || t.login || l, T = I[t["user-type"]], ia = t["badge-info"] ? p(t["badge-info"]) : void 0, C = t.badges ? p(t.badges) : void 0, oa = t.color || void 0, ua = t.emotes, H = t.flags, da = void 0, la = l === r, ga = t.mod === "1", pa = t.subscriber === "1", ma = t.turbo === "1", fa = C ? !!C.vip : !1, ca = C ? !!C.premium : !1, ba = C ? !!C.partner : !1, ha = C ? !!C["game-developer"] : !1, Ia = C ? !!C.founder : !1, ya = parseInt(t["tmi-sent-ts"]), _ = t["emote-only"] === "1", Ca = t["msg-id"] === "highlighted-message", Sa = t["msg-id"] === "skip-subs-mode-message", q = t["custom-reward-id"] || null, Na = t["first-msg"] === "1", Ma = t["returning-chatter"] === "1", K = {
+  const s = (Q = a.parameters) == null ? void 0 : Q.startsWith("ACTION"), i = s ? (Y = (X = a.parameters) == null ? void 0 : X.match(/^\u0001ACTION ([^\u0001]+)\u0001$/)) == null ? void 0 : Y[1] : a.parameters, t = a.tags, e = t.id, S = t["room-id"], m = t["user-id"], l = U(a.source), P = t["display-name"] || t.login || l, V = I[t["user-type"]], ia = t["badge-info"] ? p(t["badge-info"]) : void 0, C = t.badges ? p(t.badges) : void 0, oa = t.color || void 0, ua = t.emotes, H = t.flags, da = void 0, la = l === r, ga = t.mod === "1", pa = t.subscriber === "1", ma = t.turbo === "1", fa = C ? !!C.vip : !1, ca = C ? !!C.premium : !1, ba = C ? !!C.partner : !1, ha = C ? !!C["game-developer"] : !1, Ia = C ? !!C.founder : !1, ya = parseInt(t["tmi-sent-ts"]), _ = t["emote-only"] === "1", Ca = t["msg-id"] === "highlighted-message", Sa = t["msg-id"] === "skip-subs-mode-message", q = t["custom-reward-id"] || null, Na = t["first-msg"] === "1", Ma = t["returning-chatter"] === "1", K = {
     channel: r,
     channelId: S,
     displayName: P,
     username: l,
     userId: m,
-    userType: T,
+    userType: V,
     id: e,
     messageType: s ? "action" : "chat",
     messageEmotes: ua,
@@ -191,7 +191,7 @@ function Ga(a, r) {
     };
   }
 }
-function Ba(a) {
+function Aa(a) {
   var r, s, i, t, e, S;
   try {
     if (a.command) {
@@ -581,7 +581,7 @@ function Ba(a) {
             }
           };
         case "PRIVMSG":
-          return Ga(a, l);
+          return Ba(a, l);
         case "RECONNECT":
           console.info("The Twitch IRC server is about to terminate the connection for maintenance.");
           break;
@@ -622,7 +622,7 @@ function Ba(a) {
 function wa(a) {
   a.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
 }
-function Aa(a, r, s) {
+function Da(a, r, s) {
   const i = s ? r : `justinfan${Math.floor(Math.random() * 99998999 + 1e3)}`, t = s || "INSTAFLUFF";
   a.send(`PASS ${t}`), a.send(`NICK ${i}`);
 }
@@ -633,40 +633,40 @@ function x(a, r) {
   } else
     a.send(`JOIN #${r}`);
 }
-function Da(a, r) {
+function La(a, r) {
   a.send(`PART #${r}`);
 }
-function La(a) {
+function Wa(a) {
   a.send("PING");
 }
-function Wa(a) {
+function $a(a) {
   a.send("PONG");
 }
 function Fa(a, r, s) {
   a.send(`PRIVMSG #${r} :${s}`);
 }
-function $a(a, r, s, i) {
+function Va(a, r, s, i) {
   a.send(`@reply-parent-msg-id=${s} PRIVMSG #${r} :${i}`);
 }
-var u, R, G, v, E, O, B, j, h, y, A, aa, D, ta, L, ra, W, sa, F, na, $, ea, w, J;
-class Ta {
+var u, R, G, v, E, O, B, T, h, y, w, aa, D, ta, L, ra, W, sa, $, na, F, ea, A, j;
+class Ja {
   constructor(r, s, i, t) {
     f(this, B);
     f(this, h);
-    f(this, A);
+    f(this, w);
     f(this, D);
     f(this, L);
     f(this, W);
-    f(this, F);
     f(this, $);
-    f(this, w);
+    f(this, F);
+    f(this, A);
     f(this, u, void 0);
     f(this, R, void 0);
     f(this, G, void 0);
     f(this, v, void 0);
     f(this, E, void 0);
     f(this, O, void 0);
-    N(this, E, 0), N(this, O, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, G, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, A, aa).call(this);
+    N(this, E, 0), N(this, O, -1), this.reconnects = 0, this.chatModes = {}, this.handlers = {}, N(this, R, r), N(this, G, s), this.debug = !!t, (typeof i == "string" || i instanceof String) && (i = [i]), this.channels = i || [r], M(this, w, aa).call(this);
   }
   get version() {
     return "2.0.0";
@@ -681,63 +681,63 @@ class Ta {
     this.handlers[r] = s;
   }
   say(r, s) {
-    n(this, u) && n(this, h, y) && Fa(n(this, u), s || n(this, B, j), r);
+    n(this, u) && n(this, h, y) && Fa(n(this, u), s || n(this, B, T), r);
   }
   reply(r, s, i) {
-    n(this, u) && n(this, h, y) && $a(n(this, u), i || n(this, B, j), r, s);
+    n(this, u) && n(this, h, y) && Va(n(this, u), i || n(this, B, T), r, s);
   }
   join(r) {
     n(this, u) && n(this, h, y) && x(n(this, u), r);
   }
   leave(r) {
-    n(this, u) && n(this, h, y) && Da(n(this, u), r);
+    n(this, u) && n(this, h, y) && La(n(this, u), r);
   }
   deleteMessage(r, s) {
     n(this, u) && n(this, h, y);
   }
   simulateIRCMessage(r) {
-    n(this, u) && n(this, h, y) && M(this, w, J).call(this, { data: r });
+    n(this, u) && n(this, h, y) && M(this, A, j).call(this, { data: r });
   }
   destroy() {
     n(this, u) && n(this, u).readyState !== n(this, u).CLOSED && n(this, u).close();
   }
 }
-u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), v = new WeakMap(), E = new WeakMap(), O = new WeakMap(), B = new WeakSet(), j = function() {
+u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), v = new WeakMap(), E = new WeakMap(), O = new WeakMap(), B = new WeakSet(), T = function() {
   return this.channels[0];
 }, h = new WeakSet(), y = function() {
   return !!(n(this, u) && n(this, u).readyState === n(this, u).OPEN);
-}, A = new WeakSet(), aa = function() {
+}, w = new WeakSet(), aa = function() {
   if (n(this, h, y))
     return;
   N(this, u, Ua("wss://irc-ws.chat.twitch.tv:443", "irc")), n(this, u).onopen = () => {
     M(this, D, ta).call(this);
   }, n(this, u).onmessage = (s) => {
-    M(this, w, J).call(this, s);
+    M(this, A, j).call(this, s);
   }, n(this, u).onerror = (s) => {
     M(this, L, ra).call(this, s);
   }, n(this, u).onclose = (s) => {
     M(this, W, sa).call(this, s);
   };
 }, D = new WeakSet(), ta = function() {
-  n(this, u) && n(this, h, y) && (wa(n(this, u)), Aa(n(this, u), n(this, R), n(this, G)));
+  n(this, u) && n(this, h, y) && (wa(n(this, u)), Da(n(this, u), n(this, R), n(this, G)));
 }, L = new WeakSet(), ra = function(r) {
   console.error("ERROR", r);
 }, W = new WeakSet(), sa = function(r) {
   console.info("CLOSE", r), n(this, v) && clearInterval(n(this, v));
-}, F = new WeakSet(), na = function() {
-  n(this, u) && n(this, h, y) && (N(this, E, Date.now()), La(n(this, u)));
-}, $ = new WeakSet(), ea = function(r) {
+}, $ = new WeakSet(), na = function() {
+  n(this, u) && n(this, h, y) && (N(this, E, Date.now()), Wa(n(this, u)));
+}, F = new WeakSet(), ea = function(r) {
   if (n(this, u) && n(this, h, y))
     switch (r.type) {
       case d.Connect:
         N(this, R, r.data.username), n(this, v) && clearInterval(n(this, v)), N(this, v, setInterval(() => {
-          M(this, F, na).call(this);
+          M(this, $, na).call(this);
         }, 6e4));
         const s = new URL(n(this, u).url);
         r.data.address = s.host, r.data.port = s.protocol === "wss:" ? 443 : 80, r.data.isFirstConnect = this.reconnects === 0, x(n(this, u), this.channels);
         break;
       case d.Ping:
-        Wa(n(this, u));
+        $a(n(this, u));
         break;
       case d.Pong:
         r.data = r.data || {}, N(this, O, r.data.latency = Date.now() - n(this, E));
@@ -765,14 +765,14 @@ u = new WeakMap(), R = new WeakMap(), G = new WeakMap(), v = new WeakMap(), E = 
         });
         break;
     }
-}, w = new WeakSet(), J = function(r) {
+}, A = new WeakSet(), j = function(r) {
   if (!n(this, u) || !n(this, h, y))
     return;
   const s = r.data.trim().split(`\r
 `);
   for (const i of s) {
-    const t = Ba(Oa(i));
-    t && t.type !== d.None && (M(this, $, ea).call(this, t), this.handlers[t.type] && this.handlers[t.type](t.data), this.handlers[d.All] && this.handlers[d.All]({
+    const t = Aa(Oa(i));
+    t && t.type !== d.None && (M(this, F, ea).call(this, t), this.handlers[t.type] && this.handlers[t.type](t.data), this.handlers[d.All] && this.handlers[d.All]({
       event: t.type,
       ...t.data
     }));
@@ -855,7 +855,7 @@ const g = {
     o && o.simulateIRCMessage(a);
   },
   Init: (a, r, s, i) => {
-    o = new Ta(a, r, s, i), o.on(d.Connect, (t) => {
+    o = new Ja(a, r, s, i), o.on(d.Connect, (t) => {
       g.onConnected(t.address, t.port, t.isFirstConnect);
     }), o.on(d.Reconnect, (t) => {
       console.log("RECONNECT"), g.onReconnect(t.reconnectCount);
@@ -907,5 +907,21 @@ const g = {
   }
 };
 typeof module < "u" && module.exports && (module.exports = g);
-typeof window < "u" && (window.ComfyJSNew = g);
+typeof window < "u" && (window.ComfyJS ? window.ComfyJSv2 = g : window.ComfyJS = g);
+export {
+  d as TwitchEventType,
+  Ja as TwitchEvents,
+  Ga as TwitchMessageFlag,
+  Da as authenticate,
+  x as joinChannel,
+  La as leaveChannel,
+  Oa as parseMessage,
+  Wa as ping,
+  $a as pong,
+  Aa as processMessage,
+  Va as replyChat,
+  wa as requestCapabilities,
+  Fa as sendChat,
+  va as unescapeIRC
+};
 //# sourceMappingURL=comfy.min.mjs.map

@@ -1,6 +1,7 @@
 <html>
   <head>
     <script src="../dist/comfy.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
   </head>
   <body>
     <script type="text/javascript">
@@ -11,6 +12,7 @@
       }
       ComfyJS.onChat = ( user, message, flags, self, extra ) => {
         console.log( user + ":", message );
+        console.log( extra );
       }
       ComfyJS.Init( "instafluff" );
     </script>

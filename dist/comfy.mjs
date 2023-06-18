@@ -123,6 +123,13 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["All"] = "all";
   return TwitchEventType2;
 })(TwitchEventType || {});
+var TwitchMessageFlag = /* @__PURE__ */ ((TwitchMessageFlag2) => {
+  TwitchMessageFlag2["AggressiveContent"] = "aggressive";
+  TwitchMessageFlag2["IdentityBasedHate"] = "identity-hate";
+  TwitchMessageFlag2["ProfaneContent"] = "profane";
+  TwitchMessageFlag2["SexualContent"] = "sexual";
+  return TwitchMessageFlag2;
+})(TwitchMessageFlag || {});
 const TwitchUserTypes = {
   "": "Normal",
   "admin": "Admin",
@@ -1255,5 +1262,25 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = comfyJS;
 }
 if (typeof window !== "undefined") {
-  window.ComfyJSNew = comfyJS;
+  if (window.ComfyJS) {
+    window.ComfyJSv2 = comfyJS;
+  } else {
+    window.ComfyJS = comfyJS;
+  }
 }
+export {
+  TwitchEventType,
+  TwitchEvents,
+  TwitchMessageFlag,
+  authenticate,
+  joinChannel,
+  leaveChannel,
+  parseMessage,
+  ping,
+  pong,
+  processMessage,
+  replyChat,
+  requestCapabilities,
+  sendChat,
+  unescapeIRC
+};

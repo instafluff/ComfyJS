@@ -5,6 +5,7 @@
   "main": "dist/comfy.js",
   "type": "commonjs",
   "module": "dist/comfy.mjs",
+  "types": "types/comfy.d.ts",
   "exports": {
     ".": {
       "import": "./dist/comfy.mjs",
@@ -12,13 +13,16 @@
     }
   },
   "scripts": {
+    "benchmark": "ts-node test/benchmark.ts",
     "example": "ts-node-dev --respawn --transpile-only src/example.ts",
     "dev": "vite --open",
     "watch": "vite build --watch",
     "build": "npm-run-all --sequential build:*",
+    "build:tsc": "tsc",
     "build:normal": "vite build",
     "build:minified": "vite build -c vite.config.min.js",
     "build:version": "node version.js",
+    "tsc": "tsc",
     "test": "jest",
     "start": "npm run build && node build/index.js",
     "clean": "rimraf ./dist/",
@@ -38,10 +42,13 @@
   },
   "homepage": "https://github.com/instafluff/ComfyJS#readme",
   "devDependencies": {
+    "@types/benchmark": "^2.1.2",
     "@types/jest": "^29.2.5",
     "@types/node": "^18.14.2",
+    "@types/ws": "^8.5.4",
     "@typescript-eslint/eslint-plugin": "^5.48.0",
     "@typescript-eslint/parser": "^5.48.0",
+    "benchmark": "^2.1.4",
     "dotenv": "^8.2.0",
     "eslint": "^8.31.0",
     "eslint-config-comfycase": "^0.1.2",

@@ -22,6 +22,7 @@ var __privateMethod = (obj, member, method) => {
   return method;
 };
 var _ws, _username, _password, _pingTimer, _pingTime, _latency, _mainChannel, mainChannel_get, _isConnected, isConnected_get, _connect, connect_fn, _onOpen, onOpen_fn, _onError, onError_fn, _onClose, onClose_fn, _ping, ping_fn, _handleSpecialEvents, handleSpecialEvents_fn, _onMessage, onMessage_fn;
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 function unescapeIRC(text) {
   if (!text || typeof text !== "string" || !text.includes("\\")) {
     return text;
@@ -124,6 +125,13 @@ var TwitchEventType = /* @__PURE__ */ ((TwitchEventType2) => {
   TwitchEventType2["All"] = "all";
   return TwitchEventType2;
 })(TwitchEventType || {});
+var TwitchMessageFlag = /* @__PURE__ */ ((TwitchMessageFlag2) => {
+  TwitchMessageFlag2["AggressiveContent"] = "aggressive";
+  TwitchMessageFlag2["IdentityBasedHate"] = "identity-hate";
+  TwitchMessageFlag2["ProfaneContent"] = "profane";
+  TwitchMessageFlag2["SexualContent"] = "sexual";
+  return TwitchMessageFlag2;
+})(TwitchMessageFlag || {});
 const TwitchUserTypes = {
   "": "Normal",
   "admin": "Admin",
@@ -1256,5 +1264,23 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = comfyJS;
 }
 if (typeof window !== "undefined") {
-  window.ComfyJSNew = comfyJS;
+  if (window.ComfyJS) {
+    window.ComfyJSv2 = comfyJS;
+  } else {
+    window.ComfyJS = comfyJS;
+  }
 }
+exports.TwitchEventType = TwitchEventType;
+exports.TwitchEvents = TwitchEvents;
+exports.TwitchMessageFlag = TwitchMessageFlag;
+exports.authenticate = authenticate;
+exports.joinChannel = joinChannel;
+exports.leaveChannel = leaveChannel;
+exports.parseMessage = parseMessage;
+exports.ping = ping;
+exports.pong = pong;
+exports.processMessage = processMessage;
+exports.replyChat = replyChat;
+exports.requestCapabilities = requestCapabilities;
+exports.sendChat = sendChat;
+exports.unescapeIRC = unescapeIRC;

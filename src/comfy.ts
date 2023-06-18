@@ -220,7 +220,8 @@ const comfyJS : ComfyJSInstance = {
 
 declare global {
 	interface Window {
-		ComfyJSNew: ComfyJSInstance;
+		ComfyJS: ComfyJSInstance;
+		ComfyJSv2: ComfyJSInstance;
 	}
 }
 
@@ -230,5 +231,15 @@ if( typeof module !== "undefined" && module.exports ) {
 }
 
 if( typeof window !== "undefined" ) {
-	window.ComfyJSNew = comfyJS;
+	if( window.ComfyJS ) {
+		window.ComfyJSv2 = comfyJS;
+	}
+	else {
+		window.ComfyJS = comfyJS;
+	}
 }
+
+// Export all types for consolidated import
+export * from "./index";
+export * from "./parseFast";
+export * from "./twitch";

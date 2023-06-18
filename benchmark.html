@@ -7,7 +7,7 @@
         Benchmarking ComfyJS v2.0.0 vs v1.0.0
         <script type="text/javascript">
             const channel = "instafriend";
-            const channels = [ "yourragegaming", "extraemily", "lacobraaa" ]
+            const channels = [ "extraemily", "iateyourpie", "fps_shaka" ];
             let iteration = 1;
             let v1Count = 0, v2Count = 0;
             let v1Time = 0, v2Time = 0;
@@ -29,8 +29,8 @@
                 }
             }
 
-            ComfyJSNew.onConnected = ( address, port, isFirstConnect ) => {
-                const comfy = ComfyJSNew.getInstance();
+            ComfyJSv2.onConnected = ( address, port, isFirstConnect ) => {
+                const comfy = ComfyJSv2.getInstance();
                 // console.log( comfy );
                 const proxyOnMessage = comfy.ws.onmessage;
                 comfy.ws.onmessage = ( event ) => {
@@ -41,7 +41,7 @@
                 }
             }
             ComfyJS.Init( channel, undefined, channels.slice( 0 ) );
-            ComfyJSNew.Init( channel, undefined, channels.slice( 0 ) );
+            ComfyJSv2.Init( channel, undefined, channels.slice( 0 ) );
         </script>
     </body>
 </html>

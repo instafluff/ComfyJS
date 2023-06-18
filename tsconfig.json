@@ -3,6 +3,7 @@
 		"outDir": "./build",
 		"sourceMap": true,
 		"declaration": true,
+		"declarationDir": "types",
 		"strict": true,
 		"target": "ES6",
 		"lib": [
