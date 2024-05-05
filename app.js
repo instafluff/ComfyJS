@@ -128,6 +128,16 @@ async function fetchChannelIdAsync( channel, clientId, password ) {
   return userInfo.data[ 0 ].id;
 }
 
+/**
+ * 
+ * @param { string } type 
+ * @param { string } version 
+ * @param { string } clientId 
+ * @param { string } password 
+ * @param { string } channelId 
+ * @param { string } sessionId 
+ * @returns { boolean } was the subscription successful
+ */
 async function subscribeToEventAsync( type, version, clientId, password, channelId, sessionId ) {
   let err;
   await fetch( "https://api.twitch.tv/helix/eventsub/subscriptions", {
@@ -156,9 +166,10 @@ async function subscribeToEventAsync( type, version, clientId, password, channel
 }
 
 async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null) {
+  /** @type { [string, string][] } */
   const subscribtions = [
-    [ "channel.channel_points_automatic_reward_redemption.add", 1 ],
-    ["channel.channel_points_custom_reward_redemption.add", 1],
+    [ "channel.channel_points_automatic_reward_redemption.add", "1" ],
+    [ "channel.channel_points_custom_reward_redemption.add", "1" ],
   ];
 
 	password = password.replace( "oauth:", "" );
@@ -190,8 +201,9 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     ? new WebSocket( connectionName )
     : new NodeSocket( connectionName );
 	
-  /** @type NodeJS.Timeout */
+  /** @type { NodeJS.Timeout } */
   let heartbeatHandle;
+  /** @type { NodeJS.Timeout } */
   let keepAliveTimeout;
 
   let onDisconnect = (reconnect = true) => {
