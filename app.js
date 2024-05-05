@@ -282,6 +282,8 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
         keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
     }
   }
+
+  return () => onDisconnect(false);
 }
 
 async function pubsubConnect( channel, password ) {
