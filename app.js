@@ -70,10 +70,10 @@ function nonce( length ) {
 
 /**
  * 
- * @param {string} password 
- * @returns {string | null}
+ * @param { string } password 
+ * @returns { string | null }
  */
-async function fetchClientIdIfValid( password ) {
+async function fetchClientIdIfValidAsync( password ) {
   const requiredScopes = [ "channel:read:redemptions", "user:read:email" ];
   let err = null;
   let validation = await fetch( "https://id.twitch.tv/oauth2/validate", {
@@ -93,20 +93,183 @@ async function fetchClientIdIfValid( password ) {
     return null;
   }
 
-  if ( !requiredScopes.every( scope => validation.scopes.includes( scope ) ) ) {
-    console.error( "Missing required scopes: ", requiredScopes.join(", ") );
+  const missingScopes = requiredScopes.filter( scope => !validation.scopes.includes( scope ) );
+
+  if ( missingScopes.length ) {
+    console.error( "Missing required scopes: ", missingScopes.join(", ") );
     return null;
   }
 
   return validation.client_id;
 }
 
-async function eventSubConnect( channel, password ) {
-  const clientId = await fetchClientIdIfValid( password );
-  if ( clientId === null ) {
-    return;
+/**
+ * 
+ * @param { string } channel 
+ * @param { string } clientId 
+ * @param { string } password 
+ * @returns { string | null }
+ */
+async function fetchChannelIdAsync( channel, clientId, password ) {
+  let err;
+  let userInfo = await fetch( "https://api.twitch.tv/helix/users?login=" + channel, {
+    headers: {
+      "Client-ID": clientId,
+      "Authorization": `Bearer ${password}`
+    }
+  }).then( r => r.json() )
+  .catch( e => (err = e, null));
+
+  if ( err || userInfo === null ) {
+    console.error( "Error fetching user info: ", err );
+    return null;
   }
 
+  return userInfo.data[ 0 ].id;
+}
+
+async function subscribeToEventAsync( type, version, clientId, password, channelId, sessionId ) {
+  let err;
+  await fetch( "https://api.twitch.tv/helix/eventsub/subscriptions", {
+    method: "POST",
+    headers: {
+      "Client-ID": clientId,
+      "Authorization": `Bearer ${password}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify( {
+      type,
+      version,
+      condition: {
+        broadcaster_user_id: channelId,
+      },
+      transport: {
+        method: "websocket",
+        session_id: sessionId
+      }
+    } )
+  })
+  .catch( e => (err = e, console.error( "Error subscribing to event: ", type, e )));
+
+
+  return !err;
+}
+
+async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null) {
+  const subscribtions = [
+    [ "channel.channel_points_automatic_reward_redemption.add", 1 ],
+    ["channel.channel_points_custom_reward_redemption.add", 1],
+  ];
+
+	password = password.replace( "oauth:", "" );
+
+  if ( !clientId ) {
+    clientId = await fetchClientIdIfValidAsync( password );
+    if ( clientId === null ) {
+      return;
+    }
+  }
+
+  if ( !channelId ) {
+    channelId = await fetchChannelIdAsync( channel, clientId, password );
+    if ( channelId === null ) {
+      return;
+    }
+  }
+
+  const keepAliveSeconds = 30;
+  const heartbeatInterval = 1000 * 60; //ms between PING's
+  if (!connectionName) {
+    connectionName = "wss://eventsub.wss.twitch.tv/ws";
+    if ( keepAliveSeconds !== 30 ) {
+      connectionName += "?keepalive_timeout_seconds=" + keepAliveSeconds;
+    }
+  }
+
+  const ws = typeof window !== "undefined"
+    ? new WebSocket( connectionName )
+    : new NodeSocket( connectionName );
+	
+  /** @type NodeJS.Timeout */
+  let heartbeatHandle;
+  let keepAliveTimeout;
+
+  let onDisconnect = (reconnect = true) => {
+    clearInterval( heartbeatHandle );
+    ws.close();
+    if (reconnect) {
+      eventSubConnectAsync( channel, password, clientId, channelId, connectionName, sessionId );
+    }
+  }
+
+  ws.onerror = function( error ) {
+    console.error( error );
+    onDisconnect(false);
+  }
+
+  ws.onopen = function( event ) {
+    ws.send( JSON.stringify( { type: 'PING' } ) );
+    heartbeatHandle = setInterval( () => {
+      ws.send( JSON.stringify( { type: 'PING' } ) );
+    }, heartbeatInterval );
+
+    keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+  }
+
+  ws.onmessage = async function( event ) {
+    const message = JSON.parse(event.data);
+    switch (message.metadata.message_type) {
+      case "session_welcome":
+        {
+          sessionId = message.session.id;
+          keepAliveSeconds = message.session.keepalive_timeout_seconds;
+          clearTimeout(keepAliveTimeout);
+          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+
+          await Promise.all(
+            subscribtions.map(( [ type, version ] ) =>
+              subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
+            )
+          )
+          .then( r => !r.every(x => x) && onDisconnect(false) );
+          break;
+        }
+      case "session_keepalive":
+        {
+          clearTimeout(keepAliveTimeout);
+          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+          break;
+        }
+      case "session_reconnect":
+        {
+          connectionName = message.payload.session.reconnect_url;
+          sessionId = message.payload.session.id;
+          clearTimeout(keepAliveTimeout);
+          onDisconnect();
+          break;
+        }
+      case "revocation":
+        {
+          clearTimeout(keepAliveTimeout);
+          if (!subscribtions.map( ( [ type, _ ] ) => type).includes(message.payload.type)) {
+            keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+            break;
+          }
+          onDisconnect(false);
+          break;
+        }
+      case "notification":
+        {
+          const notificationType = message.metadata.subscription_type;
+          clearTimeout(keepAliveTimeout);
+          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+
+          break;
+        }
+      default:
+        keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+    }
+  }
 }
 
 async function pubsubConnect( channel, password ) {
