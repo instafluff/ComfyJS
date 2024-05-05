@@ -71,10 +71,10 @@ function nonce( length ) {
 /**
  * 
  * @param { string } password 
+ * @param { string[] } requiredScopes
  * @returns { string | null }
  */
-async function fetchClientIdIfValidAsync( password ) {
-  const requiredScopes = [ "channel:read:redemptions", "user:read:email" ];
+async function fetchClientIdIfValidAsync( password, requiredScopes ) {
   let err = null;
   let validation = await fetch( "https://id.twitch.tv/oauth2/validate", {
     headers: {
@@ -175,7 +175,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
 	password = password.replace( "oauth:", "" );
 
   if ( !clientId ) {
-    clientId = await fetchClientIdIfValidAsync( password );
+    clientId = await fetchClientIdIfValidAsync( password, [ "channel:read:redemptions", "user:read:email" ] );
     if ( clientId === null ) {
       return;
     }
