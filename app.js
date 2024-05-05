@@ -68,6 +68,47 @@ function nonce( length ) {
     return text;
 }
 
+/**
+ * 
+ * @param {string} password 
+ * @returns {string | null}
+ */
+async function fetchClientIdIfValid( password ) {
+  const requiredScopes = [ "channel:read:redemptions", "user:read:email" ];
+  let err = null;
+  let validation = await fetch( "https://id.twitch.tv/oauth2/validate", {
+    headers: {
+      "Authorization": `OAuth ${password}`
+    }
+  }).then( r => r.json() )
+  .catch( e => (err = e, null));
+
+  if ( err || validation === null ) {
+    console.error( "Error fetching validation: ", err );
+    return null;
+  }
+
+  if ( !validation.client_id ) {
+    console.error( "Invalid Password" );
+    return null;
+  }
+
+  if ( !requiredScopes.every( scope => validation.scopes.includes( scope ) ) ) {
+    console.error( "Missing required scopes: ", requiredScopes.join(", ") );
+    return null;
+  }
+
+  return validation.client_id;
+}
+
+async function eventSubConnect( channel, password ) {
+  const clientId = await fetchClientIdIfValid( password );
+  if ( clientId === null ) {
+    return;
+  }
+
+}
+
 async function pubsubConnect( channel, password ) {
 	const heartbeatInterval = 1000 * 60; //ms between PING's
 	const reconnectInterval = 1000 * 3; //ms to wait before reconnect
