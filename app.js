@@ -270,8 +270,35 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
       case "notification":
         {
           keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
-          const notificationType = message.metadata.subscription_type;
           clearTimeout(keepAliveTimeout);
+          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+          const reward = message.payload.event.reward;
+          const rewardObj = {
+            id: reward.id,
+            channelId,
+            title: "title" in reward ? reward.title : null,
+            prompt: "prompt" in reward ? reward.prompt : null,
+            cost: reward.cost,
+          };
+          const extra = {
+            channelId: reward.broadcaster_user_id,
+            reward: rewardObj,
+            rewardFulfilled: message.payload.subscription.type === "channel.channel_points_automatic_reward_redemption.add"
+              || message.payload.event.status.toLowerCase() === "fulfilled",
+            userId: message.payload.event.user_id,
+            username: message.payload.event.user_login,
+            displayName: message.payload.event.user_name,
+            customRewardId: message.payload.event.id,
+            redeemed_at: message.payload.event.redeemed_at,
+          };
+
+          comfyJS.onReward(
+            extra.displayName || extra.username,
+            rewardObj.title,
+            rewardObj.cost,
+            rewardObj.prompt || "",
+            extra,
+          );
 
           break;
         }
