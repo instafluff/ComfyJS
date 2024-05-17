@@ -460,8 +460,12 @@ var channelInfo = null;
 var client = null;
 var isFirstConnect = true;
 var reconnectCount = 0;
+// works as both a flag and a function to disconnect from eventsub
+/** @type {(() => void) | boolean | undefined | null } */
+var eventsubDisconnect = null;
 var comfyJS = {
   isDebug: false,
+  useEventSub: true,
   chatModes: {},
   version: function() {
     return "@VERSION";
@@ -618,7 +622,7 @@ var comfyJS = {
   GetClient: function() {
     return client;
   },
-  Init: function( username, password, channels, isDebug ) {
+  Init: function( username, password, channels, isDebug, useEventSub ) {
     channels = channels || [ username ];
     if( typeof channels === 'string' || channels instanceof String ) {
       channels = [ channels ];
@@ -627,6 +631,8 @@ var comfyJS = {
       throw new Error( "Channels is not an array" );
     }
     comfyJS.isDebug = isDebug;
+    eventsubDisconnect = null;
+    comfyJS.useEventSub = typeof useEventSub === "boolean" ? useEventSub : false;
     mainChannel = channels[ 0 ];
     var options = {
       options: {
@@ -956,10 +962,34 @@ var comfyJS = {
 
 	// Setup PubSub (https://github.com/twitchdev/pubsub-javascript-sample)
 	if( password ) {
-		pubsubConnect( mainChannel, password );
+    if ( comfyJS.useEventSub ) {
+      eventSubConnectAsync( mainChannel, password )
+        .then( disconnect => {
+          if( typeof eventsubDisconnect !== "boolean" ) {
+            if( typeof disconnect !== "function" ) {
+              throw new Error( "EventSub connection failed" );
+            }
+            eventsubDisconnect = disconnect
+            return;
+          }
+          disconnect();
+          eventsubDisconnect = null;
+        })
+        .catch( (_) => {
+          pubsubConnect( mainChannel, password );
+        });
+    } else {
+      pubsubConnect( mainChannel, password );
+    }
 	}
   },
   Disconnect: function() {
+    if ( typeof eventsubDisconnect === "function" ) {
+      eventsubDisconnect();
+      eventsubDisconnect = null;
+    } else {
+      eventsubDisconnect = typeof eventsubDisconnect !== "undefined" ? true : null;
+    }
     client.disconnect()
     .catch( comfyJS.onError );
   },
