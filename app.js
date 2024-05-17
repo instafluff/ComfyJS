@@ -165,7 +165,7 @@ async function subscribeToEventAsync( type, version, clientId, password, channel
   return !err;
 }
 
-async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null) {
+async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null, clearObject = null) {
   /** @type { [string, string][] } */
   const subscribtions = [
     [ "channel.channel_points_automatic_reward_redemption.add", "1" ],
@@ -189,7 +189,6 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
   }
 
   const keepAliveSeconds = 30;
-  const heartbeatInterval = 1000 * 60; //ms between PING's
   if (!connectionName) {
     connectionName = "wss://eventsub.wss.twitch.tv/ws";
     if ( keepAliveSeconds !== 30 ) {
@@ -200,90 +199,88 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
   const ws = typeof window !== "undefined"
     ? new WebSocket( connectionName )
     : new NodeSocket( connectionName );
-	
-  /** @type { NodeJS.Timeout } */
-  let heartbeatHandle;
+  
   /** @type { NodeJS.Timeout } */
   let keepAliveTimeout;
 
-  let onDisconnect = (reconnect = true) => {
-    clearInterval( heartbeatHandle );
+  // this way if we need to reconnect we can call this function again in returned function
+  clearObject = clearObject || {};
+  clearObject.onDisconnect = (reconnect = true) => {
+    clearTimeout(keepAliveTimeout);
     ws.close();
     if (reconnect) {
-      eventSubConnectAsync( channel, password, clientId, channelId, connectionName, sessionId );
+      eventSubConnectAsync( channel, password, clientId, channelId, connectionName, sessionId, clearObject );
     }
   }
 
   ws.onerror = function( error ) {
     console.error( error );
-    onDisconnect(false);
+    clearObject.onDisconnect(false);
   }
 
   ws.onopen = function( event ) {
-    ws.send( JSON.stringify( { type: 'PING' } ) );
-    heartbeatHandle = setInterval( () => {
-      ws.send( JSON.stringify( { type: 'PING' } ) );
-    }, heartbeatInterval );
-
-    keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+    if ( comfyJS && comfyJS.isDebug ) {
+      console.log( "Connected to EventSub" );
+    }
   }
 
-  ws.onmessage = async function( event ) {
+  ws.onmessage = function( event ) {
     const message = JSON.parse(event.data);
-    switch (message.metadata.message_type) {
+    if( message.type === "PING" ) {
+      ws.send( JSON.stringify( { type: 'PONG' } ) );
+      return;
+    }
+    switch( message.metadata.message_type ) {
       case "session_welcome":
         {
           sessionId = message.session.id;
-          keepAliveSeconds = message.session.keepalive_timeout_seconds;
-          clearTimeout(keepAliveTimeout);
-          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+          // account that the keepalive will happen within last second
+          keepAliveSeconds = message.session.keepalive_timeout_seconds + 1;
+          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
 
-          await Promise.all(
+          void Promise.all(
             subscribtions.map(( [ type, version ] ) =>
               subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
             )
           )
-          .then( r => !r.every(x => x) && onDisconnect(false) );
+            .then( r => !r.every(x => x) && clearObject.onDisconnect(false) );
           break;
         }
       case "session_keepalive":
         {
           clearTimeout(keepAliveTimeout);
-          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
           break;
         }
       case "session_reconnect":
         {
           connectionName = message.payload.session.reconnect_url;
-          sessionId = message.payload.session.id;
           clearTimeout(keepAliveTimeout);
-          onDisconnect();
+          clearObject.onDisconnect();
           break;
         }
       case "revocation":
         {
-          clearTimeout(keepAliveTimeout);
           if (!subscribtions.map( ( [ type, _ ] ) => type).includes(message.payload.type)) {
-            keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
             break;
           }
-          onDisconnect(false);
+          clearObject.onDisconnect(false);
           break;
         }
       case "notification":
         {
+          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
           const notificationType = message.metadata.subscription_type;
           clearTimeout(keepAliveTimeout);
-          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
 
           break;
         }
       default:
-        keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+        break;
     }
   }
 
-  return () => onDisconnect(false);
+  return () => clearObject.onDisconnect(false);
 }
 
 async function pubsubConnect( channel, password ) {
