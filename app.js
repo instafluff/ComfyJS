@@ -71,7 +71,7 @@ function nonce( length ) {
 /**
  * 
  * @param { string } password 
- * @param { string[] } requiredScopes
+ * @param { (arg: string[] ) => string[] } requiredScopes
  * @returns { string | null }
  */
 async function fetchClientIdIfValidAsync( password, requiredScopes ) {
@@ -93,7 +93,7 @@ async function fetchClientIdIfValidAsync( password, requiredScopes ) {
     return null;
   }
 
-  const missingScopes = requiredScopes.filter( scope => !validation.scopes.includes( scope ) );
+  const missingScopes = requiredScopes(validation.scopes);
 
   if ( missingScopes.length ) {
     console.error( "Missing required scopes: ", missingScopes.join(", ") );
@@ -175,7 +175,31 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
 	password = password.replace( "oauth:", "" );
 
   if ( !clientId ) {
-    clientId = await fetchClientIdIfValidAsync( password, [ "channel:read:redemptions", "user:read:email" ] );
+    clientId = await fetchClientIdIfValidAsync(
+      password,
+      ( availableScopes ) => {
+        let hasRewardRedemptions = false;
+        let hasReadingEmail = false;
+        for ( const scope of availableScopes ) {
+          if ( ["channel:read:redemptions", "channel:manage:redemptions"].includes(scope)) {
+            hasRewardRedemptions = true;
+          }
+          if (scope === "user:read:email") {
+            hasReadingEmail = true;
+          }
+        }
+        
+        const missingScopes = [];
+        if (!hasRewardRedemptions) {
+          missingScopes.push("channel:read:redemptions");
+        }
+        if (!hasReadingEmail) {
+          missingScopes.push("user:read:email");
+        }
+
+        return missingScopes;
+      }
+    );
     if ( clientId === null ) {
       return;
     }
