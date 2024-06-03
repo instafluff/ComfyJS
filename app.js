@@ -188,7 +188,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     }
   }
 
-  const keepAliveSeconds = 30;
+  let keepAliveSeconds = 30;
   if (!connectionName) {
     connectionName = "wss://eventsub.wss.twitch.tv/ws";
     if ( keepAliveSeconds !== 30 ) {
