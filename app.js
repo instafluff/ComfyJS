@@ -213,6 +213,8 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     }
   }
 
+  clearObject.messages = clearObject.messages || {};
+
   ws.onerror = function( error ) {
     console.error( error );
     clearObject.onDisconnect(false);
@@ -272,6 +274,15 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
           keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
           clearTimeout(keepAliveTimeout);
           keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+          
+          const message = message.metadata.message_id;
+          if( clearObject.messages[message] ) {
+            break;
+          }
+
+          clearObject.messages[message] = true;
+          setTimeout( () => delete clearObject.messages[message], keepAliveSeconds * 1000 );
+
           const reward = message.payload.event.reward;
           const rewardObj = {
             id: reward.id,
