@@ -332,6 +332,17 @@ var comfyJS = {
     }
     return false;
   },
+  Reply: function (parentId, message, channel) {
+    if (client) {
+      if (!channel) {
+        channel = mainChannel;
+      }
+      const replyMessage = `@reply-parent-msg-id=${parentId} PRIVMSG #${channel} :${message}`;
+      client.ws.send(replyMessage);
+      return true;
+    }
+    return false;
+  },
   Whisper: function( message, user ) {
     if( client ) {
       client.whisper( user, message )
