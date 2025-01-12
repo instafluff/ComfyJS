@@ -31,7 +31,7 @@ export type OnMessageFlags = {
   vip: boolean;
   highlighted: boolean;
   customReward: boolean;
-}
+};
 
 export type OnRewardExtra = {
   channelId: string;
@@ -42,7 +42,7 @@ export type OnRewardExtra = {
   displayName: string;
   customRewardId: string;
   timestamp: string;
-}
+};
 
 export type Reward = {
   id: string;
@@ -66,28 +66,28 @@ export type Reward = {
   globalCooldown: RewardGlobalCooldown;
   redemptionsRedeemedCurrentStream: string;
   cooldownExpiresAt: string;
-}
+};
 
 export type RewardMaxPerStream = {
   enabled: boolean;
   maxPerStream: number;
-}
+};
 
 export type RewardMaxUserPerStream = {
   enabled: boolean;
   maxPerUserPerStream: number;
-}
+};
 
 export type RewardGlobalCooldown = {
   enabled: boolean;
   globalCooldownSeconds: number;
-}
+};
 
 export type Image = {
   url1x: string;
   url2x: string;
   url4x: string;
-}
+};
 
 export type OnMessageExtra = {
   id: string;
@@ -104,7 +104,7 @@ export type OnMessageExtra = {
   customRewardId: string;
   flags: any;
   timestamp: string;
-}
+};
 
 export type OnCommandExtra = {
   id: string;
@@ -122,30 +122,30 @@ export type OnCommandExtra = {
   flags: any;
   timestamp: string;
   sinceLastCommand: CommandTimePeriod;
-}
+};
 
 export type OnMessageDeletedExtra = {
   id: string;
   roomId: string;
   username: string;
   message: string;
-}
+};
 
 export type OnJoinExtra = {
   channel: string;
-}
+};
 
 export type OnPartExtra = {
   channel: string;
-}
+};
 
 export type OnHostExtra = {
   channel: string;
-}
+};
 
 export type OnRaidExtra = {
   channel: string;
-}
+};
 
 export type OnCheerExtra = {
   channel: string;
@@ -157,7 +157,7 @@ export type OnCheerExtra = {
   displayName: string;
   messageEmotes: EmoteSet;
   subscriber: string;
-}
+};
 
 export type OnSubExtra = {
   channel: string;
@@ -170,7 +170,7 @@ export type OnSubExtra = {
   displayName: string;
   userColor: string;
   userBadges: Badges;
-}
+};
 
 export type OnResubExtra = {
   channel: string;
@@ -183,7 +183,7 @@ export type OnResubExtra = {
   displayName: string;
   userColor: string;
   userBadges: Badges;
-}
+};
 
 export type OnSubGiftExtra = {
   channel: string;
@@ -199,7 +199,7 @@ export type OnSubGiftExtra = {
   recipientDisplayName: string;
   recipientUsername: string;
   recipientId: string;
-}
+};
 
 export type OnSubMysteryGiftExtra = {
   channel: string;
@@ -216,7 +216,7 @@ export type OnSubMysteryGiftExtra = {
   recipientUsername: string;
   recipientId: string;
   userMassGiftCount: number;
-}
+};
 
 export type OnGiftSubContinueExtra = {
   channel: string;
@@ -231,7 +231,7 @@ export type OnGiftSubContinueExtra = {
   userBadges: Badges;
   gifterUsername: string;
   gifterDisplayName: string;
-}
+};
 
 export type EmoteSet = {
   [emoteid: string]: string[];
@@ -295,7 +295,12 @@ export type OnRaidHandler = {
 };
 
 export type OnSubHandler = {
-  (user: string, message: string, subTierInfo: SubMethods, extra: OnSubExtra): void;
+  (
+    user: string,
+    message: string,
+    subTierInfo: SubMethods,
+    extra: OnSubExtra
+  ): void;
 };
 
 export type OnResubHandler = {
@@ -349,8 +354,14 @@ export type OnChatModeHandler = {
 };
 
 export type OnRewardHandler = {
-  (user: string, reward: string, cost: string, message: string, extra: OnRewardExtra): void;
-}
+  (
+    user: string,
+    reward: string,
+    cost: string,
+    message: string,
+    extra: OnRewardExtra
+  ): void;
+};
 
 export type OnConnectedHandler = {
   (address: string, port: number, isFirstConnect: boolean): void;
@@ -367,7 +378,8 @@ export interface ComfyJSInstance {
   version(): string;
 
   // Functions
-  Say(message: string, channel: string): boolean;
+  Say(message: string, channel?: string): boolean;
+  Reply(parentId: string, message: string, channel?: string): boolean;
   Announce(message: string, channel: string): boolean;
   Whisper(message: string, user: string): boolean;
   DeleteMessage(id: string, channel: string): boolean;

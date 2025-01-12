@@ -1,8 +1,8 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 // Comfy.JS v1.1.16
-var tmi = require('tmi.js');
-var fetch = require('node-fetch');
-var NodeSocket = require('ws');
+var tmi = require("tmi.js");
+var fetch = require("node-fetch");
+var NodeSocket = require("ws");
 
 // User and global timestamp store
 var timestamps = {
@@ -31,9 +31,9 @@ var getTimePeriod = function (command, userId) {
   var res = {};
 
   if (!timestamps.global[command]) {
-    res['any'] = 0;
+    res["any"] = 0;
   } else {
-    res['any'] = now - timestamps.global[command];
+    res["any"] = now - timestamps.global[command];
   }
 
   // update the global since-last timestamp
@@ -46,14 +46,14 @@ var getTimePeriod = function (command, userId) {
     }
 
     if (!timestamps.users[userId][command]) {
-      res['user'] = 0;
+      res["user"] = 0;
     } else {
-      res['user'] = now - timestamps.users[userId][command];
+      res["user"] = now - timestamps.users[userId][command];
     }
 
     timestamps.users[userId][command] = now;
   } else {
-    res['user'] = null;
+    res["user"] = null;
   }
 
   return res;
@@ -61,9 +61,9 @@ var getTimePeriod = function (command, userId) {
 
 // Source: https://www.thepolyglotdeveloper.com/2015/03/create-a-random-nonce-string-using-javascript/
 function nonce(length) {
-  var text = '';
+  var text = "";
   var possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (var i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
@@ -75,9 +75,9 @@ async function pubsubConnect(channel, password) {
   const reconnectInterval = 1000 * 3; //ms to wait before reconnect
   let heartbeatHandle;
 
-  password = password.replace('oauth:', '');
+  password = password.replace("oauth:", "");
 
-  let validation = await fetch('https://id.twitch.tv/oauth2/validate', {
+  let validation = await fetch("https://id.twitch.tv/oauth2/validate", {
     headers: {
       Authorization: `OAuth ${password}`,
     },
@@ -85,20 +85,20 @@ async function pubsubConnect(channel, password) {
 
   if (
     !validation.client_id ||
-    !validation.scopes.includes('channel:read:redemptions') ||
-    !validation.scopes.includes('user:read:email')
+    !validation.scopes.includes("channel:read:redemptions") ||
+    !validation.scopes.includes("user:read:email")
   ) {
     console.error(
-      'Invalid Password or Permission Scopes (channel:read:redemptions, user:read:email)'
+      "Invalid Password or Permission Scopes (channel:read:redemptions, user:read:email)"
     );
     return;
   }
 
   let userInfo = await fetch(
-    'https://api.twitch.tv/helix/users?login=' + channel,
+    "https://api.twitch.tv/helix/users?login=" + channel,
     {
       headers: {
-        'Client-ID': validation.client_id,
+        "Client-ID": validation.client_id,
         Authorization: `Bearer ${password}`,
       },
     }
@@ -106,20 +106,20 @@ async function pubsubConnect(channel, password) {
   let channelId = userInfo.data[0].id;
 
   let ws;
-  if (typeof window !== 'undefined') {
-    ws = new WebSocket('wss://pubsub-edge.twitch.tv');
+  if (typeof window !== "undefined") {
+    ws = new WebSocket("wss://pubsub-edge.twitch.tv");
   } else {
-    ws = new NodeSocket('wss://pubsub-edge.twitch.tv');
+    ws = new NodeSocket("wss://pubsub-edge.twitch.tv");
   }
   ws.onopen = function (event) {
-    ws.send(JSON.stringify({ type: 'PING' }));
+    ws.send(JSON.stringify({ type: "PING" }));
     heartbeatHandle = setInterval(() => {
-      ws.send(JSON.stringify({ type: 'PING' }));
+      ws.send(JSON.stringify({ type: "PING" }));
     }, heartbeatInterval);
 
     // Listen to channel points topic
     let message = {
-      type: 'LISTEN',
+      type: "LISTEN",
       nonce: nonce(15),
       data: {
         topics: [`channel-points-channel-v1.${channelId}`],
@@ -134,20 +134,20 @@ async function pubsubConnect(channel, password) {
   ws.onmessage = function (event) {
     message = JSON.parse(event.data);
     switch (message.type) {
-      case 'RESPONSE':
-        if (message.error === 'ERR_BADAUTH') {
-          console.error('PubSub Authentication Failure');
+      case "RESPONSE":
+        if (message.error === "ERR_BADAUTH") {
+          console.error("PubSub Authentication Failure");
         }
         break;
-      case 'RECONNECT':
+      case "RECONNECT":
         setTimeout(() => {
           pubsubConnect(channel, password);
         }, reconnectInterval);
         break;
-      case 'MESSAGE':
-        if (message.data.topic.startsWith('channel-points-channel')) {
+      case "MESSAGE":
+        if (message.data.topic.startsWith("channel-points-channel")) {
           let messageData = JSON.parse(message.data.message);
-          if (messageData.type === 'reward-redeemed') {
+          if (messageData.type === "reward-redeemed") {
             let redemption = messageData.data.redemption;
             // console.log( redemption );
             var reward = redemption.reward;
@@ -198,7 +198,7 @@ async function pubsubConnect(channel, password) {
             var extra = {
               channelId: redemption.channel_id,
               reward: rewardObj,
-              rewardFulfilled: redemption.status === 'FULFILLED',
+              rewardFulfilled: redemption.status === "FULFILLED",
               userId: redemption.user.id,
               username: redemption.user.login,
               displayName: redemption.user.display_name,
@@ -209,7 +209,7 @@ async function pubsubConnect(channel, password) {
               redemption.user.display_name || redemption.user.login,
               redemption.reward.title,
               redemption.reward.cost,
-              redemption.user_input || '',
+              redemption.user_input || "",
               extra
             );
           }
@@ -226,8 +226,8 @@ async function pubsubConnect(channel, password) {
   };
 }
 
-var mainChannel = '';
-var channelPassword = '';
+var mainChannel = "";
+var channelPassword = "";
 var channelInfo = null;
 var client = null;
 var isFirstConnect = true;
@@ -236,64 +236,64 @@ var comfyJS = {
   isDebug: false,
   chatModes: {},
   version: function () {
-    return '1.1.16';
+    return "1.1.16";
   },
   onError: function (error) {
-    console.error('Error:', error);
+    console.error("Error:", error);
   },
   onCommand: function (user, command, message, flags, extra) {
     if (comfyJS.isDebug) {
-      console.log('onCommand default handler');
+      console.log("onCommand default handler");
     }
   },
   onChat: function (user, message, flags, self, extra) {
     if (comfyJS.isDebug) {
-      console.log('onChat default handler');
+      console.log("onChat default handler");
     }
   },
   onWhisper: function (user, message, flags, self, extra) {
     if (comfyJS.isDebug) {
-      console.log('onWhisper default handler');
+      console.log("onWhisper default handler");
     }
   },
   onMessageDeleted: function (id, extra) {
     if (comfyJS.isDebug) {
-      console.log('onMessageDeleted default handler');
+      console.log("onMessageDeleted default handler");
     }
   },
   onBan: function (bannedUsername, extra) {
     if (comfyJS.isDebug) {
-      console.log('onBan default handler');
+      console.log("onBan default handler");
     }
   },
   onTimeout: function (timedOutUsername, durationInSeconds, extra) {
     if (comfyJS.isDebug) {
-      console.log('onTimeout default handler');
+      console.log("onTimeout default handler");
     }
   },
   onJoin: function (user, self, extra) {
     if (comfyJS.isDebug) {
-      console.log('onJoin default handler');
+      console.log("onJoin default handler");
     }
   },
   onPart: function (user, self, extra) {
     if (comfyJS.isDebug) {
-      console.log('onPart default handler');
+      console.log("onPart default handler");
     }
   },
   onHosted: function (user, viewers, autohost, extra) {
     if (comfyJS.isDebug) {
-      console.log('onHosted default handler');
+      console.log("onHosted default handler");
     }
   },
   onRaid: function (user, viewers, extra) {
     if (comfyJS.isDebug) {
-      console.log('onRaid default handler');
+      console.log("onRaid default handler");
     }
   },
   onSub: function (user, message, subTierInfo, extra) {
     if (comfyJS.isDebug) {
-      console.log('onSub default handler');
+      console.log("onSub default handler");
     }
   },
   onResub: function (
@@ -305,7 +305,7 @@ var comfyJS = {
     extra
   ) {
     if (comfyJS.isDebug) {
-      console.log('onResub default handler');
+      console.log("onResub default handler");
     }
   },
   onSubGift: function (
@@ -317,7 +317,7 @@ var comfyJS = {
     extra
   ) {
     if (comfyJS.isDebug) {
-      console.log('onSubGift default handler');
+      console.log("onSubGift default handler");
     }
   },
   onSubMysteryGift: function (
@@ -328,27 +328,27 @@ var comfyJS = {
     extra
   ) {
     if (comfyJS.isDebug) {
-      console.log('onSubMysteryGift default handler');
+      console.log("onSubMysteryGift default handler");
     }
   },
   onGiftSubContinue: function (user, sender, extra) {
     if (comfyJS.isDebug) {
-      console.log('onGiftSubContinue default handler');
+      console.log("onGiftSubContinue default handler");
     }
   },
   onCheer: function (user, message, bits, flags, extra) {
     if (comfyJS.isDebug) {
-      console.log('onCheer default handler');
+      console.log("onCheer default handler");
     }
   },
   onChatMode: function (flags, channel) {
     if (comfyJS.isDebug) {
-      console.log('onChatMode default handler');
+      console.log("onChatMode default handler");
     }
   },
   onReward: function (user, reward, cost, message, extra) {
     if (comfyJS.isDebug) {
-      console.log('onReward default handler');
+      console.log("onReward default handler");
     }
   },
   onConnected: function (address, port, isFirstConnect) {},
@@ -406,11 +406,11 @@ var comfyJS = {
   },
   Init: function (username, password, channels, isDebug) {
     channels = channels || [username];
-    if (typeof channels === 'string' || channels instanceof String) {
+    if (typeof channels === "string" || channels instanceof String) {
       channels = [channels];
     }
     if (!Array.isArray(channels)) {
-      throw new Error('Channels is not an array');
+      throw new Error("Channels is not an array");
     }
     comfyJS.isDebug = isDebug;
     mainChannel = channels[0];
@@ -434,59 +434,59 @@ var comfyJS = {
     }
 
     client = new tmi.client(options);
-    client.on('roomstate', function (channel, state) {
+    client.on("roomstate", function (channel, state) {
       try {
-        var channelName = channel.replace('#', '');
+        var channelName = channel.replace("#", "");
         comfyJS.chatModes[channelName] = comfyJS.chatModes[channelName] || {};
-        if ('emote-only' in state) {
-          comfyJS.chatModes[channelName].emoteOnly = state['emote-only'];
+        if ("emote-only" in state) {
+          comfyJS.chatModes[channelName].emoteOnly = state["emote-only"];
         }
-        if ('followers-only' in state) {
+        if ("followers-only" in state) {
           comfyJS.chatModes[channelName].followerOnly =
-            state['followers-only'] >= 0;
+            state["followers-only"] >= 0;
         }
-        if ('subs-only' in state) {
-          comfyJS.chatModes[channelName].subOnly = state['subs-only'];
+        if ("subs-only" in state) {
+          comfyJS.chatModes[channelName].subOnly = state["subs-only"];
         }
-        if ('r9k' in state) {
-          comfyJS.chatModes[channelName].r9kMode = state['r9k'];
+        if ("r9k" in state) {
+          comfyJS.chatModes[channelName].r9kMode = state["r9k"];
         }
-        if ('slow' in state) {
-          comfyJS.chatModes[channelName].slowMode = state['slow'];
+        if ("slow" in state) {
+          comfyJS.chatModes[channelName].slowMode = state["slow"];
         }
         comfyJS.onChatMode(comfyJS.chatModes[channelName], channelName);
       } catch (error) {
         comfyJS.onError(error);
       }
     });
-    client.on('message', function (channel, userstate, message, self) {
+    client.on("message", function (channel, userstate, message, self) {
       try {
         var user =
-          userstate['display-name'] || userstate['username'] || username;
-        var isBroadcaster = '#' + userstate['username'] === channel;
-        var isMod = userstate['mod'];
+          userstate["display-name"] || userstate["username"] || username;
+        var isBroadcaster = "#" + userstate["username"] === channel;
+        var isMod = userstate["mod"];
         var isFounder =
-          userstate['badges'] && userstate['badges'].founder === '0';
+          userstate["badges"] && userstate["badges"].founder === "0";
         var isSubscriber =
           isFounder ||
-          (userstate['badges'] &&
-            typeof userstate['badges'].subscriber !== 'undefined') ||
-          userstate['subscriber'];
+          (userstate["badges"] &&
+            typeof userstate["badges"].subscriber !== "undefined") ||
+          userstate["subscriber"];
         var isVIP =
-          (userstate['badges'] && userstate['badges'].vip === '1') || false;
+          (userstate["badges"] && userstate["badges"].vip === "1") || false;
         var isHighlightedMessage =
-          userstate['msg-id'] === 'highlighted-message';
-        var userId = userstate['user-id'];
-        var messageId = userstate['id'];
-        var roomId = userstate['room-id'];
-        var badges = userstate['badges'];
-        var userColor = userstate['color'];
-        var emotes = userstate['emotes'];
-        var messageFlags = userstate['flags'];
-        var messageTimestamp = userstate['tmi-sent-ts'];
-        var isEmoteOnly = userstate['emote-only'] || false;
-        var messageType = userstate['message-type'];
-        var customRewardId = userstate['custom-reward-id'] || null;
+          userstate["msg-id"] === "highlighted-message";
+        var userId = userstate["user-id"];
+        var messageId = userstate["id"];
+        var roomId = userstate["room-id"];
+        var badges = userstate["badges"];
+        var userColor = userstate["color"];
+        var emotes = userstate["emotes"];
+        var messageFlags = userstate["flags"];
+        var messageTimestamp = userstate["tmi-sent-ts"];
+        var isEmoteOnly = userstate["emote-only"] || false;
+        var messageType = userstate["message-type"];
+        var customRewardId = userstate["custom-reward-id"] || null;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
@@ -498,14 +498,14 @@ var comfyJS = {
         };
         var extra = {
           id: messageId,
-          channel: channel.replace('#', ''),
+          channel: channel.replace("#", ""),
           roomId: roomId,
           messageType: messageType,
           messageEmotes: emotes,
           isEmoteOnly: isEmoteOnly,
           userId: userId,
-          username: userstate['username'],
-          displayName: userstate['display-name'],
+          username: userstate["username"],
+          displayName: userstate["display-name"],
           userColor: userColor,
           userBadges: badges,
           userState: userstate,
@@ -513,17 +513,17 @@ var comfyJS = {
           flags: messageFlags,
           timestamp: messageTimestamp,
         };
-        if (!self && message[0] === '!') {
+        if (!self && message[0] === "!") {
           // Message is a command
           var parts = message.split(/ (.*)/);
           var command = parts[0].slice(1).toLowerCase();
-          var msg = parts[1] || '';
-          extra['sinceLastCommand'] = getTimePeriod(command, userId);
+          var msg = parts[1] || "";
+          extra["sinceLastCommand"] = getTimePeriod(command, userId);
           comfyJS.onCommand(user, command, msg, flags, extra);
         } else {
-          if (messageType === 'action' || messageType === 'chat') {
+          if (messageType === "action" || messageType === "chat") {
             comfyJS.onChat(user, message, flags, self, extra);
-          } else if (messageType === 'whisper') {
+          } else if (messageType === "whisper") {
             comfyJS.onWhisper(user, message, flags, self, extra);
           }
         }
@@ -532,11 +532,11 @@ var comfyJS = {
       }
     });
     client.on(
-      'messagedeleted',
+      "messagedeleted",
       function (channel, username, deletedMessage, userstate) {
         try {
-          var messageId = userstate['target-msg-id'];
-          var roomId = userstate['room-id'];
+          var messageId = userstate["target-msg-id"];
+          var roomId = userstate["room-id"];
           var extra = {
             id: messageId,
             roomId: roomId,
@@ -549,11 +549,11 @@ var comfyJS = {
         }
       }
     );
-    client.on('ban', function (channel, username, reason, userstate) {
+    client.on("ban", function (channel, username, reason, userstate) {
       try {
         var bannedUsername = username;
-        var roomId = userstate['room-id'];
-        var bannedUserId = userstate['target-user-id'];
+        var roomId = userstate["room-id"];
+        var bannedUserId = userstate["target-user-id"];
         var extra = {
           roomId,
           username,
@@ -565,13 +565,13 @@ var comfyJS = {
       }
     });
     client.on(
-      'timeout',
+      "timeout",
       function (channel, username, reason, duration, userstate) {
         try {
           var timedOutUsername = username;
           var durationInSeconds = duration;
-          var roomId = userstate['room-id'];
-          var timedOutUserId = userstate['target-user-id'];
+          var roomId = userstate["room-id"];
+          var timedOutUserId = userstate["target-user-id"];
           var extra = {
             roomId,
             username,
@@ -583,49 +583,49 @@ var comfyJS = {
         }
       }
     );
-    client.on('join', function (channel, username, self) {
+    client.on("join", function (channel, username, self) {
       var extra = {
-        channel: channel.replace('#', ''),
+        channel: channel.replace("#", ""),
       };
       comfyJS.onJoin(username, self, extra);
     });
-    client.on('part', function (channel, username, self) {
+    client.on("part", function (channel, username, self) {
       var extra = {
-        channel: channel.replace('#', ''),
+        channel: channel.replace("#", ""),
       };
       comfyJS.onPart(username, self, extra);
     });
-    client.on('hosted', function (channel, username, viewers, autohost) {
+    client.on("hosted", function (channel, username, viewers, autohost) {
       var extra = {
-        channel: channel.replace('#', ''),
+        channel: channel.replace("#", ""),
       };
       comfyJS.onHosted(username, viewers, autohost, extra);
     });
-    client.on('raided', function (channel, username, viewers) {
+    client.on("raided", function (channel, username, viewers) {
       var extra = {
-        channel: channel.replace('#', ''),
+        channel: channel.replace("#", ""),
       };
       comfyJS.onRaid(username, viewers, extra);
     });
-    client.on('cheer', function (channel, userstate, message) {
-      var bits = ~~userstate['bits'];
-      var roomId = userstate['room-id'];
+    client.on("cheer", function (channel, userstate, message) {
+      var bits = ~~userstate["bits"];
+      var roomId = userstate["room-id"];
       var user =
-        userstate['display-name'] ||
-        userstate['username'] ||
-        userstate['login'];
-      var userId = userstate['user-id'];
-      var isBroadcaster = '#' + userstate['username'] === channel;
-      var isMod = userstate['mod'];
+        userstate["display-name"] ||
+        userstate["username"] ||
+        userstate["login"];
+      var userId = userstate["user-id"];
+      var isBroadcaster = "#" + userstate["username"] === channel;
+      var isMod = userstate["mod"];
       var isFounder =
-        userstate['badges'] && userstate['badges'].founder === '0';
+        userstate["badges"] && userstate["badges"].founder === "0";
       var isSubscriber =
         isFounder ||
-        (userstate['badges'] &&
-          typeof userstate['badges'].subscriber !== 'undefined') ||
-        userstate['subscriber'];
+        (userstate["badges"] &&
+          typeof userstate["badges"].subscriber !== "undefined") ||
+        userstate["subscriber"];
       var isVIP =
-        (userstate['badges'] && userstate['badges'].vip === '1') || false;
+        (userstate["badges"] && userstate["badges"].vip === "1") || false;
       var flags = {
         broadcaster: isBroadcaster,
         mod: isMod,
@@ -634,56 +634,56 @@ var comfyJS = {
         vip: isVIP,
       };
       var extra = {
-        id: userstate['id'],
-        channel: channel.replace('#', ''),
+        id: userstate["id"],
+        channel: channel.replace("#", ""),
         roomId: roomId,
         userId: userId,
-        username: userstate['username'],
-        userColor: userstate['color'],
-        userBadges: userstate['badges'],
+        username: userstate["username"],
+        userColor: userstate["color"],
+        userBadges: userstate["badges"],
         userState: userstate,
-        displayName: userstate['display-name'],
-        messageEmotes: userstate['emotes'],
-        subscriber: userstate['subscriber'],
+        displayName: userstate["display-name"],
+        messageEmotes: userstate["emotes"],
+        subscriber: userstate["subscriber"],
       };
 
       comfyJS.onCheer(user, message, bits, flags, extra);
     });
     client.on(
-      'subscription',
+      "subscription",
       function (channel, username, methods, message, userstate) {
         var extra = {
-          id: userstate['id'],
-          roomId: userstate['room-id'],
-          messageType: userstate['message-type'],
-          messageEmotes: userstate['emotes'],
-          userId: userstate['user-id'],
-          username: userstate['login'],
-          displayName: userstate['display-name'],
-          userColor: userstate['color'],
-          userBadges: userstate['badges'],
+          id: userstate["id"],
+          roomId: userstate["room-id"],
+          messageType: userstate["message-type"],
+          messageEmotes: userstate["emotes"],
+          userId: userstate["user-id"],
+          username: userstate["login"],
+          displayName: userstate["display-name"],
+          userColor: userstate["color"],
+          userBadges: userstate["badges"],
           userState: userstate,
-          channel: channel.replace('#', ''),
+          channel: channel.replace("#", ""),
         };
 
         comfyJS.onSub(username, message, methods, extra);
       }
     );
     client.on(
-      'resub',
+      "resub",
       function (channel, username, streakMonths, message, userstate, methods) {
-        var cumulativeMonths = ~~userstate['msg-param-cumulative-months'];
+        var cumulativeMonths = ~~userstate["msg-param-cumulative-months"];
         var extra = {
-          id: userstate['id'],
-          roomId: userstate['room-id'],
-          messageType: userstate['message-type'],
-          messageEmotes: userstate['emotes'],
-          userId: userstate['user-id'],
-          username: userstate['login'],
-          displayName: userstate['display-name'],
-          userColor: userstate['color'],
-          userBadges: userstate['badges'],
-          channel: channel.replace('#', ''),
+          id: userstate["id"],
+          roomId: userstate["room-id"],
+          messageType: userstate["message-type"],
+          messageEmotes: userstate["emotes"],
+          userId: userstate["user-id"],
+          username: userstate["login"],
+          displayName: userstate["display-name"],
+          userColor: userstate["color"],
+          userBadges: userstate["badges"],
+          channel: channel.replace("#", ""),
         };
 
         comfyJS.onResub(
@@ -697,7 +697,7 @@ var comfyJS = {
       }
     );
     client.on(
-      'subgift',
+      "subgift",
       function (
         channel,
         gifterUser,
@@ -706,22 +706,22 @@ var comfyJS = {
         methods,
         userstate
       ) {
-        var senderCount = ~~userstate['msg-param-sender-count'];
+        var senderCount = ~~userstate["msg-param-sender-count"];
         var extra = {
-          id: userstate['id'],
-          roomId: userstate['room-id'],
-          messageType: userstate['message-type'],
-          messageEmotes: userstate['emotes'],
-          userId: userstate['user-id'],
-          username: userstate['login'],
-          displayName: userstate['display-name'],
-          userColor: userstate['color'],
-          userBadges: userstate['badges'],
+          id: userstate["id"],
+          roomId: userstate["room-id"],
+          messageType: userstate["message-type"],
+          messageEmotes: userstate["emotes"],
+          userId: userstate["user-id"],
+          username: userstate["login"],
+          displayName: userstate["display-name"],
+          userColor: userstate["color"],
+          userBadges: userstate["badges"],
           userState: userstate,
-          recipientDisplayName: userstate['msg-param-recipient-display-name'],
-          recipientUsername: userstate['msg-param-recipient-user-name'],
-          recipientId: userstate['msg-param-recipient-id'],
-          channel: channel.replace('#', ''),
+          recipientDisplayName: userstate["msg-param-recipient-display-name"],
+          recipientUsername: userstate["msg-param-recipient-user-name"],
+          recipientId: userstate["msg-param-recipient-id"],
+          channel: channel.replace("#", ""),
         };
 
         comfyJS.onSubGift(
@@ -735,26 +735,26 @@ var comfyJS = {
       }
     );
     client.on(
-      'submysterygift',
+      "submysterygift",
       function (channel, gifterUser, numbOfSubs, methods, userstate) {
-        var senderCount = ~~userstate['msg-param-sender-count'];
+        var senderCount = ~~userstate["msg-param-sender-count"];
 
         var extra = {
-          id: userstate['id'],
-          roomId: userstate['room-id'],
-          messageType: userstate['message-type'],
-          messageEmotes: userstate['emotes'],
-          userId: userstate['user-id'],
-          username: userstate['login'],
-          displayName: userstate['display-name'],
-          userColor: userstate['color'],
-          userBadges: userstate['badges'],
+          id: userstate["id"],
+          roomId: userstate["room-id"],
+          messageType: userstate["message-type"],
+          messageEmotes: userstate["emotes"],
+          userId: userstate["user-id"],
+          username: userstate["login"],
+          displayName: userstate["display-name"],
+          userColor: userstate["color"],
+          userBadges: userstate["badges"],
           userState: userstate,
-          recipientDisplayName: userstate['msg-param-recipient-display-name'],
-          recipientUsername: userstate['msg-param-recipient-user-name'],
-          recipientId: userstate['msg-param-recipient-id'],
-          userMassGiftCount: ~~userstate['msg-param-mass-gift-count'],
-          channel: channel.replace('#', ''),
+          recipientDisplayName: userstate["msg-param-recipient-display-name"],
+          recipientUsername: userstate["msg-param-recipient-user-name"],
+          recipientId: userstate["msg-param-recipient-id"],
+          userMassGiftCount: ~~userstate["msg-param-mass-gift-count"],
+          channel: channel.replace("#", ""),
         };
 
         comfyJS.onSubMysteryGift(
@@ -767,34 +767,34 @@ var comfyJS = {
       }
     );
     client.on(
-      'giftpaidupgrade',
+      "giftpaidupgrade",
       function (channel, username, sender, userstate) {
         var extra = {
-          id: userstate['id'],
-          roomId: userstate['room-id'],
-          messageType: userstate['message-type'],
-          messageEmotes: userstate['emotes'],
-          userId: userstate['user-id'],
-          username: userstate['login'],
-          displayName: userstate['display-name'],
-          userColor: userstate['color'],
-          userBadges: userstate['badges'],
+          id: userstate["id"],
+          roomId: userstate["room-id"],
+          messageType: userstate["message-type"],
+          messageEmotes: userstate["emotes"],
+          userId: userstate["user-id"],
+          username: userstate["login"],
+          displayName: userstate["display-name"],
+          userColor: userstate["color"],
+          userBadges: userstate["badges"],
           userState: userstate,
-          gifterUsername: userstate['msg-param-sender-login'],
-          gifterDisplayName: userstate['msg-param-sender-name'],
-          channel: channel.replace('#', ''),
+          gifterUsername: userstate["msg-param-sender-login"],
+          gifterDisplayName: userstate["msg-param-sender-name"],
+          channel: channel.replace("#", ""),
         };
 
         comfyJS.onGiftSubContinue(username, sender, extra);
       }
     );
-    client.on('connected', function (address, port) {
-      console.log('Connected:' + address + ':' + port);
+    client.on("connected", function (address, port) {
+      console.log("Connected:" + address + ":" + port);
       comfyJS.onConnected(address, port, isFirstConnect);
       isFirstConnect = false;
     });
-    client.on('reconnect', function () {
-      console.log('Reconnecting');
+    client.on("reconnect", function () {
+      console.log("Reconnecting");
       reconnectCount++;
       comfyJS.onReconnect(reconnectCount);
     });
@@ -815,7 +815,7 @@ var comfyJS = {
           `https://api.twitch.tv/helix/users?login=${mainChannel}`,
           {
             headers: {
-              'Client-ID': clientId,
+              "Client-ID": clientId,
               Authorization: `Bearer ${channelPassword}`,
             },
           }
@@ -826,7 +826,7 @@ var comfyJS = {
         `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&only_manageable_rewards=${manageableOnly}`,
         {
           headers: {
-            'Client-ID': clientId,
+            "Client-ID": clientId,
             Authorization: `Bearer ${channelPassword}`,
           },
         }
@@ -843,7 +843,7 @@ var comfyJS = {
           `https://api.twitch.tv/helix/users?login=${mainChannel}`,
           {
             headers: {
-              'Client-ID': clientId,
+              "Client-ID": clientId,
               Authorization: `Bearer ${channelPassword}`,
             },
           }
@@ -853,18 +853,18 @@ var comfyJS = {
       let custom = await fetch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Client-ID': clientId,
+            "Client-ID": clientId,
             Authorization: `Bearer ${channelPassword}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(rewardInfo),
         }
       ).then((r) => r.json());
       return custom.data[0];
     } else {
-      throw new Error('Missing Channel Password');
+      throw new Error("Missing Channel Password");
     }
   },
   UpdateChannelReward: async function (clientId, rewardId, rewardInfo) {
@@ -874,7 +874,7 @@ var comfyJS = {
           `https://api.twitch.tv/helix/users?login=${mainChannel}`,
           {
             headers: {
-              'Client-ID': clientId,
+              "Client-ID": clientId,
               Authorization: `Bearer ${channelPassword}`,
             },
           }
@@ -884,18 +884,18 @@ var comfyJS = {
       let custom = await fetch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&id=${rewardId}`,
         {
-          method: 'PATCH',
+          method: "PATCH",
           headers: {
-            'Client-ID': clientId,
+            "Client-ID": clientId,
             Authorization: `Bearer ${channelPassword}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(rewardInfo),
         }
       ).then((r) => r.json());
       return custom.data[0];
     } else {
-      throw new Error('Missing Channel Password');
+      throw new Error("Missing Channel Password");
     }
   },
   DeleteChannelReward: async function (clientId, rewardId) {
@@ -905,7 +905,7 @@ var comfyJS = {
           `https://api.twitch.tv/helix/users?login=${mainChannel}`,
           {
             headers: {
-              'Client-ID': clientId,
+              "Client-ID": clientId,
               Authorization: `Bearer ${channelPassword}`,
             },
           }
@@ -915,26 +915,26 @@ var comfyJS = {
       let deleted = await fetch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${channelInfo.id}&id=${rewardId}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
-            'Client-ID': clientId,
+            "Client-ID": clientId,
             Authorization: `Bearer ${channelPassword}`,
           },
         }
       ).then((r) => r.text());
       return deleted;
     } else {
-      throw new Error('Missing Channel Password');
+      throw new Error("Missing Channel Password");
     }
   },
 };
 
 // Expose everything, for browser and Node..
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = comfyJS;
 }
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.ComfyJS = comfyJS;
   tmi = window.tmi;
 }
