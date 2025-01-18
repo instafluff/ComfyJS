@@ -251,94 +251,99 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
   }
 
   ws.onmessage = function( event ) {
-    const message = JSON.parse(event.data);
-    if( message.type === "PING" ) {
-      ws.send( JSON.stringify( { type: 'PONG' } ) );
-      return;
-    }
-    switch( message.metadata.message_type ) {
-      case "session_welcome":
-        {
-          sessionId = message.session.id;
-          // account that the keepalive will happen within last second
-          keepAliveSeconds = message.session.keepalive_timeout_seconds + 1;
-          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
+    try {
+      const message = JSON.parse(event.data);
+      if( message.type === "PING" ) {
+        ws.send( JSON.stringify( { type: 'PONG' } ) );
+        return;
+      }
+      switch( message.metadata.message_type ) {
+        case "session_welcome":
+          {
+            sessionId = message.payload.session.id;
+            // account that the keepalive will happen within last second
+            keepAliveSeconds = message.payload.session.keepalive_timeout_seconds + 1;
+            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
 
-          void Promise.all(
-            subscribtions.map(( [ type, version ] ) =>
-              subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
+            void Promise.all(
+              subscribtions.map(( [ type, version ] ) =>
+                subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
+              )
             )
-          )
-            .then( r => !r.every(x => x) && clearObject.onDisconnect(false) );
-          break;
-        }
-      case "session_keepalive":
-        {
-          clearTimeout(keepAliveTimeout);
-          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
-          break;
-        }
-      case "session_reconnect":
-        {
-          connectionName = message.payload.session.reconnect_url;
-          clearTimeout(keepAliveTimeout);
-          clearObject.onDisconnect();
-          break;
-        }
-      case "revocation":
-        {
-          if (!subscribtions.map( ( [ type, _ ] ) => type).includes(message.payload.type)) {
+              .then( r => !r.every(x => x) && clearObject.onDisconnect(false) );
             break;
           }
-          clearObject.onDisconnect(false);
-          break;
-        }
-      case "notification":
-        {
-          keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
-          clearTimeout(keepAliveTimeout);
-          keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
-          
-          const message = message.metadata.message_id;
-          if( clearObject.messages[message] ) {
+        case "session_keepalive":
+          {
+            clearTimeout(keepAliveTimeout);
+            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
             break;
           }
+        case "session_reconnect":
+          {
+            connectionName = message.payload.session.reconnect_url;
+            clearTimeout(keepAliveTimeout);
+            clearObject.onDisconnect();
+            break;
+          }
+        case "revocation":
+          {
+            if (!subscribtions.map( ( [ type, _ ] ) => type).includes(message.payload.type)) {
+              break;
+            }
+            clearObject.onDisconnect(false);
+            break;
+          }
+        case "notification":
+          {
+            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
+            clearTimeout(keepAliveTimeout);
+            keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
+            
+            const messageId = message.metadata.message_id;
+            if( clearObject.messages[messageId] ) {
+              break;
+            }
 
-          clearObject.messages[message] = true;
-          setTimeout( () => delete clearObject.messages[message], keepAliveSeconds * 1000 );
+            clearObject.messages[messageId] = true;
+            setTimeout( () => delete clearObject.messages[messageId], keepAliveSeconds * 1000 );
 
-          const reward = message.payload.event.reward;
-          const rewardObj = {
-            id: reward.id,
-            channelId,
-            title: "title" in reward ? reward.title : null,
-            prompt: "prompt" in reward ? reward.prompt : null,
-            cost: reward.cost,
-          };
-          const extra = {
-            channelId: reward.broadcaster_user_id,
-            reward: rewardObj,
-            rewardFulfilled: message.payload.subscription.type === "channel.channel_points_automatic_reward_redemption.add"
-              || message.payload.event.status.toLowerCase() === "fulfilled",
-            userId: message.payload.event.user_id,
-            username: message.payload.event.user_login,
-            displayName: message.payload.event.user_name,
-            customRewardId: message.payload.event.id,
-            redeemed_at: message.payload.event.redeemed_at,
-          };
+            const reward = message.payload.event.reward;
+            const rewardObj = {
+              id: reward.id,
+              channelId,
+              title: "title" in reward ? reward.title : null,
+              prompt: "prompt" in reward ? reward.prompt : null,
+              cost: reward.cost,
+            };
+            const extra = {
+              channelId: reward.broadcaster_user_id,
+              reward: rewardObj,
+              rewardFulfilled: message.payload.subscription.type === "channel.channel_points_automatic_reward_redemption.add"
+                || message.payload.event.status.toLowerCase() === "fulfilled",
+              userId: message.payload.event.user_id,
+              username: message.payload.event.user_login,
+              displayName: message.payload.event.user_name,
+              customRewardId: message.payload.event.id,
+              redeemed_at: message.payload.event.redeemed_at,
+            };
 
-          comfyJS.onReward(
-            extra.displayName || extra.username,
-            rewardObj.title,
-            rewardObj.cost,
-            rewardObj.prompt || "",
-            extra,
-          );
+            comfyJS.onReward(
+              extra.displayName || extra.username,
+              rewardObj.title,
+              rewardObj.cost,
+              rewardObj.prompt || "",
+              extra,
+            );
 
+            break;
+          }
+        default:
           break;
-        }
-      default:
-        break;
+      }
+    }
+    catch( error ) {
+      console.error( error );
     }
   }
 
@@ -500,7 +505,7 @@ var reconnectCount = 0;
 var eventsubDisconnect = null;
 var comfyJS = {
   isDebug: false,
-  useEventSub: true,
+  useEventSub: true, // set to false to use PubSub
   chatModes: {},
   version: function() {
     return "@VERSION";
@@ -657,7 +662,7 @@ var comfyJS = {
   GetClient: function() {
     return client;
   },
-  Init: function( username, password, channels, isDebug, useEventSub ) {
+  Init: function( username, password, channels, isDebug ) {
     channels = channels || [ username ];
     if( typeof channels === 'string' || channels instanceof String ) {
       channels = [ channels ];
@@ -667,7 +672,6 @@ var comfyJS = {
     }
     comfyJS.isDebug = isDebug;
     eventsubDisconnect = null;
-    comfyJS.useEventSub = typeof useEventSub === "boolean" ? useEventSub : false;
     mainChannel = channels[ 0 ];
     var options = {
       options: {
