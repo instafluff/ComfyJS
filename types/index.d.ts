@@ -378,7 +378,6 @@ export interface ComfyJSInstance {
     password?: string,
     channels?: string | string[],
     isDebug?: boolean,
-    useEventSub?: boolean = true,
   ): void;
   Disconnect(): void;
 
