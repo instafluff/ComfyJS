@@ -332,6 +332,17 @@ var comfyJS = {
     }
     return false;
   },
+  Reply: function (parentId, message, channel) {
+    if (client) {
+      if (!channel) {
+        channel = mainChannel;
+      }
+      const replyMessage = `@reply-parent-msg-id=${parentId} PRIVMSG #${channel} :${message}`;
+      client.ws.send(replyMessage);
+      return true;
+    }
+    return false;
+  },
   Whisper: function( message, user ) {
     if( client ) {
       client.whisper( user, message )
@@ -463,6 +474,14 @@ var comfyJS = {
           var msg = parts[ 1 ] || "";
           extra["sinceLastCommand"] = getTimePeriod( command, userId );
           comfyJS.onCommand( user, command, msg, flags, extra );
+        } else if (!self && message.split(" ").length > 0 && message[0] === "@" && message.split(" ")[1][0] === "!"){
+          // Message is also a command: @user !command
+          // Remove first word (@mention)
+          var parts = message.split(" ");
+          var command = parts[1].slice(1).toLowerCase();
+          var msg = parts.slice(2).join(" ");
+          extra["sinceLastCommand"] = getTimePeriod(command, userId);
+          comfyJS.onCommand(user, command, msg, flags, extra);
         }
         else {
           if( messageType === "action" || messageType === "chat" ) {

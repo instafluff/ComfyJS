@@ -367,7 +367,8 @@ export interface ComfyJSInstance {
   version(): string;
 
   // Functions
-  Say(message: string, channel: string): boolean;
+  Say(message: string, channel: string?): boolean;
+  Reply(parentId: string, message: string, channel: string?): boolean;
   Announce(message: string, channel: string): boolean;
   Whisper(message: string, user: string): boolean;
   DeleteMessage(id: string, channel: string): boolean;
