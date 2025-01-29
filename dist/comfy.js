@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.22
+// Comfy.JS v1.1.23
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -268,7 +268,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
         ws.send( JSON.stringify( { type: 'PONG' } ) );
         return;
       }
-      console.log( message );
+      // console.log( message );
       switch( message.metadata.message_type ) {
         case "session_welcome":
           {
@@ -622,7 +622,7 @@ var comfyJS = {
   useEventSub: true, // set to false to use PubSub
   chatModes: {},
   version: function() {
-    return "1.1.22";
+    return "1.1.23";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -1272,18 +1272,19 @@ var getGlobal = function () {
 	throw new Error('unable to locate global object');
 }
 
-var global = getGlobal();
+var globalObject = getGlobal();
 
-module.exports = exports = global.fetch;
+module.exports = exports = globalObject.fetch;
 
 // Needed for TypeScript and Webpack.
-if (global.fetch) {
-	exports.default = global.fetch.bind(global);
+if (globalObject.fetch) {
+	exports.default = globalObject.fetch.bind(globalObject);
 }
 
-exports.Headers = global.Headers;
-exports.Request = global.Request;
-exports.Response = global.Response;
+exports.Headers = globalObject.Headers;
+exports.Request = globalObject.Request;
+exports.Response = globalObject.Response;
+
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],3:[function(require,module,exports){
 'use strict';
