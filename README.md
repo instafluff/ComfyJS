@@ -182,6 +182,8 @@ You can use this tool: [https://twitchapps.com/tokengen/](https://twitchapps.com
 
 Scopes: `channel:manage:redemptions channel:read:redemptions user:read:email chat:edit chat:read`
 
+Instafluff's Scopes List: `user:read:email user:read:chat chat:edit chat:read user:read:whispers user:manage:whispers channel:read:redemptions channel:read:hype_train channel:read:ads channel:read:charity channel:read:goals channel:read:guest_star channel:read:polls channel:read:predictions moderator:read:chatters moderator:read:followers user:write:chat channel:manage:redemptions moderator:manage:shoutouts channel:manage:polls channel:manage:predictions channel:manage:broadcast channel:manage:raids moderator:manage:announcements moderator:manage:automod moderator:manage:banned_users moderator:manage:chat_messages clips:edit`
+
 ```javascript
 ComfyJS.onReward = ( user, reward, cost, message, extra ) => {
   console.log( user + " redeemed " + reward + " for " + cost );

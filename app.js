@@ -74,7 +74,7 @@ function nonce( length ) {
  * @param { (arg: string[] ) => string[] } requiredScopes
  * @returns { string | null }
  */
-async function fetchClientIdIfValidAsync( password, requiredScopes ) {
+async function validatePassword( password ) {
   let err = null;
   let validation = await fetch( "https://id.twitch.tv/oauth2/validate", {
     headers: {
@@ -93,14 +93,7 @@ async function fetchClientIdIfValidAsync( password, requiredScopes ) {
     return null;
   }
 
-  const missingScopes = requiredScopes(validation.scopes);
-
-  if ( missingScopes.length ) {
-    console.error( "Missing required scopes: ", missingScopes.join(", ") );
-    return null;
-  }
-
-  return validation.client_id;
+  return validation;
 }
 
 /**
@@ -138,71 +131,84 @@ async function fetchChannelIdAsync( channel, clientId, password ) {
  * @param { string } sessionId 
  * @returns { boolean } was the subscription successful
  */
-async function subscribeToEventAsync( type, version, clientId, password, channelId, sessionId ) {
-  let err;
-  await fetch( "https://api.twitch.tv/helix/eventsub/subscriptions", {
-    method: "POST",
-    headers: {
-      "Client-ID": clientId,
-      "Authorization": `Bearer ${password}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify( {
-      type,
-      version,
-      condition: {
-        broadcaster_user_id: channelId,
+async function subscribeToEventAsync( type, version, clientId, userId, password, channelId, sessionId ) {
+  try {
+    const subscriptionResult = await fetch( "https://api.twitch.tv/helix/eventsub/subscriptions", {
+      method: "POST",
+      headers: {
+        "Client-ID": clientId,
+        "Authorization": `Bearer ${password}`,
+        "Content-Type": "application/json"
       },
-      transport: {
-        method: "websocket",
-        session_id: sessionId
-      }
-    } )
-  })
-  .catch( e => (err = e, console.error( "Error subscribing to event: ", type, e )));
-
-
-  return !err;
+      body: JSON.stringify( {
+        type,
+        version,
+        condition: {
+          moderator_user_id: userId,
+          user_id: userId,
+          broadcaster_user_id: channelId,
+        },
+        transport: {
+          method: "websocket",
+          session_id: sessionId
+        }
+      } )
+    }).then( r => r.text() );
+    console.log( type, version, subscriptionResult );
+    return true;
+  }
+  catch( error ) {
+    console.error( error );
+  }
+  return false;
 }
 
 async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null, clearObject = null) {
-  /** @type { [string, string][] } */
-  const subscribtions = [
-    [ "channel.channel_points_automatic_reward_redemption.add", "1" ],
-    [ "channel.channel_points_custom_reward_redemption.add", "1" ],
-  ];
-
+  const scopesToEventSubs = {
+    "moderator:read:followers": "followEvent",
+    "channel:read:redemptions": "redemptionEvent",
+    "channel:manage:redemptions": "redemptionEvent",
+    "channel:read:hype_train": "hypeTrainEvent",
+    "channel:manage:hype_train": "hypeTrainEvent",
+    "moderator:read:shoutouts": "shoutoutEvent",
+    "moderator:manage:shoutouts": "shoutoutEvent",
+    "user:read:whispers": "whisperEvent",
+    "user:manage:whisper": "whisperEvent",
+  };
+  const eventSubToSubscriptions = {
+    "followEvent": [
+      [ "channel.follow", "2" ],
+    ],
+    "redemptionEvent": [
+      [ "channel.channel_points_automatic_reward_redemption.add", "1" ],
+      [ "channel.channel_points_custom_reward_redemption.add", "1" ],
+    ],
+    "hypeTrainEvent": [
+      [ "channel.hype_train.begin", "1" ],
+      [ "channel.hype_train.progress", "1" ],
+      [ "channel.hype_train.end", "1" ],
+    ],
+    "shoutoutEvent": [
+      [ "channel.shoutout.create", "1" ],
+    ],
+    "whisperEvent": [
+      [ "user.whisper.message", "1" ],
+    ],
+  };
+  
+  if( !password ) {
+    console.error( "No OAuth password provided" );
+    return;
+  }
 	password = password.replace( "oauth:", "" );
+  const userValidation = await validatePassword( password );
 
   if ( !clientId ) {
-    clientId = await fetchClientIdIfValidAsync(
-      password,
-      ( availableScopes ) => {
-        let hasRewardRedemptions = false;
-        let hasReadingEmail = false;
-        for ( const scope of availableScopes ) {
-          if ( ["channel:read:redemptions", "channel:manage:redemptions"].includes(scope)) {
-            hasRewardRedemptions = true;
-          }
-          if (scope === "user:read:email") {
-            hasReadingEmail = true;
-          }
-        }
-        
-        const missingScopes = [];
-        if (!hasRewardRedemptions) {
-          missingScopes.push("channel:read:redemptions");
-        }
-        if (!hasReadingEmail) {
-          missingScopes.push("user:read:email");
-        }
-
-        return missingScopes;
-      }
-    );
-    if ( clientId === null ) {
+    // if validation failed, return
+    if ( userValidation === null ) {
       return;
     }
+    clientId = userValidation.client_id;
   }
 
   if ( !channelId ) {
@@ -225,15 +231,19 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     : new NodeSocket( connectionName );
   
   /** @type { NodeJS.Timeout } */
-  let keepAliveTimeout;
+  let reconnectTimeout = null;
 
   // this way if we need to reconnect we can call this function again in returned function
   clearObject = clearObject || {};
   clearObject.onDisconnect = (reconnect = true) => {
-    clearTimeout(keepAliveTimeout);
+    clearTimeout(reconnectTimeout);
     ws.close();
     if (reconnect) {
+      // Reconnecting
       eventSubConnectAsync( channel, password, clientId, channelId, connectionName, sessionId, clearObject );
+    }
+    else {
+      console.log( "Disconnected from EventSub" );
     }
   }
 
@@ -262,28 +272,29 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
         case "session_welcome":
           {
             sessionId = message.payload.session.id;
-            // account that the keepalive will happen within last second
-            keepAliveSeconds = message.payload.session.keepalive_timeout_seconds + 1;
-            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
+            
+            // subscribe to all the events based on the user scopes available
+            let eventSubs = userValidation.scopes.map( scope => scopesToEventSubs[ scope ] ).filter( x => !!x );
+            eventSubs = eventSubs.filter((v,i) => eventSubs.indexOf(v) === i);
+            const subscriptions = eventSubs.map( x => eventSubToSubscriptions[ x ] ).flat();
+            // console.log( subscriptions );
 
             Promise.all(
-              subscribtions.map(( [ type, version ] ) =>
-                subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
+              subscriptions.map(( [ type, version ] ) =>
+                subscribeToEventAsync( type, version, clientId, userValidation.user_id, password, channelId, sessionId )
               )
-            )
-              .then( r => !r.every(x => x) && clearObject.onDisconnect(false) );
+            );
             break;
           }
         case "session_keepalive":
           {
-            clearTimeout(keepAliveTimeout);
-            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
+            console.debug( "Keepalive received" );
             break;
           }
         case "session_reconnect":
           {
             connectionName = message.payload.session.reconnect_url;
-            clearTimeout(keepAliveTimeout);
+            clearTimeout(reconnectTimeout);
             clearObject.onDisconnect();
             break;
           }
@@ -297,10 +308,6 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
           }
         case "notification":
           {
-            keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
-            clearTimeout(keepAliveTimeout);
-            keepAliveTimeout = setTimeout(() => onDisconnect(), keepAliveSeconds * 1000);
-            
             const messageId = message.metadata.message_id;
             if( clearObject.messages[messageId] ) {
               break;
@@ -347,6 +354,98 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   extra,
                 );
               }
+              break;
+              // Hype Train
+              case "channel.hype_train.begin":
+              case "channel.hype_train.progress":
+              case "channel.hype_train.end":
+              {
+                const event = message.payload.event;
+                const extra = {
+                  id: event.id,
+                  channelId: event.broadcaster_user_id,
+                  channelName: event.broadcaster_user_login,
+                  channelDisplayName: event.broadcaster_user_name,
+                  level: event.level,
+                  progressToNextLevel: event.progress,
+                  goalToNextLevel: event.goal,
+                  totalHype: event.total,
+                  isGoldenKappaTrain: event.is_golden_kappa_train,
+                  hypeEvent: event,
+                };
+
+                switch( message.payload.subscription.type ) {
+                  case "channel.hype_train.begin":
+                    comfyJS.onHypeTrain(
+                      "begin",
+                      event.level,
+                      event.progress || 0,
+                      event.goal,
+                      event.total,
+                      extra
+                    );
+                    break;
+                  case "channel.hype_train.progress":
+                    comfyJS.onHypeTrain(
+                      "progress",
+                      event.level,
+                      event.progress || 0,
+                      event.goal,
+                      event.total,
+                      extra
+                    );
+                    break;
+                  case "channel.hype_train.end":
+                    comfyJS.onHypeTrain(
+                      "end",
+                      event.level,
+                      event.progress || 0,
+                      event.goal,
+                      event.total,
+                      extra
+                    );
+                    break;
+                }
+              }
+              break;
+              // Shoutout Events
+              case "channel.shoutout":
+              {
+                const event = message.payload.event;
+                console.log( "shoutout", event );
+                const extra = {
+                  channelId: event.broadcaster_user_id,
+                  channelName: event.broadcaster_user_login,
+                  channelDisplayName: event.broadcaster_user_name,
+                  shoutoutUser: event.shoutout_user_login,
+                  shoutoutDisplayName: event.shoutout_user_name,
+                  shoutoutChannelId: event.shoutout_user_id,
+                  shoutoutChannelName: event.shoutout_user_login,
+                  shoutoutChannelDisplayName: event.shoutout_user_name,
+                };
+
+                comfyJS.onShoutout(extra);
+              }
+              break;
+              // // Whisper Events (In-Progress)
+              // case "user.whisper.message":
+              // {
+              //   console.log( message );
+              //   const event = message.payload.event;
+              //   const extra = {
+              //     channelId,
+              //     channelName: event.broadcaster_user_login,
+              //     channelDisplayName: event.broadcaster_user_name,
+              //     userId: event.user_id,
+              //     username: event.user_login,
+              //     displayName: event.user_name,
+              //     message: event.message,
+              //     sentAt: event.sent_at,
+              //   };
+
+              //   // user, message, flags, self, extra
+              //   comfyJS.onWhisper(extra);
+              // }
               break;
             }
 
