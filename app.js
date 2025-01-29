@@ -257,6 +257,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
         ws.send( JSON.stringify( { type: 'PONG' } ) );
         return;
       }
+      // console.log( message );
       switch( message.metadata.message_type ) {
         case "session_welcome":
           {
@@ -265,7 +266,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
             keepAliveSeconds = message.payload.session.keepalive_timeout_seconds + 1;
             keepAliveTimeout = setTimeout(() => clearObject.onDisconnect(), keepAliveSeconds * 1000);
 
-            void Promise.all(
+            Promise.all(
               subscribtions.map(( [ type, version ] ) =>
                 subscribeToEventAsync( type, version, clientId, password, channelId, sessionId )
               )
@@ -308,33 +309,46 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
             clearObject.messages[messageId] = true;
             setTimeout( () => delete clearObject.messages[messageId], keepAliveSeconds * 1000 );
 
-            const reward = message.payload.event.reward;
-            const rewardObj = {
-              id: reward.id,
-              channelId,
-              title: "title" in reward ? reward.title : null,
-              prompt: "prompt" in reward ? reward.prompt : null,
-              cost: reward.cost,
-            };
-            const extra = {
-              channelId: reward.broadcaster_user_id,
-              reward: rewardObj,
-              rewardFulfilled: message.payload.subscription.type === "channel.channel_points_automatic_reward_redemption.add"
-                || message.payload.event.status.toLowerCase() === "fulfilled",
-              userId: message.payload.event.user_id,
-              username: message.payload.event.user_login,
-              displayName: message.payload.event.user_name,
-              customRewardId: message.payload.event.id,
-              redeemed_at: message.payload.event.redeemed_at,
-            };
+            // Handle the message based on type
+            switch( message.payload.subscription.type ) {
+              // Channel Points
+              case "channel.channel_points_custom_reward_redemption.add":
+              case "channel.channel_points_automatic_reward_redemption.add":
+              {
+                const redemption = message.payload.event;
+                const reward = redemption.reward;
+                const rewardObj = {
+                  id: reward.id,
+                  channelId,
+                  title: "title" in reward ? reward.title : null,
+                  prompt: "prompt" in reward ? reward.prompt : null,
+                  message:  redemption.user_input || "",
+                  cost: reward.cost,
+                };
+                const extra = {
+                  channelId: redemption.broadcaster_user_id,
+                  channelName: redemption.broadcaster_user_login,
+                  channelDisplayName: redemption.broadcaster_user_name,
+                  reward: rewardObj,
+                  rewardFulfilled: message.payload.subscription.type === "channel.channel_points_automatic_reward_redemption.add"
+                    || redemption.status.toLowerCase() === "fulfilled",
+                  userId: redemption.user_id,
+                  username: redemption.user_login,
+                  displayName: redemption.user_name,
+                  customRewardId: redemption.id,
+                  redeemed_at: redemption.redeemed_at,
+                };
 
-            comfyJS.onReward(
-              extra.displayName || extra.username,
-              rewardObj.title,
-              rewardObj.cost,
-              rewardObj.prompt || "",
-              extra,
-            );
+                comfyJS.onReward(
+                  extra.displayName || extra.username,
+                  rewardObj.title,
+                  rewardObj.cost,
+                  rewardObj.message,
+                  extra,
+                );
+              }
+              break;
+            }
 
             break;
           }
