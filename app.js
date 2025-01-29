@@ -154,7 +154,7 @@ async function subscribeToEventAsync( type, version, clientId, userId, password,
         }
       } )
     }).then( r => r.text() );
-    console.log( type, version, subscriptionResult );
+    // console.log( type, version, subscriptionResult );
     return true;
   }
   catch( error ) {
