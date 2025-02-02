@@ -243,7 +243,9 @@ ComfyJS.Disconnect();
  - **onChat**`( user, message, flags, self, extra )`
     - Responds to user chatting
  - **onWhisper**`( user, message, flags, self, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
     - Responds to user whisper event
+    - Requires one of the following OAuth scopes: `user:read:whispers`, `user:manage:whispers`
  - **onMessageDeleted**`( id, extra )`
     - Responds to chat message deleted
  - **onReward**`( user, reward, cost, message, extra )`
@@ -280,6 +282,15 @@ ComfyJS.Disconnect();
     - Responds when attempting to reconnect to the Twitch chat.
  - **onError**`( error )`
     - Hook for Errors
+ - **onHypeTrain**`( "begin" | "progress" | "end", level, progressToNextLevel, goalToNextLevel, totalHype, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when a Hype Train is happening
+    - Requires one of the following OAuth scopes: `channel:read:hype_train`
+ - **onShoutout**`( channelDisplayName, viewerCount, extra )``
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when streamers shoutout another channel
+    - Requires one of the following OAuth scopes: `moderator:manage:shoutouts`
+
 
 ## Credits ##
 Thank you to all the participants of this project!

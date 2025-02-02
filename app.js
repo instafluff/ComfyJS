@@ -409,43 +409,80 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
               }
               break;
               // Shoutout Events
-              case "channel.shoutout":
+              case "channel.shoutout.create":
               {
+                // event: {
+                //   broadcaster_user_id: '83118047',
+                //   broadcaster_user_login: 'instafluff',
+                //   broadcaster_user_name: 'Instafluff',
+                //   to_broadcaster_user_id: '112375357',
+                //   to_broadcaster_user_login: 'lana_lux',
+                //   to_broadcaster_user_name: 'Lana_Lux',
+                //   moderator_user_id: '83118047',
+                //   moderator_user_login: 'instafluff',
+                //   moderator_user_name: 'Instafluff',
+                //   viewer_count: 94,
+                //   started_at: '2025-02-02T21:07:49Z',
+                //   cooldown_ends_at: '2025-02-02T21:09:49Z',
+                //   target_cooldown_ends_at: '2025-02-02T22:07:49Z'
+                // }
                 const event = message.payload.event;
                 console.log( "shoutout", event );
                 const extra = {
-                  channelId: event.broadcaster_user_id,
-                  channelName: event.broadcaster_user_login,
-                  channelDisplayName: event.broadcaster_user_name,
-                  shoutoutUser: event.shoutout_user_login,
-                  shoutoutDisplayName: event.shoutout_user_name,
-                  shoutoutChannelId: event.shoutout_user_id,
-                  shoutoutChannelName: event.shoutout_user_login,
-                  shoutoutChannelDisplayName: event.shoutout_user_name,
+                  channelId: event.to_broadcaster_user_id,
+                  channelName: event.to_broadcaster_user_login,
+                  channelDisplayName: event.to_broadcaster_user_name,
+                  shouterChannelId: event.broadcaster_user_id,
+                  shouterChannelName: event.broadcaster_user_login,
+                  shouterChannelDisplayName: event.broadcaster_user_name,
+                  viewerCount: event.viewer_count,
+                  startedAt: event.started_at,
+                  cooldownEndsAt: event.cooldown_ends_at,
+                  targetCooldownEndsAt: event.target_cooldown_ends_at,
                 };
 
-                comfyJS.onShoutout(extra);
+                comfyJS.onShoutout( extra.channelDisplayName, extra.viewerCount, extra );
               }
               break;
-              // // Whisper Events (In-Progress)
-              // case "user.whisper.message":
-              // {
-              //   console.log( message );
-              //   const event = message.payload.event;
-              //   const extra = {
-              //     channelId,
-              //     channelName: event.broadcaster_user_login,
-              //     channelDisplayName: event.broadcaster_user_name,
-              //     userId: event.user_id,
-              //     username: event.user_login,
-              //     displayName: event.user_name,
-              //     message: event.message,
-              //     sentAt: event.sent_at,
-              //   };
+              // Whisper Events (In-Progress)
+              case "user.whisper.message":
+              {
+                // event: {
+                //   from_user_id: '153060311',
+                //   from_user_login: 'sparky_pugwash',
+                //   from_user_name: 'sparky_pugwash',
+                //   to_user_id: '83118047',
+                //   to_user_login: 'instafluff',
+                //   to_user_name: 'Instafluff',
+                //   whisper_id: '4ac0349e-28f8-4469-b27f-c23263176260',
+                //   whisper: [Object]
+                // }
+                console.log( message );
+                const event = message.payload.event;
+                const extra = {
+                  fromUserId: event.from_user_id,
+                  fromUserLogin: event.from_user_login,
+                  fromUserName: event.from_user_name,
+                  toUserId: event.to_user_id,
+                  toUserLogin: event.to_user_login,
+                  toUserName: event.to_user_name,
+                  whisperId: event.whisper_id,
+                  whisper: event.whisper,
+                };
 
-              //   // user, message, flags, self, extra
-              //   comfyJS.onWhisper(extra);
-              // }
+                // user, message, flags, self, extra
+                comfyJS.onWhisper(
+                  event.from_user_name || event.from_user_login,
+                  event.whisper.text,
+                  {},
+                  false,
+                  extra
+                );
+              }
+              break;
+              default:
+                console.debug( "Unhandled EventSub Type", message.payload.subscription.type );
+                console.debug( message.payload );
               break;
             }
 
