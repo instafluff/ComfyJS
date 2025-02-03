@@ -174,6 +174,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     "moderator:manage:shoutouts": "shoutoutEvent",
     "user:read:whispers": "whisperEvent",
     "user:manage:whisper": "whisperEvent",
+    "channel:read:polls": "channelPollEvent",
+    "channel:manage:polls": "channelPollEvent",
+    "channel:read:predictions": "channelPredictionEvent",
+    "channel:manage:predictions": "channelPredictionEvent",
   };
   const eventSubToSubscriptions = {
     "followEvent": [
@@ -193,6 +197,17 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     ],
     "whisperEvent": [
       [ "user.whisper.message", "1" ],
+    ],
+    "channelPollEvent": [
+      [ "channel.poll.begin", "1" ],
+      [ "channel.poll.progress", "1" ],
+      [ "channel.poll.end", "1" ],
+    ],
+    "channelPredictionEvent": [
+      [ "channel.prediction.begin", "1" ],
+      [ "channel.prediction.progress", "1" ],
+      [ "channel.prediction.lock", "1" ],
+      [ "channel.prediction.end", "1" ],
     ],
   };
   
@@ -362,6 +377,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
               {
                 const event = message.payload.event;
                 const extra = {
+                  ...event,
                   id: event.id,
                   channelId: event.broadcaster_user_id,
                   channelName: event.broadcaster_user_login,
@@ -372,7 +388,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   totalHype: event.total,
                   isGoldenKappaTrain: event.is_golden_kappa_train,
                   hypeEvent: event,
+                  startDate: event.started_at,
+                  endDate: event.expires_at || event.ended_at,
                 };
+                const timeRemaining = new Date( extra.endDate ) - new Date();
 
                 switch( message.payload.subscription.type ) {
                   case "channel.hype_train.begin":
@@ -382,6 +401,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -392,6 +412,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -402,6 +423,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -427,8 +449,8 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                 //   target_cooldown_ends_at: '2025-02-02T22:07:49Z'
                 // }
                 const event = message.payload.event;
-                console.log( "shoutout", event );
                 const extra = {
+                  ...event,
                   channelId: event.to_broadcaster_user_id,
                   channelName: event.to_broadcaster_user_login,
                   channelDisplayName: event.to_broadcaster_user_name,
@@ -440,8 +462,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   cooldownEndsAt: event.cooldown_ends_at,
                   targetCooldownEndsAt: event.target_cooldown_ends_at,
                 };
-
-                comfyJS.onShoutout( extra.channelDisplayName, extra.viewerCount, extra );
+                // Cooldown lasts one minute
+                const timeRemaining = new Date( extra.startedAt ) - new Date() + 60000;
+                
+                comfyJS.onShoutout( extra.channelDisplayName, extra.viewerCount, timeRemaining, extra );
               }
               break;
               // Whisper Events (In-Progress)
@@ -457,7 +481,6 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                 //   whisper_id: '4ac0349e-28f8-4469-b27f-c23263176260',
                 //   whisper: [Object]
                 // }
-                console.log( message );
                 const event = message.payload.event;
                 const extra = {
                   fromUserId: event.from_user_id,
@@ -478,6 +501,148 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   false,
                   extra
                 );
+              }
+              break;
+              // Poll Events
+              case "channel.poll.begin":
+              case "channel.poll.progress":
+              case "channel.poll.end":
+              {
+                const event = message.payload.event;
+                const extra = {
+                  ...event,
+                  channelId: event.broadcaster_user_id,
+                  channelName: event.broadcaster_user_login,
+                  channelDisplayName: event.broadcaster_user_name,
+                  pollId: event.id,
+                  title: event.title,
+                  choices: event.choices,
+                  bitsVoting: event.bits_voting,
+                  bitsPerVote: event.bits_per_vote,
+                  startDate: event.started_at,
+                  endDate: event.ends_at || event.ended_at,
+                  status: event.status,
+                };
+                const pollChoices = event.choices.map( choice => choice.title );
+                const pollVotes = event.choices.map( choice => ( choice.bits_votes || 0 ) + ( choice.channel_points_votes || 0 ) + ( choice.votes || 0 ) );
+                const timeRemaining = new Date( extra.endDate ) - new Date();
+
+                switch( message.payload.subscription.type ) {
+                  case "channel.poll.begin":
+                    comfyJS.onPoll(
+                      "begin",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.poll.progress":
+                    comfyJS.onPoll(
+                      "progress",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.poll.end":
+                    comfyJS.onPoll(
+                      "end",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      0,
+                      extra
+                    );
+                    break;
+                }
+              }
+              break;
+              // Prediction Events
+              case "channel.prediction.begin":
+              case "channel.prediction.progress":
+              case "channel.prediction.lock":
+              case "channel.prediction.end":
+              {
+                const event = message.payload.event;
+                const extra = {
+                  ...event,
+                  channelId: event.broadcaster_user_id,
+                  channelName: event.broadcaster_user_login,
+                  channelDisplayName: event.broadcaster_user_name,
+                  predictionId: event.id,
+                  title: event.title,
+                  outcomes: event.outcomes,
+                  startDate: event.started_at,
+                  lockDate: event.locks_at || event.locked_at,
+                  endDate: event.ends_at || event.ended_at,
+                  status: event.status,
+                };
+                const predictionOutcomes = event.outcomes.map( outcome => outcome.title );
+                const topPredictors = [];
+                for( const outcome of event.outcomes ) {
+                  if( !outcome.top_predictors ) {
+                    topPredictors.push( [] );
+                    continue;
+                  }
+                  const users = [];
+                  for( const user of outcome.top_predictors ) {
+                    users.push( {
+                      user: user.user_name || user.user_login,
+                      userId: user.user_id,
+                      points: user.channel_points_used || 0,
+                      won: user.channel_points_won || 0,
+                    } );
+                  }
+                  topPredictors.push( users );
+                }
+                const timeRemaining = new Date( extra.lockDate ) - new Date();
+                
+                switch( message.payload.subscription.type ) {
+                  case "channel.prediction.begin":
+                    comfyJS.onPrediction(
+                      "begin",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.progress":
+                    comfyJS.onPrediction(
+                      "progress",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.lock":
+                    comfyJS.onPrediction(
+                      "lock",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      0,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.end":
+                    comfyJS.onPrediction(
+                      "end",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      0,
+                      extra
+                    );
+                    break;
+                }
               }
               break;
               default:
@@ -751,6 +916,26 @@ var comfyJS = {
   onReward: function( user, reward, cost, message, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onReward default handler" );
+    }
+  },
+  onShoutout: function( channel, viewerCount, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onShoutout default handler" );
+    }
+  },
+  onHypeTrain: function( type, level, progress, goal, total, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onHypeTrain default handler" );
+    }
+  },
+  onPoll: function( type, title, choices, votes, timeRemainingInSeconds, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onPoll default handler" );
+    }
+  },
+  onPrediction: function( type, title, outcomes, topPredictors, timeRemainingInSeconds, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onPrediction default handler" );
     }
   },
   onConnected: function( address, port, isFirstConnect ) {

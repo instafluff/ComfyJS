@@ -276,20 +276,28 @@ ComfyJS.Disconnect();
     - Responds to user sending gift subscriptions
  - **onGiftSubContinue**`( user, sender, extra )`
     - Responds to user continuing gift subscription
+ - **onHypeTrain**`( "begin" | "progress" | "end", level, progressToNextLevel, goalToNextLevel, totalHype, timeRemainingInMS, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when a Hype Train is happening
+    - Requires one of the following OAuth scopes: `channel:read:hype_train`
+ - **onShoutout**`( channelDisplayName, viewerCount, timeRemainingInMS, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when streamers shoutout another channel
+    - Requires one of the following OAuth scopes: `moderator:read:shoutouts`, `moderator:manage:shoutouts`
+ - **onPoll**`( "begin" | "progress" | "end", title, choices, votes, timeRemainingInMS, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when a stream poll is happening
+    - Requires one of the following OAuth scopes: `channel:read:polls`, `channel:manage:polls`
+ - **onPrediction**`( "begin" | "progress" | "lock" | "end", title, outcomes, topPredictors, timeRemainingInMS, extra )`
+    - **REQUIRES EXTRA PERMISSION SCOPES**
+    - Responds to when a stream prediction is happening
+    - Requires one of the following OAuth scopes: `channel:read:predictions`, `channel:manage:predictions`
  - **onConnected**`( address, port, isFirstConnect )`
     - Responds when connecting to the Twitch chat.
  - **onReconnect**`( reconnectCount )`
     - Responds when attempting to reconnect to the Twitch chat.
  - **onError**`( error )`
     - Hook for Errors
- - **onHypeTrain**`( "begin" | "progress" | "end", level, progressToNextLevel, goalToNextLevel, totalHype, extra )`
-    - **REQUIRES EXTRA PERMISSION SCOPES**
-    - Responds to when a Hype Train is happening
-    - Requires one of the following OAuth scopes: `channel:read:hype_train`
- - **onShoutout**`( channelDisplayName, viewerCount, extra )``
-    - **REQUIRES EXTRA PERMISSION SCOPES**
-    - Responds to when streamers shoutout another channel
-    - Requires one of the following OAuth scopes: `moderator:manage:shoutouts`
 
 
 ## Credits ##
