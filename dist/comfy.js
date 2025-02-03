@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.24
+// Comfy.JS v1.1.25
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -175,6 +175,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     "moderator:manage:shoutouts": "shoutoutEvent",
     "user:read:whispers": "whisperEvent",
     "user:manage:whisper": "whisperEvent",
+    "channel:read:polls": "channelPollEvent",
+    "channel:manage:polls": "channelPollEvent",
+    "channel:read:predictions": "channelPredictionEvent",
+    "channel:manage:predictions": "channelPredictionEvent",
   };
   const eventSubToSubscriptions = {
     "followEvent": [
@@ -194,6 +198,17 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
     ],
     "whisperEvent": [
       [ "user.whisper.message", "1" ],
+    ],
+    "channelPollEvent": [
+      [ "channel.poll.begin", "1" ],
+      [ "channel.poll.progress", "1" ],
+      [ "channel.poll.end", "1" ],
+    ],
+    "channelPredictionEvent": [
+      [ "channel.prediction.begin", "1" ],
+      [ "channel.prediction.progress", "1" ],
+      [ "channel.prediction.lock", "1" ],
+      [ "channel.prediction.end", "1" ],
     ],
   };
   
@@ -363,6 +378,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
               {
                 const event = message.payload.event;
                 const extra = {
+                  ...event,
                   id: event.id,
                   channelId: event.broadcaster_user_id,
                   channelName: event.broadcaster_user_login,
@@ -373,7 +389,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   totalHype: event.total,
                   isGoldenKappaTrain: event.is_golden_kappa_train,
                   hypeEvent: event,
+                  startDate: event.started_at,
+                  endDate: event.expires_at || event.ended_at,
                 };
+                const timeRemaining = new Date( extra.endDate ) - new Date();
 
                 switch( message.payload.subscription.type ) {
                   case "channel.hype_train.begin":
@@ -383,6 +402,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -393,6 +413,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -403,6 +424,7 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                       event.progress || 0,
                       event.goal,
                       event.total,
+                      timeRemaining,
                       extra
                     );
                     break;
@@ -410,43 +432,223 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
               }
               break;
               // Shoutout Events
-              case "channel.shoutout":
+              case "channel.shoutout.create":
+              {
+                // event: {
+                //   broadcaster_user_id: '83118047',
+                //   broadcaster_user_login: 'instafluff',
+                //   broadcaster_user_name: 'Instafluff',
+                //   to_broadcaster_user_id: '112375357',
+                //   to_broadcaster_user_login: 'lana_lux',
+                //   to_broadcaster_user_name: 'Lana_Lux',
+                //   moderator_user_id: '83118047',
+                //   moderator_user_login: 'instafluff',
+                //   moderator_user_name: 'Instafluff',
+                //   viewer_count: 94,
+                //   started_at: '2025-02-02T21:07:49Z',
+                //   cooldown_ends_at: '2025-02-02T21:09:49Z',
+                //   target_cooldown_ends_at: '2025-02-02T22:07:49Z'
+                // }
+                const event = message.payload.event;
+                const extra = {
+                  ...event,
+                  channelId: event.to_broadcaster_user_id,
+                  channelName: event.to_broadcaster_user_login,
+                  channelDisplayName: event.to_broadcaster_user_name,
+                  shouterChannelId: event.broadcaster_user_id,
+                  shouterChannelName: event.broadcaster_user_login,
+                  shouterChannelDisplayName: event.broadcaster_user_name,
+                  viewerCount: event.viewer_count,
+                  startedAt: event.started_at,
+                  cooldownEndsAt: event.cooldown_ends_at,
+                  targetCooldownEndsAt: event.target_cooldown_ends_at,
+                };
+                // Cooldown lasts one minute
+                const timeRemaining = new Date( extra.startedAt ) - new Date() + 60000;
+                
+                comfyJS.onShoutout( extra.channelDisplayName, extra.viewerCount, timeRemaining, extra );
+              }
+              break;
+              // Whisper Events (In-Progress)
+              case "user.whisper.message":
+              {
+                // event: {
+                //   from_user_id: '153060311',
+                //   from_user_login: 'sparky_pugwash',
+                //   from_user_name: 'sparky_pugwash',
+                //   to_user_id: '83118047',
+                //   to_user_login: 'instafluff',
+                //   to_user_name: 'Instafluff',
+                //   whisper_id: '4ac0349e-28f8-4469-b27f-c23263176260',
+                //   whisper: [Object]
+                // }
+                const event = message.payload.event;
+                const extra = {
+                  fromUserId: event.from_user_id,
+                  fromUserLogin: event.from_user_login,
+                  fromUserName: event.from_user_name,
+                  toUserId: event.to_user_id,
+                  toUserLogin: event.to_user_login,
+                  toUserName: event.to_user_name,
+                  whisperId: event.whisper_id,
+                  whisper: event.whisper,
+                };
+
+                // user, message, flags, self, extra
+                comfyJS.onWhisper(
+                  event.from_user_name || event.from_user_login,
+                  event.whisper.text,
+                  {},
+                  false,
+                  extra
+                );
+              }
+              break;
+              // Poll Events
+              case "channel.poll.begin":
+              case "channel.poll.progress":
+              case "channel.poll.end":
               {
                 const event = message.payload.event;
-                console.log( "shoutout", event );
                 const extra = {
+                  ...event,
                   channelId: event.broadcaster_user_id,
                   channelName: event.broadcaster_user_login,
                   channelDisplayName: event.broadcaster_user_name,
-                  shoutoutUser: event.shoutout_user_login,
-                  shoutoutDisplayName: event.shoutout_user_name,
-                  shoutoutChannelId: event.shoutout_user_id,
-                  shoutoutChannelName: event.shoutout_user_login,
-                  shoutoutChannelDisplayName: event.shoutout_user_name,
+                  pollId: event.id,
+                  title: event.title,
+                  choices: event.choices,
+                  bitsVoting: event.bits_voting,
+                  bitsPerVote: event.bits_per_vote,
+                  startDate: event.started_at,
+                  endDate: event.ends_at || event.ended_at,
+                  status: event.status,
                 };
+                const pollChoices = event.choices.map( choice => choice.title );
+                const pollVotes = event.choices.map( choice => ( choice.bits_votes || 0 ) + ( choice.channel_points_votes || 0 ) + ( choice.votes || 0 ) );
+                const timeRemaining = new Date( extra.endDate ) - new Date();
 
-                comfyJS.onShoutout(extra);
+                switch( message.payload.subscription.type ) {
+                  case "channel.poll.begin":
+                    comfyJS.onPoll(
+                      "begin",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.poll.progress":
+                    comfyJS.onPoll(
+                      "progress",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.poll.end":
+                    comfyJS.onPoll(
+                      "end",
+                      event.title,
+                      pollChoices,
+                      pollVotes,
+                      0,
+                      extra
+                    );
+                    break;
+                }
               }
               break;
-              // // Whisper Events (In-Progress)
-              // case "user.whisper.message":
-              // {
-              //   console.log( message );
-              //   const event = message.payload.event;
-              //   const extra = {
-              //     channelId,
-              //     channelName: event.broadcaster_user_login,
-              //     channelDisplayName: event.broadcaster_user_name,
-              //     userId: event.user_id,
-              //     username: event.user_login,
-              //     displayName: event.user_name,
-              //     message: event.message,
-              //     sentAt: event.sent_at,
-              //   };
-
-              //   // user, message, flags, self, extra
-              //   comfyJS.onWhisper(extra);
-              // }
+              // Prediction Events
+              case "channel.prediction.begin":
+              case "channel.prediction.progress":
+              case "channel.prediction.lock":
+              case "channel.prediction.end":
+              {
+                const event = message.payload.event;
+                const extra = {
+                  ...event,
+                  channelId: event.broadcaster_user_id,
+                  channelName: event.broadcaster_user_login,
+                  channelDisplayName: event.broadcaster_user_name,
+                  predictionId: event.id,
+                  title: event.title,
+                  outcomes: event.outcomes,
+                  startDate: event.started_at,
+                  lockDate: event.locks_at || event.locked_at,
+                  endDate: event.ends_at || event.ended_at,
+                  status: event.status,
+                };
+                const predictionOutcomes = event.outcomes.map( outcome => outcome.title );
+                const topPredictors = [];
+                for( const outcome of event.outcomes ) {
+                  if( !outcome.top_predictors ) {
+                    topPredictors.push( [] );
+                    continue;
+                  }
+                  const users = [];
+                  for( const user of outcome.top_predictors ) {
+                    users.push( {
+                      user: user.user_name || user.user_login,
+                      userId: user.user_id,
+                      points: user.channel_points_used || 0,
+                      won: user.channel_points_won || 0,
+                    } );
+                  }
+                  topPredictors.push( users );
+                }
+                const timeRemaining = new Date( extra.lockDate ) - new Date();
+                
+                switch( message.payload.subscription.type ) {
+                  case "channel.prediction.begin":
+                    comfyJS.onPrediction(
+                      "begin",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.progress":
+                    comfyJS.onPrediction(
+                      "progress",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      timeRemaining,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.lock":
+                    comfyJS.onPrediction(
+                      "lock",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      0,
+                      extra
+                    );
+                    break;
+                  case "channel.prediction.end":
+                    comfyJS.onPrediction(
+                      "end",
+                      event.title,
+                      predictionOutcomes,
+                      topPredictors,
+                      0,
+                      extra
+                    );
+                    break;
+                }
+              }
+              break;
+              default:
+                console.debug( "Unhandled EventSub Type", message.payload.subscription.type );
+                console.debug( message.payload );
               break;
             }
 
@@ -622,7 +824,7 @@ var comfyJS = {
   useEventSub: true, // set to false to use PubSub
   chatModes: {},
   version: function() {
-    return "1.1.24";
+    return "1.1.25";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -715,6 +917,26 @@ var comfyJS = {
   onReward: function( user, reward, cost, message, extra ) {
     if( comfyJS.isDebug ) {
       console.log( "onReward default handler" );
+    }
+  },
+  onShoutout: function( channel, viewerCount, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onShoutout default handler" );
+    }
+  },
+  onHypeTrain: function( type, level, progress, goal, total, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onHypeTrain default handler" );
+    }
+  },
+  onPoll: function( type, title, choices, votes, timeRemainingInSeconds, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onPoll default handler" );
+    }
+  },
+  onPrediction: function( type, title, outcomes, topPredictors, timeRemainingInSeconds, extra ) {
+    if( comfyJS.isDebug ) {
+      console.log( "onPrediction default handler" );
     }
   },
   onConnected: function( address, port, isFirstConnect ) {
