@@ -284,11 +284,12 @@ ComfyJS.Disconnect();
     - **REQUIRES EXTRA PERMISSION SCOPES**
     - Responds to when streamers shoutout another channel
     - Requires one of the following OAuth scopes: `moderator:read:shoutouts`, `moderator:manage:shoutouts`
- - **onPoll**`( "begin" | "progress" | "end", title, choices, votes, timeRemainingInMS, extra )`
+ - **onPoll**`( "begin" | "progress" | "end" | "archive" | "close" | "delete", title, choices, votes, timeRemainingInMS, extra )`
     - **REQUIRES EXTRA PERMISSION SCOPES**
     - Responds to when a stream poll is happening
     - Requires one of the following OAuth scopes: `channel:read:polls`, `channel:manage:polls`
- - **onPrediction**`( "begin" | "progress" | "lock" | "end", title, outcomes, topPredictors, timeRemainingInMS, extra )`
+    - Choices and votes are sorted by # of votes automatically. Top voted choice(s) will be the first elements in `choices` and `votes`
+ - **onPrediction**`( "begin" | "progress" | "lock" | "end" | "cancel", title, outcomes, topPredictors, timeRemainingInMS, extra )`
     - **REQUIRES EXTRA PERMISSION SCOPES**
     - Responds to when a stream prediction is happening
     - Requires one of the following OAuth scopes: `channel:read:predictions`, `channel:manage:predictions`

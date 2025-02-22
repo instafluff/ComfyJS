@@ -523,9 +523,14 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                   endDate: event.ends_at || event.ended_at,
                   status: event.status,
                 };
-                const pollChoices = event.choices.map( choice => choice.title );
-                const pollVotes = event.choices.map( choice => ( choice.bits_votes || 0 ) + ( choice.channel_points_votes || 0 ) + ( choice.votes || 0 ) );
+                let pollChoices = event.choices.map( choice => choice.title );
+                let pollVotes = event.choices.map( choice => ( choice.bits_votes || 0 ) + ( choice.channel_points_votes || 0 ) + ( choice.votes || 0 ) );
                 const timeRemaining = new Date( extra.endDate ) - new Date();
+                if( message.payload.subscription.type !== "channel.poll.begin" ) {
+                  // Sort pollChoices by pollVotes
+                  pollChoices = pollChoices.map( ( choice, index ) => [ choice, pollVotes[ index ] ] ).sort( ( a, b ) => b[ 1 ] - a[ 1 ] ).map( x => x[ 0 ] );
+                  pollVotes = pollVotes.sort( ( a, b ) => b - a );
+                }
 
                 switch( message.payload.subscription.type ) {
                   case "channel.poll.begin":
@@ -550,7 +555,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                     break;
                   case "channel.poll.end":
                     comfyJS.onPoll(
-                      "end",
+                      extra.status === "terminated" ? "close" :
+                        extra.status === "archived" ? "archive" :
+                        extra.status === "moderated" ? "delete" :
+                        extra.status === "completed" ? "end" : "unknown",
                       event.title,
                       pollChoices,
                       pollVotes,
@@ -634,7 +642,8 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
                     break;
                   case "channel.prediction.end":
                     comfyJS.onPrediction(
-                      "end",
+                      extra.status === "canceled" ? "cancel" :
+                        extra.status === "resolved" ? "end" : "unknown",
                       event.title,
                       predictionOutcomes,
                       topPredictors,
