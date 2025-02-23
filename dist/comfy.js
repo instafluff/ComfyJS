@@ -164,7 +164,7 @@ async function subscribeToEventAsync( type, version, clientId, userId, password,
   return false;
 }
 
-async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null, clearObject = null) {
+async function eventSubConnectAsync( channel, password, clientId = null, channelId = null, connectionName = null, sessionId = null) {
   const scopesToEventSubs = {
     "moderator:read:followers": "followEvent",
     "channel:read:redemptions": "redemptionEvent",
@@ -248,26 +248,10 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
   
   /** @type { NodeJS.Timeout } */
   let reconnectTimeout = null;
-
-  // this way if we need to reconnect we can call this function again in returned function
-  clearObject = clearObject || {};
-  clearObject.onDisconnect = (reconnect = true) => {
-    clearTimeout(reconnectTimeout);
-    ws.close();
-    if (reconnect) {
-      // Reconnecting
-      eventSubConnectAsync( channel, password, clientId, channelId, connectionName, sessionId, clearObject );
-    }
-    else {
-      console.log( "Disconnected from EventSub" );
-    }
-  }
-
-  clearObject.messages = clearObject.messages || {};
+	const reconnectInterval = 1000 * 3; //ms to wait before reconnect
 
   ws.onerror = function( error ) {
     console.error( error );
-    clearObject.onDisconnect(false);
   }
 
   ws.onopen = function( event ) {
@@ -311,7 +295,6 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
           {
             connectionName = message.payload.session.reconnect_url;
             clearTimeout(reconnectTimeout);
-            clearObject.onDisconnect();
             break;
           }
         case "revocation":
@@ -319,18 +302,12 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
             if (!subscribtions.map( ( [ type, _ ] ) => type).includes(message.payload.type)) {
               break;
             }
-            clearObject.onDisconnect(false);
+            console.error( "Revocation received" );
             break;
           }
         case "notification":
           {
             const messageId = message.metadata.message_id;
-            if( clearObject.messages[messageId] ) {
-              break;
-            }
-
-            clearObject.messages[messageId] = true;
-            setTimeout( () => delete clearObject.messages[messageId], keepAliveSeconds * 1000 );
 
             // Handle the message based on type
             switch( message.payload.subscription.type ) {
@@ -671,8 +648,12 @@ async function eventSubConnectAsync( channel, password, clientId = null, channel
       console.error( error );
     }
   }
-
-  return () => clearObject.onDisconnect(false);
+  
+  ws.onclose = function() {
+      setTimeout( () => {
+        eventSubConnectAsync( channel, password );
+      }, reconnectInterval );
+  };
 }
 
 async function pubsubConnect( channel, password ) {
@@ -1347,21 +1328,7 @@ var comfyJS = {
 	// Setup PubSub (https://github.com/twitchdev/pubsub-javascript-sample)
 	if( password ) {
     if ( comfyJS.useEventSub ) {
-      eventSubConnectAsync( mainChannel, password )
-        .then( disconnect => {
-          if( typeof eventsubDisconnect !== "boolean" ) {
-            if( typeof disconnect !== "function" ) {
-              throw new Error( "EventSub connection failed" );
-            }
-            eventsubDisconnect = disconnect
-            return;
-          }
-          disconnect();
-          eventsubDisconnect = null;
-        })
-        .catch( (_) => {
-          pubsubConnect( mainChannel, password );
-        });
+      eventSubConnectAsync( mainChannel, password );
     } else {
       pubsubConnect( mainChannel, password );
     }
@@ -1503,19 +1470,18 @@ var getGlobal = function () {
 	throw new Error('unable to locate global object');
 }
 
-var globalObject = getGlobal();
+var global = getGlobal();
 
-module.exports = exports = globalObject.fetch;
+module.exports = exports = global.fetch;
 
 // Needed for TypeScript and Webpack.
-if (globalObject.fetch) {
-	exports.default = globalObject.fetch.bind(globalObject);
+if (global.fetch) {
+	exports.default = global.fetch.bind(global);
 }
 
-exports.Headers = globalObject.Headers;
-exports.Request = globalObject.Request;
-exports.Response = globalObject.Response;
-
+exports.Headers = global.Headers;
+exports.Request = global.Request;
+exports.Response = global.Response;
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],3:[function(require,module,exports){
 'use strict';
