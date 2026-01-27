@@ -10,9 +10,10 @@
 
 1. **SIMPLE** - The codebase should be cleaner and potentially simpler than v1
 2. **NO TMI.JS** - Handle IRC WebSocket directly (fewer dependencies = less complexity)
-3. **SINGLE FILE ARCHITECTURE** - Keep the core logic in one main file like v1
+3. **MINIMAL FILES** - Keep files to a minimum, but split if it improves clarity
 4. **BACKWARD COMPATIBLE** - Existing v1 code must work without changes
 5. **PARITY FIRST** - Every v1 feature must work identically before adding new ones
+6. **INTUITIVE** - Just as easy to use as v1, maybe even easier
 
 ---
 
@@ -41,82 +42,113 @@
 
 ---
 
-## New Architecture (Simple)
+## New Architecture (Minimal & Clean)
 
 ```
 ComfyJS/
 ├── src/
-│   └── comfy.ts          # SINGLE MAIN FILE (~800-1000 lines)
+│   ├── index.ts          # Main entry - ComfyJS object & exports (~300 lines)
+│   ├── irc.ts            # IRC WebSocket client (~250 lines)
+│   ├── eventsub.ts       # EventSub WebSocket client (~250 lines)
+│   ├── api.ts            # Twitch API calls (~100 lines)
+│   ├── parsers.ts        # IRC message & EventSub payload parsers (~200 lines)
+│   └── types.ts          # TypeScript interfaces (~150 lines)
 ├── types/
-│   └── index.d.ts        # Type definitions (keep existing, update)
+│   └── index.d.ts        # Type definitions for JS users (auto-generated)
 ├── dist/
-│   ├── comfy.js          # Browser bundle
+│   ├── comfy.js          # Browser bundle (ESM + UMD)
 │   ├── comfy.min.js      # Minified browser bundle  
-│   └── comfy.node.js     # Node.js CommonJS
+│   └── comfy.cjs         # Node.js CommonJS
 ├── test/
-│   ├── comfy.test.ts     # Main test file
-│   └── fixtures/         # Test data (IRC messages, EventSub payloads)
+│   ├── irc.test.ts       # IRC parser tests
+│   ├── eventsub.test.ts  # EventSub handler tests
+│   └── fixtures/         # Real message samples
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-**Total new files: 3** (comfy.ts, comfy.test.ts, tsconfig.json)
+**Total: ~1250 lines of TypeScript** across 6 small, focused files.
+
+Each file has ONE job:
+- **index.ts** - Public API (Init, Say, onChat, etc.)
+- **irc.ts** - Talk to IRC WebSocket
+- **eventsub.ts** - Talk to EventSub WebSocket  
+- **api.ts** - Talk to REST API
+- **parsers.ts** - Parse all message formats
+- **types.ts** - All TypeScript types
 
 ---
 
-## The Single File (src/comfy.ts)
+## File Responsibilities
 
-Structure within the file:
-
+### src/index.ts (Main Entry)
 ```typescript
-// ═══════════════════════════════════════════════════════════════
-// COMFY.JS v2 - Twitch Chat & Events Made Easy
-// ═══════════════════════════════════════════════════════════════
+// The ComfyJS object that users interact with
+const ComfyJS = {
+  // Configuration
+  isDebug: false,
+  useEventSub: true,
+  
+  // Event handlers (users override these)
+  onChat: null,
+  onCommand: null,
+  onReward: null,
+  // ... etc
+  
+  // Methods
+  Init(channel, oauth, options) { ... },
+  Say(message, channel) { ... },
+  Disconnect() { ... },
+  // ... etc
+};
 
-// ─────────────────────────────────────────────────────────────────
-// TYPES (inline, not separate files)
-// ─────────────────────────────────────────────────────────────────
+export default ComfyJS;
+```
 
-// ─────────────────────────────────────────────────────────────────
-// UTILITIES (nonce, timestamps, environment detection)
-// ─────────────────────────────────────────────────────────────────
+### src/irc.ts (IRC Client)
+```typescript
+// Handles: wss://irc-ws.chat.twitch.tv:443
+export class IRCClient {
+  connect(channel: string, oauth: string): Promise<void>;
+  disconnect(): void;
+  send(message: string): void;
+  join(channel: string): void;
+  part(channel: string): void;
+  
+  // Events
+  onMessage: (parsed: IRCMessage) => void;
+  onConnected: () => void;
+  onDisconnected: () => void;
+}
+```
 
-// ─────────────────────────────────────────────────────────────────
-// IRC CLIENT (replaces tmi.js - ~200 lines)
-// - Connect to wss://irc-ws.chat.twitch.tv:443
-// - PASS, NICK, CAP REQ
-// - PING/PONG keepalive
-// - JOIN/PART channels
-// - PRIVMSG send/receive
-// - Parse IRC tags
-// ─────────────────────────────────────────────────────────────────
+### src/eventsub.ts (EventSub Client)
+```typescript
+// Handles: wss://eventsub.wss.twitch.tv/ws
+export class EventSubClient {
+  connect(oauth: string): Promise<string>; // Returns session ID
+  disconnect(): void;
+  subscribe(type: string, condition: object): Promise<void>;
+  
+  // Events  
+  onNotification: (type: string, event: object) => void;
+  onError: (error: Error) => void;
+}
+```
 
-// ─────────────────────────────────────────────────────────────────
-// EVENTSUB CLIENT (~200 lines)
-// - Connect to wss://eventsub.wss.twitch.tv/ws
-// - Handle welcome, keepalive, reconnect
-// - Subscribe to events based on scopes
-// - Parse notifications
-// ─────────────────────────────────────────────────────────────────
+### src/parsers.ts (Message Parsers)
+```typescript
+// Parse IRC messages
+export function parseIRCMessage(raw: string): IRCMessage;
+export function parseIRCTags(tagString: string): Record<string, string>;
 
-// ─────────────────────────────────────────────────────────────────
-// TWITCH API (~100 lines)
-// - OAuth validation
-// - Get user/channel info
-// - Reward CRUD
-// ─────────────────────────────────────────────────────────────────
+// Parse specific IRC events
+export function parseUserNotice(msg: IRCMessage): SubEvent | CheerEvent | RaidEvent;
+export function parseClearChat(msg: IRCMessage): BanEvent | TimeoutEvent;
 
-// ─────────────────────────────────────────────────────────────────
-// COMFYJS MAIN OBJECT (~300 lines)
-// - All event handlers (onCommand, onChat, etc.)
-// - All methods (Init, Say, Reply, etc.)
-// - Backward compatible API
-// ─────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────
-// EXPORTS (CommonJS, ESM, Browser global)
-// ─────────────────────────────────────────────────────────────────
+// Parse EventSub payloads
+export function parseEventSubNotification(payload: object): ComfyEvent;
 ```
 
 ---
@@ -193,13 +225,22 @@ Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
 - [ ] Handle session_welcome → subscribe to events
 - [ ] Handle session_keepalive
 - [ ] Handle session_reconnect
+- [ ] Implement graceful degradation (fall back to IRC on connection limit)
 - [ ] Implement event handlers:
   - [ ] channel.channel_points_custom_reward_redemption.add → onReward
-  - [ ] channel.hype_train.* → onHypeTrain
-  - [ ] channel.shoutout.create → onShoutout
-  - [ ] channel.poll.* → onPoll
-  - [ ] channel.prediction.* → onPrediction
+  - [ ] channel.hype_train.begin/progress/end → onHypeTrain
+  - [ ] channel.shoutout.create/receive → onShoutout
+  - [ ] channel.poll.begin/progress/end → onPoll
+  - [ ] channel.prediction.begin/progress/lock/end → onPrediction
   - [ ] user.whisper.message → onWhisper
+  - [ ] channel.follow → onFollow (v2 NEW!)
+  - [ ] channel.subscribe → onSubscribe (EventSub version)
+  - [ ] channel.subscription.gift → onSubGift (EventSub version)
+  - [ ] channel.cheer → onCheer (EventSub version)  
+  - [ ] channel.raid → onRaid (EventSub version)
+  - [ ] channel.ban → onBan (EventSub version)
+  - [ ] channel.charity_campaign.donate → onCharityDonation (NEW!)
+  - [ ] stream.online/offline → onStreamChange (NEW!)
 - [ ] Test: Verify parity with v1 EventSub
 
 ### Phase 5: API & Methods (Day 8)
@@ -228,7 +269,7 @@ Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
 
 ## v1 API Parity Checklist
 
-### Event Handlers
+### Event Handlers (v1 Parity)
 - [ ] `onError(error)`
 - [ ] `onCommand(user, command, message, flags, extra)`
 - [ ] `onChat(user, message, flags, self, extra)`
@@ -238,7 +279,7 @@ Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
 - [ ] `onTimeout(timedOutUsername, durationInSeconds, extra)`
 - [ ] `onJoin(user, self, extra)`
 - [ ] `onPart(user, self, extra)`
-- [ ] `onHosted(user, viewers, autohost, extra)`
+- [ ] `onHosted(user, viewers, autohost, extra)` *(deprecated by Twitch)*
 - [ ] `onRaid(user, viewers, extra)`
 - [ ] `onSub(user, message, subTierInfo, extra)`
 - [ ] `onResub(user, message, streakMonths, cumulativeMonths, subTierInfo, extra)`
@@ -254,6 +295,19 @@ Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
 - [ ] `onPrediction(type, title, outcomes, topPredictors, timeRemainingInMS, extra)`
 - [ ] `onConnected(address, port, isFirstConnect)`
 - [ ] `onReconnect(reconnectCount)`
+
+### NEW Event Handlers (v2 Additions)
+- [ ] `onFollow(user, extra)` - New follower (requires moderator:read:followers scope)
+- [ ] `onStreamOnline(channel, extra)` - Broadcaster went live
+- [ ] `onStreamOffline(channel, extra)` - Broadcaster ended stream
+- [ ] `onCharityDonation(user, charity, amount, extra)` - User donated to charity campaign
+- [ ] `onBitsUsed(user, bits, type, extra)` - Bits used (cheer, power-up, combo)
+- [ ] `onAdBreak(duration, isAutomatic, extra)` - Ad break started
+- [ ] `onShoutoutReceived(fromChannel, viewerCount, extra)` - Received a shoutout
+- [ ] `onVIPAdd(user, extra)` - User became VIP
+- [ ] `onVIPRemove(user, extra)` - User no longer VIP
+- [ ] `onModAdd(user, extra)` - User became moderator
+- [ ] `onModRemove(user, extra)` - User no longer moderator
 
 ### Methods
 - [ ] `Init(username, password, channels, isDebug)`
@@ -279,22 +333,137 @@ Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
 
 ## Multi-Instance Considerations
 
-When multiple ComfyJS instances run from the same computer:
+### The Problem
 
-### Problem
-- Same IP → shared rate limits
-- EventSub: Max 3 WebSocket connections per user
-- IRC: 20 joins per 10 seconds
+When multiple ComfyJS instances run from the same computer (common with OBS browser sources):
 
-### Simple Solution (for v2.0)
-1. **Document the limits** clearly in README
-2. **Expose rate limit state** so users can check before connecting
-3. **Add connection options** to reuse existing connections (future v2.1)
+| Limit | Value | Impact |
+|-------|-------|--------|
+| **EventSub WebSocket connections** | 3 max per user token | 4+ browser sources = connection failures |
+| **EventSub subscriptions** | 300 per connection | Usually not a problem |
+| **IRC join rate** | 20 channels per 10 seconds | Usually not a problem |
+| **IRC message rate** | 20/30s (non-mod), 100/30s (mod) | Shared across all instances |
 
-Not over-engineering this in v2.0. Users with advanced needs can:
-- Use different OAuth tokens
-- Stagger connections
-- Run on different machines
+**Key insight**: OBS browser sources are completely isolated processes. They cannot use SharedWorker, BroadcastChannel, or localStorage to communicate with each other.
+
+### Solutions (v2.0 Implementation)
+
+#### 1. Smart EventSub with Graceful Degradation
+
+```typescript
+// ComfyJS v2 will attempt EventSub, but gracefully handle failures
+ComfyJS.Init("channel", "oauth:xxx", {
+  useEventSub: true,        // Try EventSub first
+  eventSubFallback: "irc",  // Fall back to IRC for basic events
+  eventSubRetryMs: 0        // Don't retry if connection limit hit (0 = disabled)
+});
+```
+
+When EventSub connection fails with limit error:
+1. Log a clear warning explaining the limit
+2. Fall back to IRC-only mode (chat, commands, basic events still work)
+3. Only channel points, polls, predictions, hype trains affected
+4. User can fix by reducing browser sources
+
+#### 2. Dedicated "Hub" Pattern (Recommended for OBS)
+
+For users who NEED channel points in multiple browser sources:
+
+**Browser Source 1 (Hub)** - The only one that connects to EventSub:
+```html
+<script src="comfy.min.js"></script>
+<script>
+  ComfyJS.Init("channel", "oauth:xxx", { useEventSub: true });
+  
+  // Broadcast events to other sources via localStorage
+  ComfyJS.onReward = function(user, reward, cost, message, extra) {
+    localStorage.setItem("comfyjs_event", JSON.stringify({
+      type: "reward",
+      data: { user, reward, cost, message, extra },
+      timestamp: Date.now()
+    }));
+  };
+</script>
+```
+
+**Browser Source 2, 3, 4... (Listeners)** - IRC only, receive events via localStorage:
+```html
+<script src="comfy.min.js"></script>
+<script>
+  // Don't use EventSub - listen to localStorage instead
+  ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
+  
+  // Listen for events from the hub
+  window.addEventListener("storage", function(e) {
+    if (e.key === "comfyjs_event") {
+      var event = JSON.parse(e.newValue);
+      if (event.type === "reward" && Date.now() - event.timestamp < 5000) {
+        // Handle the reward
+        handleReward(event.data);
+      }
+    }
+  });
+</script>
+```
+
+**Note**: localStorage events work across OBS browser sources if they share the same origin (which they do when using the same HTML files or custom dock URLs).
+
+#### 3. Connection Limit Detection
+
+ComfyJS v2 will detect and report connection limit issues:
+
+```typescript
+ComfyJS.onError = function(error, context) {
+  if (error.code === "EVENTSUB_CONNECTION_LIMIT") {
+    console.warn(
+      "EventSub connection limit reached (max 3 per user).\n" +
+      "This usually happens with multiple OBS browser sources.\n" +
+      "Options:\n" +
+      "  1. Use the Hub pattern (one source with EventSub, others listen)\n" +
+      "  2. Reduce number of browser sources\n" +
+      "  3. Continue without EventSub features (channel points, etc.)"
+    );
+  }
+};
+```
+
+### IRC-Only Mode (No EventSub Limits)
+
+For simple use cases, IRC has no practical connection limits:
+
+```typescript
+ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
+
+// These still work perfectly:
+ComfyJS.onCommand = function(user, command, message, flags, extra) {};
+ComfyJS.onChat = function(user, message, flags, self, extra) {};
+ComfyJS.onSub = function(user, message, subTierInfo, extra) {};
+ComfyJS.onCheer = function(user, message, bits, flags, extra) {};
+ComfyJS.onRaid = function(user, viewers, extra) {};
+```
+
+### What Requires EventSub (Cannot Fall Back to IRC)
+
+| Feature | Requires EventSub | Alternative |
+|---------|-------------------|-------------|
+| Channel Point Redemptions | ✅ Yes | Hub pattern or single source |
+| Hype Train Events | ✅ Yes | Hub pattern or single source |
+| Polls | ✅ Yes | Hub pattern or single source |
+| Predictions | ✅ Yes | Hub pattern or single source |
+| Shoutouts | ✅ Yes | Hub pattern or single source |
+| Whispers | ✅ Yes* | IRC whispers (deprecated) |
+| Chat Messages | No (IRC) | - |
+| Commands | No (IRC) | - |
+| Subs/Resubs | No (IRC USERNOTICE) | - |
+| Cheers | No (IRC USERNOTICE) | - |
+| Raids | No (IRC USERNOTICE) | - |
+| Bans/Timeouts | No (IRC CLEARCHAT) | - |
+
+### Future Enhancements (v2.1+)
+
+1. **Auto-detect Hub**: ComfyJS instances could auto-negotiate which becomes the hub
+2. **Conduit Support**: For server-side applications, support Twitch Conduits for unlimited scale
+3. **WebSocket Proxy**: Optional local WebSocket server that acts as EventSub hub
 
 ---
 
