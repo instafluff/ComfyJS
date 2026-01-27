@@ -344,126 +344,180 @@ When multiple ComfyJS instances run from the same computer (common with OBS brow
 | **IRC join rate** | 20 channels per 10 seconds | Usually not a problem |
 | **IRC message rate** | 20/30s (non-mod), 100/30s (mod) | Shared across all instances |
 
-**Key insight**: OBS browser sources are completely isolated processes. They cannot use SharedWorker, BroadcastChannel, or localStorage to communicate with each other.
+**Key insight**: OBS browser sources use Chromium Embedded Framework (CEF) with **completely isolated processes**. They do NOT share:
+- ❌ localStorage (each source has its own)
+- ❌ BroadcastChannel (requires same browsing context)
+- ❌ SharedWorker (requires same browsing context)
+- ❌ Cookies or session storage
+
+This means browser-based communication patterns don't work between OBS sources.
 
 ### Solutions (v2.0 Implementation)
 
-#### 1. Smart EventSub with Graceful Degradation
+#### 1. Simplest: Just Use IRC (Recommended for Most Users)
+
+Most popular events work perfectly over IRC with **no connection limits**:
 
 ```typescript
-// ComfyJS v2 will attempt EventSub, but gracefully handle failures
+ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
+
+// All of these work via IRC - no EventSub needed!
+ComfyJS.onCommand = (user, command, message, flags, extra) => { };
+ComfyJS.onChat = (user, message, flags, self, extra) => { };
+ComfyJS.onSub = (user, message, subTierInfo, extra) => { };
+ComfyJS.onResub = (user, message, streakMonths, cumulativeMonths, subTierInfo, extra) => { };
+ComfyJS.onSubGift = (gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra) => { };
+ComfyJS.onCheer = (user, message, bits, flags, extra) => { };
+ComfyJS.onRaid = (user, viewers, extra) => { };
+ComfyJS.onBan = (bannedUsername, extra) => { };
+ComfyJS.onTimeout = (timedOutUsername, durationInSeconds, extra) => { };
+```
+
+**Have 10 browser sources?** No problem - IRC handles it.
+
+#### 2. Smart EventSub with Graceful Degradation
+
+ComfyJS will attempt EventSub but gracefully handle connection limits:
+
+```typescript
 ComfyJS.Init("channel", "oauth:xxx", {
   useEventSub: true,        // Try EventSub first
   eventSubFallback: "irc",  // Fall back to IRC for basic events
-  eventSubRetryMs: 0        // Don't retry if connection limit hit (0 = disabled)
 });
 ```
 
 When EventSub connection fails with limit error:
 1. Log a clear warning explaining the limit
-2. Fall back to IRC-only mode (chat, commands, basic events still work)
+2. Fall back to IRC-only mode (chat, commands, subs, cheers still work)
 3. Only channel points, polls, predictions, hype trains affected
-4. User can fix by reducing browser sources
 
-#### 2. Dedicated "Hub" Pattern (Recommended for OBS)
+#### 3. Local Hub Server (For Channel Points Across Multiple Sources)
 
-For users who NEED channel points in multiple browser sources:
+For users who NEED channel points/polls/predictions in multiple browser sources, we'll provide a tiny local relay server:
 
-**Browser Source 1 (Hub)** - The only one that connects to EventSub:
+```bash
+# Install and run the hub (one time, keeps running)
+npx comfyjs-hub --oauth=oauth:xxx --channel=yourchannel
+
+# Hub runs on ws://localhost:9001
+# Holds the SINGLE EventSub connection
+# Broadcasts events to all connected browser sources
+```
+
+**Browser sources connect to the hub instead of Twitch:**
 ```html
 <script src="comfy.min.js"></script>
 <script>
-  ComfyJS.Init("channel", "oauth:xxx", { useEventSub: true });
+  // Connect to local hub instead of Twitch directly
+  ComfyJS.Init("channel", null, { 
+    hubUrl: "ws://localhost:9001"
+  });
   
-  // Broadcast events to other sources via localStorage
-  ComfyJS.onReward = function(user, reward, cost, message, extra) {
-    localStorage.setItem("comfyjs_event", JSON.stringify({
-      type: "reward",
-      data: { user, reward, cost, message, extra },
-      timestamp: Date.now()
-    }));
+  // All events work - hub forwards them
+  ComfyJS.onReward = (user, reward, cost, message, extra) => {
+    // This works in ALL browser sources simultaneously!
   };
 </script>
 ```
 
-**Browser Source 2, 3, 4... (Listeners)** - IRC only, receive events via localStorage:
-```html
-<script src="comfy.min.js"></script>
-<script>
-  // Don't use EventSub - listen to localStorage instead
-  ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
-  
-  // Listen for events from the hub
-  window.addEventListener("storage", function(e) {
-    if (e.key === "comfyjs_event") {
-      var event = JSON.parse(e.newValue);
-      if (event.type === "reward" && Date.now() - event.timestamp < 5000) {
-        // Handle the reward
-        handleReward(event.data);
-      }
-    }
-  });
-</script>
+**Hub architecture:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    comfyjs-hub (Node.js)                    │
+│                   runs on localhost:9001                     │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐                         │
+│  │ IRC Client  │    │ EventSub    │  ← Single connections   │
+│  │ (1 conn)    │    │ (1 conn)    │    to Twitch            │
+│  └──────┬──────┘    └──────┬──────┘                         │
+│         │                  │                                │
+│         └────────┬─────────┘                                │
+│                  ▼                                          │
+│         ┌───────────────┐                                   │
+│         │ Event Router  │                                   │
+│         └───────────────┘                                   │
+│                  │                                          │
+│    ┌─────────────┼─────────────┬─────────────┐             │
+│    ▼             ▼             ▼             ▼             │
+│ ┌──────┐    ┌──────┐    ┌──────┐    ┌──────┐              │
+│ │ WS 1 │    │ WS 2 │    │ WS 3 │    │ WS N │  ← Browser   │
+│ └──────┘    └──────┘    └──────┘    └──────┘    sources   │
+└─────────────────────────────────────────────────────────────┘
+      │             │             │             │
+      ▼             ▼             ▼             ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ OBS Src1 │ │ OBS Src2 │ │ OBS Src3 │ │ OBS SrcN │
+│ (alerts) │ │ (chat)   │ │ (points) │ │ (etc)    │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
 ```
 
-**Note**: localStorage events work across OBS browser sources if they share the same origin (which they do when using the same HTML files or custom dock URLs).
+#### 4. Designate One "Master" Source
 
-#### 3. Connection Limit Detection
+Simple manual approach - one source handles EventSub features:
 
-ComfyJS v2 will detect and report connection limit issues:
+**Source 1 (Master) - Has EventSub:**
+```javascript
+ComfyJS.Init("channel", "oauth:xxx", { useEventSub: true });
+ComfyJS.onReward = (user, reward, cost, message, extra) => {
+  // Handle channel points HERE only
+};
+```
+
+**Sources 2, 3, 4... - IRC only:**
+```javascript
+ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
+// These still get chat, commands, subs, cheers, raids
+```
+
+### Connection Limit Detection
+
+ComfyJS v2 will detect and report connection limit issues clearly:
 
 ```typescript
 ComfyJS.onError = function(error, context) {
   if (error.code === "EVENTSUB_CONNECTION_LIMIT") {
     console.warn(
-      "EventSub connection limit reached (max 3 per user).\n" +
-      "This usually happens with multiple OBS browser sources.\n" +
+      "⚠️ EventSub connection limit reached (max 3 per user).\n" +
+      "This usually happens with multiple OBS browser sources.\n\n" +
       "Options:\n" +
-      "  1. Use the Hub pattern (one source with EventSub, others listen)\n" +
-      "  2. Reduce number of browser sources\n" +
-      "  3. Continue without EventSub features (channel points, etc.)"
+      "  1. Use IRC-only mode: ComfyJS.Init(ch, oauth, { useEventSub: false })\n" +
+      "  2. Run comfyjs-hub locally: npx comfyjs-hub --oauth=xxx\n" +
+      "  3. Designate one source as 'master' for EventSub features\n\n" +
+      "Most features (chat, commands, subs, cheers) work fine without EventSub!"
     );
   }
 };
 ```
 
-### IRC-Only Mode (No EventSub Limits)
-
-For simple use cases, IRC has no practical connection limits:
-
-```typescript
-ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
-
-// These still work perfectly:
-ComfyJS.onCommand = function(user, command, message, flags, extra) {};
-ComfyJS.onChat = function(user, message, flags, self, extra) {};
-ComfyJS.onSub = function(user, message, subTierInfo, extra) {};
-ComfyJS.onCheer = function(user, message, bits, flags, extra) {};
-ComfyJS.onRaid = function(user, viewers, extra) {};
-```
-
 ### What Requires EventSub (Cannot Fall Back to IRC)
 
-| Feature | Requires EventSub | Alternative |
-|---------|-------------------|-------------|
-| Channel Point Redemptions | ✅ Yes | Hub pattern or single source |
-| Hype Train Events | ✅ Yes | Hub pattern or single source |
-| Polls | ✅ Yes | Hub pattern or single source |
-| Predictions | ✅ Yes | Hub pattern or single source |
-| Shoutouts | ✅ Yes | Hub pattern or single source |
-| Whispers | ✅ Yes* | IRC whispers (deprecated) |
-| Chat Messages | No (IRC) | - |
-| Commands | No (IRC) | - |
-| Subs/Resubs | No (IRC USERNOTICE) | - |
-| Cheers | No (IRC USERNOTICE) | - |
-| Raids | No (IRC USERNOTICE) | - |
-| Bans/Timeouts | No (IRC CLEARCHAT) | - |
+| Feature | Requires EventSub | Works in IRC | Notes |
+|---------|-------------------|--------------|-------|
+| Chat Messages | No | ✅ Yes | - |
+| Commands (!cmd) | No | ✅ Yes | - |
+| Subs/Resubs | No | ✅ Yes | Via USERNOTICE |
+| Gift Subs | No | ✅ Yes | Via USERNOTICE |
+| Cheers | No | ✅ Yes | Via USERNOTICE |
+| Raids | No | ✅ Yes | Via USERNOTICE |
+| Bans/Timeouts | No | ✅ Yes | Via CLEARCHAT |
+| **Channel Point Redemptions** | ✅ Yes | ❌ No | Use hub or master source |
+| **Hype Train Events** | ✅ Yes | ❌ No | Use hub or master source |
+| **Polls** | ✅ Yes | ❌ No | Use hub or master source |
+| **Predictions** | ✅ Yes | ❌ No | Use hub or master source |
+| **Shoutouts** | ✅ Yes | ❌ No | Use hub or master source |
+| Follows | ✅ Yes | ❌ No | Requires mod scope |
+| Stream Online/Offline | ✅ Yes | ❌ No | - |
 
-### Future Enhancements (v2.1+)
+### Future: WebRTC P2P (v2.1+)
 
-1. **Auto-detect Hub**: ComfyJS instances could auto-negotiate which becomes the hub
-2. **Conduit Support**: For server-side applications, support Twitch Conduits for unlimited scale
-3. **WebSocket Proxy**: Optional local WebSocket server that acts as EventSub hub
+A more advanced solution could use WebRTC for browser-to-browser communication:
+
+1. First browser source to load becomes the "host"
+2. Subsequent sources discover host via a simple signaling mechanism
+3. P2P connections established between sources
+4. Host forwards EventSub events to peers
+
+This is complex to implement reliably but eliminates the need for a local server.
 
 ---
 
