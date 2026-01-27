@@ -350,174 +350,185 @@ When multiple ComfyJS instances run from the same computer (common with OBS brow
 - ❌ SharedWorker (requires same browsing context)
 - ❌ Cookies or session storage
 
-This means browser-based communication patterns don't work between OBS sources.
+**Also important**: Browsers cannot run WebSocket servers - they can only be clients.
 
-### Solutions (v2.0 Implementation)
+### Solution: WebRTC P2P with IRC Signaling (v2.0)
 
-#### 1. Simplest: Just Use IRC (Recommended for Most Users)
+ComfyJS v2 will use **WebRTC DataChannels** to share events between browser sources, with **Twitch IRC as the signaling channel**. No external server required!
 
-Most popular events work perfectly over IRC with **no connection limits**:
+#### How It Works
 
-```typescript
-ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
-
-// All of these work via IRC - no EventSub needed!
-ComfyJS.onCommand = (user, command, message, flags, extra) => { };
-ComfyJS.onChat = (user, message, flags, self, extra) => { };
-ComfyJS.onSub = (user, message, subTierInfo, extra) => { };
-ComfyJS.onResub = (user, message, streakMonths, cumulativeMonths, subTierInfo, extra) => { };
-ComfyJS.onSubGift = (gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra) => { };
-ComfyJS.onCheer = (user, message, bits, flags, extra) => { };
-ComfyJS.onRaid = (user, viewers, extra) => { };
-ComfyJS.onBan = (bannedUsername, extra) => { };
-ComfyJS.onTimeout = (timedOutUsername, durationInSeconds, extra) => { };
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           TWITCH                                         │
+│  ┌─────────────────────┐        ┌─────────────────────┐                 │
+│  │   IRC Server        │        │   EventSub Server   │                 │
+│  │ irc-ws.chat.twitch  │        │ eventsub.wss.twitch │                 │
+│  └─────────┬───────────┘        └──────────┬──────────┘                 │
+└────────────┼───────────────────────────────┼────────────────────────────┘
+             │                               │
+             │ (all sources)                 │ (leader only)
+             │                               │
+┌────────────┼───────────────────────────────┼────────────────────────────┐
+│            │         LOCAL MACHINE         │                            │
+│            ▼                               ▼                            │
+│  ┌──────────────────────────────────────────────┐                       │
+│  │           BROWSER SOURCE 1 (Leader)          │                       │
+│  │  ┌────────────┐    ┌─────────────────────┐   │                       │
+│  │  │ IRC Client │    │ EventSub Client     │   │                       │
+│  │  └────────────┘    └──────────┬──────────┘   │                       │
+│  │         │                     │              │                       │
+│  │         │ signaling    events │              │                       │
+│  │         ▼                     ▼              │                       │
+│  │  ┌─────────────────────────────────────┐     │                       │
+│  │  │         WebRTC Host                 │     │                       │
+│  │  │   (accepts peer connections)        │     │                       │
+│  │  └─────────────┬───────────────────────┘     │                       │
+│  └────────────────┼─────────────────────────────┘                       │
+│                   │ WebRTC DataChannel (P2P)                            │
+│       ┌───────────┼───────────┬───────────┐                             │
+│       ▼           ▼           ▼           ▼                             │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                        │
+│  │ Source2 │ │ Source3 │ │ Source4 │ │ SourceN │  (followers)           │
+│  │  (peer) │ │  (peer) │ │  (peer) │ │  (peer) │                        │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘                        │
+│       │           │           │           │                             │
+│       ▼           ▼           ▼           ▼                             │
+│   [alerts]    [chat box]  [rewards]   [game]     ← Your OBS scenes     │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Have 10 browser sources?** No problem - IRC handles it.
+#### Signaling via IRC (The Clever Part)
 
-#### 2. Smart EventSub with Graceful Degradation
+WebRTC requires a "signaling" step to exchange connection info. We use IRC:
 
-ComfyJS will attempt EventSub but gracefully handle connection limits:
+```typescript
+// Leader announces itself with a special message (not visible in chat)
+// Uses IRC tags to mark it as ComfyJS internal
+@comfyjs-signal=leader;instance-id=abc123 PRIVMSG #channel :​
+
+// Followers see this and know not to connect to EventSub
+// They send their WebRTC offer to the leader
+@comfyjs-signal=offer;to=abc123;sdp=... PRIVMSG #channel :​
+
+// Leader responds with answer
+@comfyjs-signal=answer;to=def456;sdp=... PRIVMSG #channel :​
+
+// ICE candidates exchanged similarly
+@comfyjs-signal=ice;to=abc123;candidate=... PRIVMSG #channel :​
+```
+
+These messages:
+- Use zero-width spaces so they appear empty if somehow displayed
+- Are filtered out by ComfyJS and never trigger onChat
+- Only visible to other ComfyJS instances on same channel
+
+#### Leader Election
+
+```typescript
+// On Init, each instance:
+1. Generate unique instance ID
+2. Connect to IRC
+3. Listen for leader announcements for 2 seconds
+4. If no leader found:
+   - Become leader
+   - Connect to EventSub
+   - Announce leadership via IRC
+   - Start accepting WebRTC peer connections
+5. If leader found:
+   - Don't connect to EventSub
+   - Initiate WebRTC connection to leader
+   - Receive events via DataChannel
+
+// If leader disconnects:
+- Followers detect via WebRTC connection close
+- First follower to detect becomes new leader
+- Re-announces, others reconnect
+```
+
+#### User Experience (Zero Config!)
+
+```javascript
+// This just works - even with 10 browser sources!
+ComfyJS.Init("channel", "oauth:xxx");
+
+// All events work in ALL sources
+ComfyJS.onReward = (user, reward, cost, message, extra) => {
+  // Channel points work everywhere!
+  // Only leader talks to Twitch, others get events via P2P
+};
+
+ComfyJS.onChat = (user, message, flags, self, extra) => {
+  // IRC events come directly (all sources connect to IRC)
+};
+```
+
+#### Fallback Behavior
 
 ```typescript
 ComfyJS.Init("channel", "oauth:xxx", {
-  useEventSub: true,        // Try EventSub first
-  eventSubFallback: "irc",  // Fall back to IRC for basic events
+  p2pMode: "auto"      // Default: auto-negotiate leader/follower
+  // p2pMode: "leader" // Force this instance to be leader
+  // p2pMode: "follower" // Force this instance to be follower
+  // p2pMode: "disabled" // Don't use P2P, each instance independent
 });
 ```
 
-When EventSub connection fails with limit error:
-1. Log a clear warning explaining the limit
-2. Fall back to IRC-only mode (chat, commands, subs, cheers still work)
-3. Only channel points, polls, predictions, hype trains affected
+If WebRTC fails (some networks block it):
+1. Log warning
+2. Fall back to independent mode
+3. Only first 3 sources get EventSub, others IRC-only
 
-#### 3. Local Hub Server (For Channel Points Across Multiple Sources)
+#### Technical Details
 
-For users who NEED channel points/polls/predictions in multiple browser sources, we'll provide a tiny local relay server:
+**WebRTC DataChannel** is perfect for this:
+- Works in all modern browsers (including CEF/OBS)
+- Low latency (faster than going through a server)
+- Reliable ordered delivery option
+- No server required once connection established
 
-```bash
-# Install and run the hub (one time, keeps running)
-npx comfyjs-hub --oauth=oauth:xxx --channel=yourchannel
-
-# Hub runs on ws://localhost:9001
-# Holds the SINGLE EventSub connection
-# Broadcasts events to all connected browser sources
-```
-
-**Browser sources connect to the hub instead of Twitch:**
-```html
-<script src="comfy.min.js"></script>
-<script>
-  // Connect to local hub instead of Twitch directly
-  ComfyJS.Init("channel", null, { 
-    hubUrl: "ws://localhost:9001"
-  });
-  
-  // All events work - hub forwards them
-  ComfyJS.onReward = (user, reward, cost, message, extra) => {
-    // This works in ALL browser sources simultaneously!
-  };
-</script>
-```
-
-**Hub architecture:**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    comfyjs-hub (Node.js)                    │
-│                   runs on localhost:9001                     │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌─────────────┐                         │
-│  │ IRC Client  │    │ EventSub    │  ← Single connections   │
-│  │ (1 conn)    │    │ (1 conn)    │    to Twitch            │
-│  └──────┬──────┘    └──────┬──────┘                         │
-│         │                  │                                │
-│         └────────┬─────────┘                                │
-│                  ▼                                          │
-│         ┌───────────────┐                                   │
-│         │ Event Router  │                                   │
-│         └───────────────┘                                   │
-│                  │                                          │
-│    ┌─────────────┼─────────────┬─────────────┐             │
-│    ▼             ▼             ▼             ▼             │
-│ ┌──────┐    ┌──────┐    ┌──────┐    ┌──────┐              │
-│ │ WS 1 │    │ WS 2 │    │ WS 3 │    │ WS N │  ← Browser   │
-│ └──────┘    └──────┘    └──────┘    └──────┘    sources   │
-└─────────────────────────────────────────────────────────────┘
-      │             │             │             │
-      ▼             ▼             ▼             ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│ OBS Src1 │ │ OBS Src2 │ │ OBS Src3 │ │ OBS SrcN │
-│ (alerts) │ │ (chat)   │ │ (points) │ │ (etc)    │
-└──────────┘ └──────────┘ └──────────┘ └──────────┘
-```
-
-#### 4. Designate One "Master" Source
-
-Simple manual approach - one source handles EventSub features:
-
-**Source 1 (Master) - Has EventSub:**
-```javascript
-ComfyJS.Init("channel", "oauth:xxx", { useEventSub: true });
-ComfyJS.onReward = (user, reward, cost, message, extra) => {
-  // Handle channel points HERE only
-};
-```
-
-**Sources 2, 3, 4... - IRC only:**
-```javascript
-ComfyJS.Init("channel", "oauth:xxx", { useEventSub: false });
-// These still get chat, commands, subs, cheers, raids
-```
-
-### Connection Limit Detection
-
-ComfyJS v2 will detect and report connection limit issues clearly:
-
+**Message Format** (over DataChannel):
 ```typescript
-ComfyJS.onError = function(error, context) {
-  if (error.code === "EVENTSUB_CONNECTION_LIMIT") {
-    console.warn(
-      "⚠️ EventSub connection limit reached (max 3 per user).\n" +
-      "This usually happens with multiple OBS browser sources.\n\n" +
-      "Options:\n" +
-      "  1. Use IRC-only mode: ComfyJS.Init(ch, oauth, { useEventSub: false })\n" +
-      "  2. Run comfyjs-hub locally: npx comfyjs-hub --oauth=xxx\n" +
-      "  3. Designate one source as 'master' for EventSub features\n\n" +
-      "Most features (chat, commands, subs, cheers) work fine without EventSub!"
-    );
-  }
-};
+{
+  type: "event",
+  name: "onReward",
+  args: [user, reward, cost, message, extra],
+  timestamp: 1706438400000
+}
 ```
 
-### What Requires EventSub (Cannot Fall Back to IRC)
+**Deduplication**:
+- Each event has unique ID from Twitch
+- Followers ignore events they've already seen
+- Handles leader failover without duplicate events
 
-| Feature | Requires EventSub | Works in IRC | Notes |
-|---------|-------------------|--------------|-------|
-| Chat Messages | No | ✅ Yes | - |
-| Commands (!cmd) | No | ✅ Yes | - |
-| Subs/Resubs | No | ✅ Yes | Via USERNOTICE |
-| Gift Subs | No | ✅ Yes | Via USERNOTICE |
-| Cheers | No | ✅ Yes | Via USERNOTICE |
-| Raids | No | ✅ Yes | Via USERNOTICE |
-| Bans/Timeouts | No | ✅ Yes | Via CLEARCHAT |
-| **Channel Point Redemptions** | ✅ Yes | ❌ No | Use hub or master source |
-| **Hype Train Events** | ✅ Yes | ❌ No | Use hub or master source |
-| **Polls** | ✅ Yes | ❌ No | Use hub or master source |
-| **Predictions** | ✅ Yes | ❌ No | Use hub or master source |
-| **Shoutouts** | ✅ Yes | ❌ No | Use hub or master source |
-| Follows | ✅ Yes | ❌ No | Requires mod scope |
-| Stream Online/Offline | ✅ Yes | ❌ No | - |
+### What Requires P2P/EventSub vs IRC-Only
 
-### Future: WebRTC P2P (v2.1+)
+| Feature | Source | P2P Benefit |
+|---------|--------|-------------|
+| Chat Messages | IRC | None (all get directly) |
+| Commands | IRC | None (all get directly) |
+| Subs/Resubs | IRC | None (all get directly) |
+| Gift Subs | IRC | None (all get directly) |
+| Cheers | IRC | None (all get directly) |
+| Raids | IRC | None (all get directly) |
+| Bans/Timeouts | IRC | None (all get directly) |
+| **Channel Points** | EventSub | ✅ All sources get events |
+| **Hype Train** | EventSub | ✅ All sources get events |
+| **Polls** | EventSub | ✅ All sources get events |
+| **Predictions** | EventSub | ✅ All sources get events |
+| **Shoutouts** | EventSub | ✅ All sources get events |
+| **Follows** | EventSub | ✅ All sources get events |
+| **Stream Status** | EventSub | ✅ All sources get events |
 
-A more advanced solution could use WebRTC for browser-to-browser communication:
+### Why This Approach is Good
 
-1. First browser source to load becomes the "host"
-2. Subsequent sources discover host via a simple signaling mechanism
-3. P2P connections established between sources
-4. Host forwards EventSub events to peers
-
-This is complex to implement reliably but eliminates the need for a local server.
+1. **Zero config** - Users just use ComfyJS.Init() as normal
+2. **No external server** - Everything runs in browser
+3. **Automatic** - Leader election and failover handled transparently
+4. **Fast** - WebRTC is lower latency than going through a relay
+5. **Scalable** - Works with any number of browser sources
+6. **Graceful degradation** - Falls back if WebRTC unavailable
 
 ---
 
