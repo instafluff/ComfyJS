@@ -423,28 +423,50 @@ These messages:
 - Are filtered out by ComfyJS and never trigger onChat
 - Only visible to other ComfyJS instances on same channel
 
-#### Leader Election
+#### Leader Election & Discovery
 
 ```typescript
 // On Init, each instance:
 1. Generate unique instance ID
 2. Connect to IRC
-3. Listen for leader announcements for 2 seconds
-4. If no leader found:
-   - Become leader
-   - Connect to EventSub
-   - Announce leadership via IRC
-   - Start accepting WebRTC peer connections
-5. If leader found:
+3. Broadcast "looking for leader" message
+4. Wait 2 seconds for response
+
+5. If leader responds:
    - Don't connect to EventSub
    - Initiate WebRTC connection to leader
    - Receive events via DataChannel
 
-// If leader disconnects:
-- Followers detect via WebRTC connection close
+6. If no response (no leader exists):
+   - Become leader
+   - Connect to EventSub  
+   - Start accepting WebRTC peer connections
+   - Respond to future discovery requests
+
+// Leader behavior (ongoing):
+- Respond immediately to "looking for leader" messages
+- Send heartbeat every 30 seconds (backup, in case response missed)
+- If leader disconnects, followers detect via WebRTC close
 - First follower to detect becomes new leader
-- Re-announces, others reconnect
 ```
+
+**Discovery Protocol:**
+```
+// New source broadcasts discovery request
+@comfyjs-signal=discover;instance-id=def456 PRIVMSG #channel :​
+
+// Leader responds (within milliseconds)
+@comfyjs-signal=leader;instance-id=abc123;reply-to=def456 PRIVMSG #channel :​
+
+// Periodic heartbeat (every 30s, backup mechanism)
+@comfyjs-signal=heartbeat;instance-id=abc123 PRIVMSG #channel :​
+```
+
+**Why this works:**
+- New sources always find existing leader (via discovery request)
+- If leader misses a discovery (rare), heartbeat catches it
+- Leader responds immediately, so connection is fast
+- Heartbeats are infrequent (30s) to minimize IRC usage
 
 #### User Experience (Zero Config!)
 
