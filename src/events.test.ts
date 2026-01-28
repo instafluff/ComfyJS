@@ -31,11 +31,17 @@ const REAL_MESSAGES = {
   // Command message
   CHAT_COMMAND: '@badge-info=subscriber/25;badges=subscriber/24,no_audio/1;client-nonce=602c4366919848d6905c95660bdc2216;color=#FF69B4;display-name=cylex0;emotes=;first-msg=0;flags=;id=03f39c01-825a-4e95-8f01-b2e8e2159cbf;mod=0;returning-chatter=0;room-id=71092938;subscriber=1;tmi-sent-ts=1769563460262;turbo=0;user-id=60845524;user-type= :cylex0!cylex0@cylex0.tmi.twitch.tv PRIVMSG #xqc :!lastseen xQc',
 
-  // Resub USERNOTICE
-  RESUB: '@badge-info=subscriber/24;badges=subscriber/24;color=#5878A5;display-name=rrram0n;emotes=;flags=;id=6a833eb3-c60a-4c2f-8605-5a7b515a0103;login=rrram0n;mod=0;msg-id=resub;msg-param-cumulative-months=24;msg-param-months=0;msg-param-multimonth-duration=1;msg-param-multimonth-tenure=0;msg-param-should-share-streak=1;msg-param-streak-months=1;msg-param-sub-plan-name=Channel\\sSubscription\\s(tarik_tv);msg-param-sub-plan=Prime;msg-param-was-gifted=false;room-id=36340781;subscriber=1;system-msg=rrram0n\\ssubscribed\\swith\\sPrime.\\sThey\'ve\\ssubscribed\\sfor\\s24\\smonths,\\scurrently\\son\\sa\\s1\\smonth\\sstreak!;tmi-sent-ts=1769563460182;user-id=32517123;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #tarik :coknball torture message',
+  // Resub USERNOTICE - REAL from hasanabi (60 month sub!)
+  RESUB: '@badge-info=subscriber/60;badges=subscriber/60;color=#8A2BE2;display-name=GlassThalassas;emotes=;flags=;id=f8dc5701-a794-4941-9ece-5d0d505e59e8;login=glassthalassas;mod=0;msg-id=resub;msg-param-cumulative-months=60;msg-param-months=0;msg-param-multimonth-duration=33;msg-param-multimonth-tenure=33;msg-param-should-share-streak=0;msg-param-sub-plan-name=Woke\\sBeys\\s(hasanpiker):\\s$4.99\\sSub;msg-param-sub-plan=1000;msg-param-was-gifted=false;room-id=207813352;subscriber=1;system-msg=GlassThalassas\\ssubscribed\\sat\\sTier\\s1.\\sThey\'ve\\ssubscribed\\sfor\\s60\\smonths!;tmi-sent-ts=1769564587419;user-id=122594664;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #hasanabi :60 months pog',
 
-  // Sub gift USERNOTICE (simulated based on structure)
-  SUBGIFT: '@badge-info=subscriber/12;badges=subscriber/12,sub-gifter/50;color=#00FF7F;display-name=GiftGiver;emotes=;id=abc123;login=giftgiver;mod=0;msg-id=subgift;msg-param-months=1;msg-param-recipient-display-name=LuckyViewer;msg-param-recipient-id=123456;msg-param-recipient-user-name=luckyviewer;msg-param-sender-count=50;msg-param-sub-plan-name=Channel\\sSubscription;msg-param-sub-plan=1000;room-id=12345;subscriber=1;system-msg=GiftGiver\\sgifted\\sa\\sTier\\s1\\ssub\\sto\\sLuckyViewer!;tmi-sent-ts=1769563460182;user-id=98765;user-type= :tmi.twitch.tv USERNOTICE #channel',
+  // Prime Resub USERNOTICE - REAL from summit1g (25 month Prime sub!)
+  RESUB_PRIME: '@badge-info=subscriber/25;badges=subscriber/24,premium/1;color=#8A2BE2;display-name=MaxDomination;emotes=80958:0-6,8-14,16-22;flags=;id=2c804daa-9b6c-4f27-8eeb-2b81f80e1deb;login=maxdomination;mod=0;msg-id=resub;msg-param-cumulative-months=25;msg-param-months=0;msg-param-multimonth-duration=1;msg-param-multimonth-tenure=0;msg-param-should-share-streak=0;msg-param-sub-plan-name=Channel\\sSubscription\\s(summit1g);msg-param-sub-plan=Prime;msg-param-was-gifted=false;room-id=26490481;subscriber=1;system-msg=MaxDomination\\ssubscribed\\swith\\sPrime.\\sThey\'ve\\ssubscribed\\sfor\\s25\\smonths!;tmi-sent-ts=1769565053325;user-id=46966022;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #summit1g :sumLove sumLove sumLove',
+
+  // First-time SUB USERNOTICE - REAL from summit1g (Prime sub)
+  SUB: '@badge-info=subscriber/1;badges=subscriber/0,premium/1;color=;display-name=igreener1;emotes=;flags=;id=fe23faaf-928a-4368-aacd-663289a54106;login=igreener1;mod=0;msg-id=sub;msg-param-cumulative-months=1;msg-param-months=0;msg-param-multimonth-duration=1;msg-param-multimonth-tenure=0;msg-param-should-share-streak=0;msg-param-sub-plan-name=Channel\\sSubscription\\s(summit1g);msg-param-sub-plan=Prime;msg-param-was-gifted=false;room-id=26490481;subscriber=1;system-msg=igreener1\\ssubscribed\\swith\\sPrime.;tmi-sent-ts=1769565297466;user-id=264230827;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #summit1g',
+
+  // Sub gift USERNOTICE - REAL from summit1g channel
+  SUBGIFT: '@badge-info=subscriber/41;badges=subscriber/36;color=#DAA520;display-name=ff_deathshot;emotes=;flags=;id=7a7e59b1-61d0-45b1-bac5-fdc06c4a28a7;login=ff_deathshot;mod=0;msg-id=subgift;msg-param-gift-months=1;msg-param-months=1;msg-param-origin-id=1761723279133432003;msg-param-recipient-display-name=syren;msg-param-recipient-id=45969669;msg-param-recipient-user-name=syren;msg-param-sender-count=24;msg-param-sub-plan-name=Channel\\sSubscription\\s(summit1g);msg-param-sub-plan=1000;room-id=26490481;subscriber=1;system-msg=ff_deathshot\\sgifted\\sa\\sTier\\s1\\ssub\\sto\\ssyren!\\sThey\\shave\\sgiven\\s24\\sGift\\sSubs\\sin\\sthe\\schannel!;tmi-sent-ts=1769564836206;user-id=121535345;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #summit1g',
 
   // Mystery gift USERNOTICE (simulated based on structure)
   MYSTERYGIFT: '@badge-info=subscriber/24;badges=subscriber/24;color=#FF0000;display-name=BigSpender;emotes=;id=def456;login=bigspender;mod=0;msg-id=submysterygift;msg-param-mass-gift-count=5;msg-param-sender-count=100;msg-param-sub-plan=1000;room-id=12345;subscriber=1;system-msg=BigSpender\\sis\\sgifting\\s5\\sTier\\s1\\sSubs!;tmi-sent-ts=1769563460182;user-id=11111;user-type= :tmi.twitch.tv USERNOTICE #channel',
@@ -46,11 +52,11 @@ const REAL_MESSAGES = {
   // Cheer message with bits
   CHEER: '@badge-info=subscriber/12;badges=subscriber/12,bits/1000;bits=100;color=#FF69B4;display-name=Cheerful;emotes=;first-msg=0;id=cheer123;mod=0;room-id=12345;subscriber=1;tmi-sent-ts=1769563460182;turbo=0;user-id=33333;user-type= :cheerful!cheerful@cheerful.tmi.twitch.tv PRIVMSG #channel :Cheer100 Great stream!',
 
-  // CLEARCHAT (timeout)
-  TIMEOUT: '@ban-duration=600;room-id=12345;target-user-id=44444;tmi-sent-ts=1769563460182 :tmi.twitch.tv CLEARCHAT #channel :baduser',
+  // CLEARCHAT (timeout) - REAL from hasanabi channel
+  TIMEOUT: '@ban-duration=30;room-id=207813352;target-user-id=261074120;tmi-sent-ts=1769564600000 :tmi.twitch.tv CLEARCHAT #hasanabi :therebelmindd',
 
-  // CLEARCHAT (ban)
-  BAN: '@room-id=12345;target-user-id=55555;tmi-sent-ts=1769563460182 :tmi.twitch.tv CLEARCHAT #channel :verybaduser',
+  // CLEARCHAT (ban) - REAL from hasanabi channel
+  BAN: '@room-id=207813352;target-user-id=1187164731;tmi-sent-ts=1769565400000 :tmi.twitch.tv CLEARCHAT #hasanabi :donaldtrumpisgoatted',
 
   // CLEARMSG (message deleted)
   CLEARMSG: '@login=deleteduser;room-id=12345;target-msg-id=msg-id-123;tmi-sent-ts=1769563460182 :tmi.twitch.tv CLEARMSG #channel :This was a bad message',
@@ -112,12 +118,25 @@ describe('Real IRC Message Parsing', () => {
       const msg = parseIRCMessage(REAL_MESSAGES.RESUB);
       
       expect(msg.command).toBe('USERNOTICE');
-      expect(msg.channel).toBe('tarik');
+      expect(msg.channel).toBe('hasanabi');
       expect(msg.tags['msg-id']).toBe('resub');
-      expect(msg.tags['msg-param-cumulative-months']).toBe('24');
-      expect(msg.tags['msg-param-streak-months']).toBe('1');
+      expect(msg.tags['msg-param-cumulative-months']).toBe('60');
+      expect(msg.tags['msg-param-sub-plan']).toBe('1000');
+      expect(msg.tags['display-name']).toBe('GlassThalassas');
+      expect(msg.message).toBe('60 months pog');
+    });
+
+    it('parses Prime resub USERNOTICE correctly', () => {
+      const msg = parseIRCMessage(REAL_MESSAGES.RESUB_PRIME);
+      
+      expect(msg.command).toBe('USERNOTICE');
+      expect(msg.channel).toBe('summit1g');
+      expect(msg.tags['msg-id']).toBe('resub');
+      expect(msg.tags['msg-param-cumulative-months']).toBe('25');
       expect(msg.tags['msg-param-sub-plan']).toBe('Prime');
-      expect(msg.message).toContain('message');
+      expect(msg.tags['display-name']).toBe('MaxDomination');
+      expect(msg.message).toBe('sumLove sumLove sumLove');
+      expect(msg.tags.emotes).toBe('80958:0-6,8-14,16-22');
     });
 
     it('parses subgift USERNOTICE correctly', () => {
@@ -125,9 +144,21 @@ describe('Real IRC Message Parsing', () => {
       
       expect(msg.command).toBe('USERNOTICE');
       expect(msg.tags['msg-id']).toBe('subgift');
-      expect(msg.tags['msg-param-recipient-display-name']).toBe('LuckyViewer');
-      expect(msg.tags['msg-param-recipient-user-name']).toBe('luckyviewer');
-      expect(msg.tags['msg-param-sender-count']).toBe('50');
+      expect(msg.tags['msg-param-recipient-display-name']).toBe('syren');
+      expect(msg.tags['msg-param-recipient-user-name']).toBe('syren');
+      expect(msg.tags['msg-param-sender-count']).toBe('24');
+      expect(msg.channel).toBe('summit1g');
+    });
+
+    it('parses first-time SUB USERNOTICE correctly', () => {
+      const msg = parseIRCMessage(REAL_MESSAGES.SUB);
+      
+      expect(msg.command).toBe('USERNOTICE');
+      expect(msg.channel).toBe('summit1g');
+      expect(msg.tags['msg-id']).toBe('sub');
+      expect(msg.tags['msg-param-cumulative-months']).toBe('1');
+      expect(msg.tags['msg-param-sub-plan']).toBe('Prime');
+      expect(msg.tags['display-name']).toBe('igreener1');
     });
 
     it('parses mystery gift USERNOTICE correctly', () => {
@@ -160,9 +191,10 @@ describe('Real IRC Message Parsing', () => {
       const msg = parseIRCMessage(REAL_MESSAGES.TIMEOUT);
       
       expect(msg.command).toBe('CLEARCHAT');
-      expect(msg.tags['ban-duration']).toBe('600');
-      expect(msg.tags['target-user-id']).toBe('44444');
-      expect(msg.message).toBe('baduser');
+      expect(msg.tags['ban-duration']).toBe('30');
+      expect(msg.tags['target-user-id']).toBe('261074120');
+      expect(msg.tags['room-id']).toBe('207813352');
+      expect(msg.message).toBe('therebelmindd');
     });
 
     it('parses ban CLEARCHAT correctly', () => {
@@ -170,8 +202,10 @@ describe('Real IRC Message Parsing', () => {
       
       expect(msg.command).toBe('CLEARCHAT');
       expect(msg.tags['ban-duration']).toBeUndefined();
-      expect(msg.tags['target-user-id']).toBe('55555');
-      expect(msg.message).toBe('verybaduser');
+      expect(msg.tags['target-user-id']).toBe('1187164731');
+      expect(msg.tags['room-id']).toBe('207813352');
+      expect(msg.message).toBe('donaldtrumpisgoatted');
+      expect(msg.channel).toBe('hasanabi');
     });
 
     it('parses CLEARMSG correctly', () => {
@@ -338,6 +372,19 @@ describe('Edge Cases', () => {
     
     // The system-msg tag has escaped spaces
     expect(msg.tags['system-msg']).toContain('subscribed');
+  });
+
+  it('parses subgift recipient fields correctly', () => {
+    const msg = parseIRCMessage(REAL_MESSAGES.SUBGIFT);
+    
+    // Real SubGift from summit1g channel
+    expect(msg.tags['msg-param-recipient-display-name']).toBe('syren');
+    expect(msg.tags['msg-param-recipient-user-name']).toBe('syren');
+    expect(msg.tags['msg-param-recipient-id']).toBe('45969669');
+    expect(msg.tags['msg-param-sender-count']).toBe('24');
+    expect(msg.tags['msg-param-gift-months']).toBe('1');
+    expect(msg.tags['display-name']).toBe('ff_deathshot');
+    expect(msg.tags['user-id']).toBe('121535345');
   });
 
   it('handles messages with @ mentions', () => {

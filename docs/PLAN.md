@@ -51,7 +51,8 @@
 |-----------|-------|--------|
 | `src/parsers.test.ts` | 41 | ✅ All passing |
 | `src/irc.test.ts` | 13 | ✅ All passing |
-| **Total** | **54** | ✅ |
+| `src/events.test.ts` | 30 | ✅ All passing (real IRC data) |
+| **Total** | **84** | ✅ |
 
 ### ✅ Examples
 
@@ -60,6 +61,7 @@
 | `examples/v2-test.html` | Browser test page with full UI |
 | `examples/test-node.mjs` | Node.js CLI test script |
 | `examples/live-test.mjs` | Live IRC parity verification |
+| `examples/capture-events.mjs` | Real event capture for testing |
 
 ---
 
@@ -322,7 +324,7 @@ node examples/test-node.mjs instafluff oauth:your_token_here
 ### High Priority
 
 - [x] **Real-world IRC testing** - ✅ Verified with live Twitch (xqc channel)
-- [ ] **Real-world EventSub testing** - Verify channel points, polls, etc. work
+- [x] **Real-world EventSub testing** - ✅ Verified polls, predictions, rewards on instafluff
 - [x] **P2P signaling validation** - ✅ localStorage approach works in browsers
 - [ ] **P2P OBS testing** - Test in real OBS browser sources
 - [ ] **Integration test** - Full end-to-end with real Twitch account
@@ -354,4 +356,7 @@ node examples/test-node.mjs instafluff oauth:your_token_here
 | 2026-01-28 | Updated PLAN.md with implementation status |
 | 2026-01-28 | Replaced IRC P2P signaling with localStorage approach |
 | 2026-01-28 | Added live-test.mjs, verified IRC parity |
-| 2026-01-28 | Fixed UserExtra parity (54 tests passing) |
+| 2026-01-28 | Fixed UserExtra parity (54 tests passing) || 2026-01-28 | Added events.test.ts with real IRC data (84 tests) |
+| 2026-01-28 | EventSub live testing: polls, predictions, rewards ✅ |
+| 2026-01-28 | Added onRawMessage handler for unknown IRC commands |
+| 2026-01-28 | Captured NOTICE events (emote_only, r9k modes) |

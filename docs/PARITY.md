@@ -1,7 +1,8 @@
 # ComfyJS v2 Parity Testing
 
-> **Purpose:** Track and verify that v2 matches v1 behavior exactly for all events
+> **Purpose:** Ensure v2 has at minimum everything v1 has, but can include MORE data
 > **Last Updated:** January 28, 2026
+> **Philosophy:** v2 should never be MISSING fields from v1, but having extra fields is encouraged
 
 ---
 
@@ -12,24 +13,24 @@
 | Chat | `onChat(user, message, flags, self, extra)` | ✅ | ✅ |
 | Command | `onCommand(user, command, message, flags, extra)` | ✅ | ✅ |
 | Whisper | `onWhisper(user, message, flags, self, extra)` | ✅ | ❌ |
-| Sub | `onSub(user, message, subTierInfo, extra)` | ✅ | ❌ |
+| Sub | `onSub(user, message, subTierInfo, extra)` | ✅ | ✅ |
 | Resub | `onResub(user, message, streakMonths, cumulativeMonths, subTierInfo, extra)` | ✅ | ✅ |
-| SubGift | `onSubGift(gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra)` | ✅ | ❌ |
-| SubMysteryGift | `onSubMysteryGift(gifterUser, numbOfSubs, senderCount, subTierInfo, extra)` | ✅ | ❌ |
+| SubGift | `onSubGift(gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra)` | ✅ | ✅ |
+| SubMysteryGift | `onSubMysteryGift(gifterUser, numbOfSubs, senderCount, subTierInfo, extra)` | ✅ | ✅ |
 | GiftSubContinue | `onGiftSubContinue(user, sender, extra)` | ✅ | ❌ |
 | Cheer | `onCheer(user, message, bits, flags, extra)` | ✅ | ❌ |
 | Raid | `onRaid(user, viewers, extra)` | ✅ | ❌ |
 | Join | `onJoin(user, self, extra)` | ✅ | ✅ |
 | Part | `onPart(user, self, extra)` | ✅ | ❌ |
-| Ban | `onBan(bannedUsername, extra)` | ✅ | ❌ |
-| Timeout | `onTimeout(timedOutUsername, durationInSeconds, extra)` | ✅ | ❌ |
-| MessageDeleted | `onMessageDeleted(id, extra)` | ✅ | ❌ |
+| Ban | `onBan(bannedUsername, extra)` | ✅ | ✅ |
+| Timeout | `onTimeout(timedOutUsername, durationInSeconds, extra)` | ✅ | ✅ |
+| MessageDeleted | `onMessageDeleted(id, extra)` | ✅ | ✅ |
 | ChatMode | `onChatMode(flags, channel)` | ✅ | ✅ |
-| Reward | `onReward(user, reward, cost, message, extra)` | ✅ | ❌ |
+| Reward | `onReward(user, reward, cost, message, extra)` | ✅ | ✅ |
 | Shoutout | `onShoutout(channel, viewerCount, timeRemaining, extra)` | ✅ | ❌ |
 | HypeTrain | `onHypeTrain(type, level, progress, goal, total, timeRemaining, extra)` | ✅ | ❌ |
-| Poll | `onPoll(type, title, choices, votes, timeRemaining, extra)` | ✅ | ❌ |
-| Prediction | `onPrediction(type, title, outcomes, topPredictors, timeRemaining, extra)` | ✅ | ❌ |
+| Poll | `onPoll(type, title, choices, votes, timeRemaining, extra)` | ✅ | ✅ |
+| Prediction | `onPrediction(type, title, outcomes, topPredictors, timeRemaining, extra)` | ✅ | ✅ |
 | Connected | `onConnected(address, port, isFirstConnect)` | ✅ | ✅ |
 | Reconnect | `onReconnect(reconnectCount)` | ✅ | ❌ |
 
@@ -137,7 +138,7 @@ onResub(user, message, streakMonths, cumulativeMonths, subTierInfo, extra)
 - `streakMonths`: msg-param-streak-months (0 if not sharing)
 - `cumulativeMonths`: msg-param-cumulative-months
 
-**v2 Status:** ⏳ Needs verification
+**v2 Status:** ✅ Tested with real Tier 1 (60 months) and Prime (25 months) resubs
 
 ---
 
@@ -159,7 +160,7 @@ onSubGift(gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, ext
 }
 ```
 
-**v2 Status:** ⏳ Needs verification
+**v2 Status:** ✅ Tested with real subgift from summit1g channel (24 total gifts)
 
 ---
 
@@ -300,11 +301,30 @@ onMessageDeleted(id, extra)
 
 | Channel | Why | Events Expected |
 |---------|-----|-----------------|
+| instafluff | Own channel | EventSub events (polls, predictions, rewards, shoutouts) |
 | xqc | Very active | chat, commands, subs, cheers |
-| kai_cenat | Popular | subs, gifted subs, raids |
+| hasanabi | Active chat | subs, bans, timeouts, gift bombs |
+| summit1g | Popular | subs, resubs |
+| tarik | Active | chat, commands |
 | pokimane | Active mods | bans, timeouts, deletions |
 | ludwig | Events | polls, predictions |
-| hasanabi | Active chat | all types |
+
+---
+
+## Captured Event Types
+
+Real IRC events captured from live Twitch for testing:
+
+| Category | Event Types Captured |
+|----------|---------------------|
+| PRIVMSG | regular, subscriber, vip, mod, broadcaster, command, founder, cheer (pending) |
+| USERNOTICE | sub, resub, subgift, submysterygift, giftpaidupgrade (pending), raid (pending) |
+| CLEARCHAT | ban, timeout |
+| CLEARMSG | delete (message deleted) |
+| ROOMSTATE | modes (emote-only, sub-only, etc.) |
+| EVENTSUB | reward, poll-begin, poll-progress, poll-close, poll-archive, prediction-begin, prediction-lock, prediction-end |
+| NOTICE | emote_only_on, emote_only_off, r9k_on, r9k_off |
+| OTHER | GLOBALUSERSTATE, USERSTATE, CAP |
 
 ---
 

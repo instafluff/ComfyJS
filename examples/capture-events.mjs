@@ -250,6 +250,71 @@ comfy.onWhisper = (user, message, flags, self, extra) => {
   });
 };
 
+// Track which commands we've handled - catch unknown ones
+const handledCommands = new Set(['PRIVMSG', 'WHISPER', 'USERNOTICE', 'CLEARCHAT', 'CLEARMSG', 'ROOMSTATE', 'JOIN', 'PART']);
+
+comfy.onRawMessage = (command, raw, parsed) => {
+  // Log unknown IRC commands we don't have handlers for
+  if (!handledCommands.has(command) && command !== 'PING' && !command.match(/^\d{3}$/)) {
+    const subtype = parsed.tags?.['msg-id'] || 'unknown';
+    addSample(`UNKNOWN/${command}`, subtype, raw, parsed.tags || {}, {
+      handler: 'none',
+      note: 'No handler for this IRC command',
+      parsed: {
+        command,
+        prefix: parsed.prefix,
+        channel: parsed.channel,
+        message: parsed.message?.substring(0, 50),
+        params: parsed.params
+      }
+    });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EventSub Event Handlers (require authenticated connection to own channel)
+// ─────────────────────────────────────────────────────────────────────────────
+
+comfy.onReward = (user, reward, cost, message, extra) => {
+  addSample('EVENTSUB', 'reward', '', {}, {
+    handler: 'onReward',
+    args: { user, reward, cost, message: message?.substring(0, 30) || '' },
+    extra: { rewardId: extra?.rewardId, status: extra?.status }
+  });
+};
+
+comfy.onShoutout = (channelDisplayName, viewerCount, timeRemaining, extra) => {
+  addSample('EVENTSUB', 'shoutout', '', {}, {
+    handler: 'onShoutout',
+    args: { channelDisplayName, viewerCount, timeRemaining },
+    extra
+  });
+};
+
+comfy.onHypeTrain = (type, level, progress, goal, total, timeRemaining, extra) => {
+  addSample('EVENTSUB', `hypetrain-${type}`, '', {}, {
+    handler: 'onHypeTrain',
+    args: { type, level, progress, goal, total, timeRemaining },
+    extra
+  });
+};
+
+comfy.onPoll = (type, title, choices, votes, timeRemaining, extra) => {
+  addSample('EVENTSUB', `poll-${type}`, '', {}, {
+    handler: 'onPoll',
+    args: { type, title, choices, votes, timeRemaining },
+    extra
+  });
+};
+
+comfy.onPrediction = (type, title, outcomes, topPredictors, timeRemaining, extra) => {
+  addSample('EVENTSUB', `prediction-${type}`, '', {}, {
+    handler: 'onPrediction',
+    args: { type, title, outcomes: outcomes?.length, topPredictors: topPredictors?.length, timeRemaining },
+    extra
+  });
+};
+
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n\n📊 Capture Summary:');

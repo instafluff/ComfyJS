@@ -1,4 +1,4 @@
-import type { ComfyJSInstance, CommandHandler, ChatHandler, WhisperHandler, JoinHandler, PartHandler, RaidHandler, SubHandler, ResubHandler, SubGiftHandler, SubMysteryGiftHandler, GiftSubContinueHandler, CheerHandler, RewardHandler, HypeTrainHandler, PollHandler, PredictionHandler, ShoutoutHandler, MessageDeletedHandler, BanHandler, TimeoutHandler, ChatModeHandler, ErrorHandler, ConnectedHandler, ReconnectHandler, UserExtra } from './types';
+import type { ComfyJSInstance, CommandHandler, ChatHandler, WhisperHandler, JoinHandler, PartHandler, RaidHandler, SubHandler, ResubHandler, SubGiftHandler, SubMysteryGiftHandler, GiftSubContinueHandler, CheerHandler, RewardHandler, HypeTrainHandler, PollHandler, PredictionHandler, ShoutoutHandler, MessageDeletedHandler, BanHandler, TimeoutHandler, ChatModeHandler, ErrorHandler, ConnectedHandler, ReconnectHandler, RawMessageHandler, UserExtra } from './types';
 import { IRCClient } from './irc';
 declare class ComfyJSImpl implements ComfyJSInstance {
     isDebug: boolean;
@@ -38,6 +38,7 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     onHypeTrain: HypeTrainHandler;
     onPoll: PollHandler;
     onPrediction: PredictionHandler;
+    onRawMessage: RawMessageHandler;
     onConnected: ConnectedHandler;
     onReconnect: ReconnectHandler;
     version(): string;

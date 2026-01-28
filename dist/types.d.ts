@@ -292,6 +292,7 @@ export type OnModAddHandler = (user: string, extra: UserExtra) => void;
 export type OnModRemoveHandler = (user: string, extra: UserExtra) => void;
 export type OnVIPAddHandler = (user: string, extra: UserExtra) => void;
 export type OnVIPRemoveHandler = (user: string, extra: UserExtra) => void;
+export type OnRawMessageHandler = (command: string, rawMessage: string, parsed: IRCMessage) => void;
 export type ErrorHandler = (error: Error | ComfyError) => void;
 export type ConnectedHandler = OnConnectedHandler;
 export type ReconnectHandler = OnReconnectHandler;
@@ -316,6 +317,7 @@ export type ShoutoutHandler = (channelDisplayName: string, viewerCount: number, 
 export type HypeTrainHandler = (type: string, level: number, progress: number, goal: number, total: number, timeRemaining: number, extra: Record<string, unknown>) => void;
 export type PollHandler = (type: string, title: string, choices: string[], votes: number[], timeRemaining: number, extra: Record<string, unknown>) => void;
 export type PredictionHandler = (type: string, title: string, outcomes: string[], topPredictors: unknown[][], timeRemaining: number, extra: Record<string, unknown>) => void;
+export type RawMessageHandler = OnRawMessageHandler;
 export interface EventSubNotification {
     subscriptionType: string;
     subscriptionVersion: string;
@@ -348,6 +350,7 @@ export interface ComfyJSInstance {
     onHypeTrain: HypeTrainHandler;
     onPoll: PollHandler;
     onPrediction: PredictionHandler;
+    onRawMessage: RawMessageHandler;
     onConnected: ConnectedHandler;
     onReconnect: ReconnectHandler;
     version(): string;

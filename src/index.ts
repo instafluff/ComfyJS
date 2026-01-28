@@ -34,6 +34,7 @@ import type {
   ErrorHandler,
   ConnectedHandler,
   ReconnectHandler,
+  RawMessageHandler,
   UserExtra,
 } from './types';
 
@@ -247,6 +248,8 @@ class ComfyJSImpl implements ComfyJSInstance {
   onPrediction: PredictionHandler = () => {
     if (this.isDebug) console.log('onPrediction default handler');
   };
+
+  onRawMessage: RawMessageHandler = () => {};
 
   onConnected: ConnectedHandler = () => {};
 
@@ -512,6 +515,9 @@ class ComfyJSImpl implements ComfyJSInstance {
   }
 
   private handleIRCMessage(msg: IRCMessage): void {
+    // Call raw message handler for all IRC messages (useful for debugging/capture)
+    this.onRawMessage(msg.command, msg.raw, msg);
+
     try {
       switch (msg.command) {
         case 'PRIVMSG':

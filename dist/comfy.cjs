@@ -1783,6 +1783,8 @@ var ComfyJSImpl = class {
       if (this.isDebug)
         console.log("onPrediction default handler");
     };
+    this.onRawMessage = () => {
+    };
     this.onConnected = () => {
     };
     this.onReconnect = () => {
@@ -1990,6 +1992,7 @@ var ComfyJSImpl = class {
     };
   }
   handleIRCMessage(msg) {
+    this.onRawMessage(msg.command, msg.raw, msg);
     try {
       switch (msg.command) {
         case "PRIVMSG":
