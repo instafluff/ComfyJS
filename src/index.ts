@@ -724,8 +724,13 @@ class ComfyJSImpl implements ComfyJSInstance {
 
       case 'raid': {
         const viewers = parseInt(tags['msg-param-viewerCount'] || '0', 10);
-        // v1 parity: raid extra only contains channel
-        const raidExtra = { channel: msg.channel?.replace('#', '') || '' };
+        // v2: provide full extra with additional raid info
+        const raidExtra = {
+          ...extra,
+          viewerCount: viewers,
+          raidingChannel: username,
+          raidingChannelId: tags['user-id'] || '',
+        };
         this.onRaid(username, viewers, raidExtra);
         break;
       }
@@ -737,7 +742,8 @@ class ComfyJSImpl implements ComfyJSInstance {
     const username = msg.prefix?.split('!')[0] || '';
     const self = username.toLowerCase() === this.irc?.username;
 
-    this.onJoin(username, self, { channel });
+    // v2: provide channel info (v1 only had { channel })
+    this.onJoin(username, self, { channel, roomId: msg.tags['room-id'] || '' });
   }
 
   private handlePart(msg: IRCMessage): void {
@@ -745,7 +751,8 @@ class ComfyJSImpl implements ComfyJSInstance {
     const username = msg.prefix?.split('!')[0] || '';
     const self = username.toLowerCase() === this.irc?.username;
 
-    this.onPart(username, self, { channel });
+    // v2: provide channel info (v1 only had { channel })
+    this.onPart(username, self, { channel, roomId: msg.tags['room-id'] || '' });
   }
 
   // ─────────────────────────────────────────────────────────────

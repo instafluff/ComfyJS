@@ -2165,7 +2165,12 @@ var ComfyJSImpl = class {
       }
       case "raid": {
         const viewers = parseInt(tags["msg-param-viewerCount"] || "0", 10);
-        const raidExtra = { channel: msg.channel?.replace("#", "") || "" };
+        const raidExtra = {
+          ...extra,
+          viewerCount: viewers,
+          raidingChannel: username,
+          raidingChannelId: tags["user-id"] || ""
+        };
         this.onRaid(username, viewers, raidExtra);
         break;
       }
@@ -2175,13 +2180,13 @@ var ComfyJSImpl = class {
     const channel = msg.channel?.replace("#", "") || "";
     const username = msg.prefix?.split("!")[0] || "";
     const self = username.toLowerCase() === this.irc?.username;
-    this.onJoin(username, self, { channel });
+    this.onJoin(username, self, { channel, roomId: msg.tags["room-id"] || "" });
   }
   handlePart(msg) {
     const channel = msg.channel?.replace("#", "") || "";
     const username = msg.prefix?.split("!")[0] || "";
     const self = username.toLowerCase() === this.irc?.username;
-    this.onPart(username, self, { channel });
+    this.onPart(username, self, { channel, roomId: msg.tags["room-id"] || "" });
   }
   // ─────────────────────────────────────────────────────────────
   // Private: P2P Coordination

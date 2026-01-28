@@ -59,8 +59,10 @@ export interface SubMysteryGiftExtra extends UserExtra {
     recipientCount: number;
     giftCount: number;
 }
-export interface RaidExtra {
-    channel: string;
+export interface RaidExtra extends UserExtra {
+    viewerCount: number;
+    raidingChannel: string;
+    raidingChannelId: string;
 }
 export interface BanExtra {
     roomId: string;
@@ -80,6 +82,7 @@ export interface MessageDeletedExtra {
 }
 export interface JoinPartExtra {
     channel: string;
+    roomId?: string;
 }
 export interface RewardExtra extends UserExtra {
     oderId: string;

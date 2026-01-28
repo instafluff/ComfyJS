@@ -83,26 +83,28 @@ export interface SubMysteryGiftExtra extends UserExtra {
   giftCount: number;
 }
 
-// v1 parity: raid extra only has channel field
-export interface RaidExtra {
-  channel: string;
+// v2: raid extra extends UserExtra with additional raid info
+export interface RaidExtra extends UserExtra {
+  viewerCount: number;
+  raidingChannel: string;
+  raidingChannelId: string;
 }
 
-// v1 parity: ban extra has minimal fields
+// v2: ban extra (v1 had roomId, username, bannedUserId)
 export interface BanExtra {
   roomId: string;
   username: string;
   bannedUserId: string;
 }
 
-// v1 parity: timeout extra has minimal fields
+// v2: timeout extra (v1 had roomId, username, timedOutUserId)
 export interface TimeoutExtra {
   roomId: string;
   username: string;
   timedOutUserId: string;
 }
 
-// v1 parity: messageDeleted extra
+// v2: messageDeleted extra (v1 had id, roomId, username, message)
 export interface MessageDeletedExtra {
   id: string;
   roomId: string;
@@ -110,9 +112,10 @@ export interface MessageDeletedExtra {
   message: string;
 }
 
-// v1 parity: join/part extra only has channel
+// v2: join/part extra with optional roomId (v1 only had channel)
 export interface JoinPartExtra {
   channel: string;
+  roomId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
