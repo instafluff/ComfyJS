@@ -20,6 +20,9 @@ export declare class P2PCoordinator {
     onFollowerConnected: ((instanceId: string) => void) | null;
     onFollowerDisconnected: ((instanceId: string) => void) | null;
     constructor(options: P2PCoordinatorOptions);
+    private get leaderKey();
+    private get peerPrefix();
+    private peerKey;
     initialize(): Promise<P2PRole>;
     private tryBecomeLeader;
     private becomeFollower;

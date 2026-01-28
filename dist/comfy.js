@@ -838,8 +838,6 @@ var EventSubTypes = {
 
 // src/p2p.ts
 var STORAGE_PREFIX = "comfyjs_";
-var LEADER_KEY = STORAGE_PREFIX + "leader";
-var PEER_PREFIX = STORAGE_PREFIX + "peer_";
 var LEADER_TIMEOUT_MS = 1e4;
 var HEARTBEAT_INTERVAL_MS = 3e3;
 var POLL_INTERVAL_MS = 500;
@@ -865,7 +863,19 @@ var P2PCoordinator = class {
     this.instanceId = this.generateInstanceId();
     this.options = options;
     this.channel = options.channel.toLowerCase().replace("#", "");
-    this.log(`Instance ID: ${this.instanceId}`);
+    this.log(`Instance ID: ${this.instanceId}, Channel: ${this.channel}`);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Storage Key Helpers (channel-namespaced)
+  // ─────────────────────────────────────────────────────────────────────────
+  get leaderKey() {
+    return `${STORAGE_PREFIX}leader_${this.channel}`;
+  }
+  get peerPrefix() {
+    return `${STORAGE_PREFIX}peer_${this.channel}_`;
+  }
+  peerKey(peerId) {
+    return `${this.peerPrefix}${peerId}`;
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Initialization
@@ -906,7 +916,7 @@ var P2PCoordinator = class {
       channel: this.channel,
       timestamp: Date.now()
     };
-    this.setStorageItem(LEADER_KEY, leaderEntry);
+    this.setStorageItem(this.leaderKey, leaderEntry);
     this.log("Became leader");
     this.startHeartbeat();
     this.onRoleChange?.("leader");
@@ -923,7 +933,7 @@ var P2PCoordinator = class {
       followerIce: [],
       connected: false
     };
-    this.setStorageItem(PEER_PREFIX + this.instanceId, peerEntry);
+    this.setStorageItem(this.peerKey(this.instanceId), peerEntry);
     this.onRoleChange?.("follower");
   }
   // ─────────────────────────────────────────────────────────────────────────
@@ -991,7 +1001,7 @@ var P2PCoordinator = class {
       this.becomeFollower(leader);
       return;
     }
-    const myEntry = this.getStorageItem(PEER_PREFIX + this.instanceId);
+    const myEntry = this.getStorageItem(this.peerKey(this.instanceId));
     if (myEntry && myEntry.offer && !myEntry.answer) {
       this.handleLeaderOffer(myEntry);
     }
@@ -1009,11 +1019,11 @@ var P2PCoordinator = class {
     this.setupDataChannel(dc, peerId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    const peerEntry = this.getStorageItem(PEER_PREFIX + peerId);
+    const peerEntry = this.getStorageItem(this.peerKey(peerId));
     if (peerEntry) {
       peerEntry.offer = JSON.stringify(offer);
       peerEntry.timestamp = Date.now();
-      this.setStorageItem(PEER_PREFIX + peerId, peerEntry);
+      this.setStorageItem(this.peerKey(peerId), peerEntry);
       this.log(`Wrote offer to ${peerId}'s entry`);
     }
   }
@@ -1026,7 +1036,7 @@ var P2PCoordinator = class {
       await pc.setRemoteDescription(answer);
       this.log(`Set remote description from ${peer.id}`);
       peer.connected = true;
-      this.setStorageItem(PEER_PREFIX + peer.id, peer);
+      this.setStorageItem(this.peerKey(peer.id), peer);
     } catch (e) {
       this.log(`Error handling answer from ${peer.id}: ${e}`);
     }
@@ -1059,7 +1069,7 @@ var P2PCoordinator = class {
       await pc.setLocalDescription(answer);
       myEntry.answer = JSON.stringify(answer);
       myEntry.timestamp = Date.now();
-      this.setStorageItem(PEER_PREFIX + this.instanceId, myEntry);
+      this.setStorageItem(this.peerKey(this.instanceId), myEntry);
       this.log("Wrote answer to localStorage");
     } catch (e) {
       this.log(`Error handling offer: ${e}`);
@@ -1125,19 +1135,19 @@ var P2PCoordinator = class {
   addIceCandidateToStorage(peerId, candidate) {
     const candidateJson = JSON.stringify(candidate);
     if (this.role === "leader") {
-      const peerEntry = this.getStorageItem(PEER_PREFIX + peerId);
+      const peerEntry = this.getStorageItem(this.peerKey(peerId));
       if (peerEntry) {
         if (!peerEntry.leaderIce.includes(candidateJson)) {
           peerEntry.leaderIce.push(candidateJson);
-          this.setStorageItem(PEER_PREFIX + peerId, peerEntry);
+          this.setStorageItem(this.peerKey(peerId), peerEntry);
         }
       }
     } else {
-      const myEntry = this.getStorageItem(PEER_PREFIX + this.instanceId);
+      const myEntry = this.getStorageItem(this.peerKey(this.instanceId));
       if (myEntry) {
         if (!myEntry.followerIce.includes(candidateJson)) {
           myEntry.followerIce.push(candidateJson);
-          this.setStorageItem(PEER_PREFIX + this.instanceId, myEntry);
+          this.setStorageItem(this.peerKey(this.instanceId), myEntry);
         }
       }
     }
@@ -1192,7 +1202,7 @@ var P2PCoordinator = class {
   async promoteToLeader() {
     this.log("Promoting to leader");
     this.closeAllConnections();
-    this.removeStorageItem(PEER_PREFIX + this.instanceId);
+    this.removeStorageItem(this.peerKey(this.instanceId));
     this.connectingPeers.clear();
     this.currentLeaderId = null;
     await this.tryBecomeLeader();
@@ -1207,7 +1217,7 @@ var P2PCoordinator = class {
         const leader = this.getLeader();
         if (leader && leader.id === this.instanceId) {
           leader.timestamp = Date.now();
-          this.setStorageItem(LEADER_KEY, leader);
+          this.setStorageItem(this.leaderKey, leader);
         }
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -1273,13 +1283,13 @@ var P2PCoordinator = class {
     }
   }
   getLeader() {
-    return this.getStorageItem(LEADER_KEY);
+    return this.getStorageItem(this.leaderKey);
   }
   getAllPeerEntries() {
     const peers = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!key?.startsWith(PEER_PREFIX))
+      if (!key?.startsWith(this.peerPrefix))
         continue;
       const peer = this.getStorageItem(key);
       if (peer) {
@@ -1293,11 +1303,11 @@ var P2PCoordinator = class {
     const leader = this.getLeader();
     if (leader && !this.isLeaderAlive(leader)) {
       this.log("Cleaning up dead leader entry");
-      this.removeStorageItem(LEADER_KEY);
+      this.removeStorageItem(this.leaderKey);
     }
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (!key?.startsWith(PEER_PREFIX))
+      if (!key?.startsWith(this.peerPrefix))
         continue;
       const peer = this.getStorageItem(key);
       if (peer && now - peer.timestamp > LEADER_TIMEOUT_MS * 3) {
@@ -1330,9 +1340,9 @@ var P2PCoordinator = class {
     this.stopPolling();
     this.closeAllConnections();
     if (this.role === "leader") {
-      this.removeStorageItem(LEADER_KEY);
+      this.removeStorageItem(this.leaderKey);
     }
-    this.removeStorageItem(PEER_PREFIX + this.instanceId);
+    this.removeStorageItem(this.peerKey(this.instanceId));
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Utilities
