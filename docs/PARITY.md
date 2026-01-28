@@ -11,7 +11,7 @@
 |-------|------------|-----------|-------------|
 | Chat | `onChat(user, message, flags, self, extra)` | ✅ | ✅ |
 | Command | `onCommand(user, command, message, flags, extra)` | ✅ | ✅ |
-| Whisper | `onWhisper(user, message, flags, self, extra)` | ⏳ | ❌ |
+| Whisper | `onWhisper(user, message, flags, self, extra)` | ✅ | ❌ |
 | Sub | `onSub(user, message, subTierInfo, extra)` | ✅ | ❌ |
 | Resub | `onResub(user, message, streakMonths, cumulativeMonths, subTierInfo, extra)` | ✅ | ✅ |
 | SubGift | `onSubGift(gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra)` | ✅ | ❌ |
@@ -25,11 +25,11 @@
 | Timeout | `onTimeout(timedOutUsername, durationInSeconds, extra)` | ✅ | ❌ |
 | MessageDeleted | `onMessageDeleted(id, extra)` | ✅ | ❌ |
 | ChatMode | `onChatMode(flags, channel)` | ✅ | ✅ |
-| Reward | `onReward(user, reward, cost, message, extra)` | ⏳ | ❌ |
-| Shoutout | `onShoutout(channel, viewerCount, extra)` | ⏳ | ❌ |
-| HypeTrain | `onHypeTrain(type, level, progress, goal, total, extra)` | ⏳ | ❌ |
-| Poll | `onPoll(type, title, choices, votes, timeRemaining, extra)` | ⏳ | ❌ |
-| Prediction | `onPrediction(type, title, outcomes, topPredictors, timeRemaining, extra)` | ⏳ | ❌ |
+| Reward | `onReward(user, reward, cost, message, extra)` | ✅ | ❌ |
+| Shoutout | `onShoutout(channel, viewerCount, timeRemaining, extra)` | ✅ | ❌ |
+| HypeTrain | `onHypeTrain(type, level, progress, goal, total, timeRemaining, extra)` | ✅ | ❌ |
+| Poll | `onPoll(type, title, choices, votes, timeRemaining, extra)` | ✅ | ❌ |
+| Prediction | `onPrediction(type, title, outcomes, topPredictors, timeRemaining, extra)` | ✅ | ❌ |
 | Connected | `onConnected(address, port, isFirstConnect)` | ✅ | ✅ |
 | Reconnect | `onReconnect(reconnectCount)` | ✅ | ❌ |
 
