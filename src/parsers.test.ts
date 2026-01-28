@@ -314,17 +314,20 @@ describe('parseP2PSignal', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('buildUserExtra', () => {
-  it('should build complete extra object', () => {
+  it('should build complete extra object (v1 parity)', () => {
     const msg = parseIRCMessage('@color=#FF0000;display-name=TestUser;user-id=12345;id=msg-abc;room-id=67890;tmi-sent-ts=1234567890123;badges=subscriber/12 :testuser!testuser@testuser.tmi.twitch.tv PRIVMSG #channel :Hello');
     const extra = buildUserExtra(msg);
 
-    expect(extra.id).toBe('12345');
+    // v1 parity: `id` is the message ID, not user ID
+    expect(extra.id).toBe('msg-abc');
+    expect(extra.userId).toBe('12345');
     expect(extra.username).toBe('testuser');
     expect(extra.displayName).toBe('TestUser');
     expect(extra.userColor).toBe('#FF0000');
     expect(extra.channel).toBe('channel');
     expect(extra.roomId).toBe('67890');
-    expect(extra.messageId).toBe('msg-abc');
-    expect(extra.badges.subscriber).toBe('12');
+    expect(extra.userBadges.subscriber).toBe('12');
+    expect(extra.timestamp).toBe('1234567890123');
+    expect(extra.userState['user-id']).toBe('12345');
   });
 });

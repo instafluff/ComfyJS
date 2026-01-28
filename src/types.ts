@@ -38,21 +38,22 @@ export interface UserFlags {
 }
 
 export interface UserExtra {
+  // v1 compatibility: `id` is the message ID
   id: string;
+  channel: string;
+  roomId: string;
+  messageType: string;
+  messageEmotes?: Record<string, string[]>;
+  isEmoteOnly: boolean;
+  userId: string;
   username: string;
   displayName: string;
   userColor: string;
-  channel: string;
-  roomId: string;
-  messageId: string;
-  timestamp: number;
-  isEmoteOnly: boolean;
-  messageType: string;
-  messageEmotes?: Record<string, string[]>;
-  badges: Record<string, string>;
-  badgeInfo: Record<string, string>;
-  flags: UserFlags;
+  userBadges: Record<string, string>;
+  userState: Record<string, string>; // Full IRC tags
   customRewardId?: string;
+  flags: string; // Message flags from Twitch (not UserFlags)
+  timestamp: string;
   sinceLastCommand?: CommandTimestamp;
 }
 

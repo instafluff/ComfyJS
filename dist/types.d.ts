@@ -25,20 +25,20 @@ export interface UserFlags {
 }
 export interface UserExtra {
     id: string;
+    channel: string;
+    roomId: string;
+    messageType: string;
+    messageEmotes?: Record<string, string[]>;
+    isEmoteOnly: boolean;
+    userId: string;
     username: string;
     displayName: string;
     userColor: string;
-    channel: string;
-    roomId: string;
-    messageId: string;
-    timestamp: number;
-    isEmoteOnly: boolean;
-    messageType: string;
-    messageEmotes?: Record<string, string[]>;
-    badges: Record<string, string>;
-    badgeInfo: Record<string, string>;
-    flags: UserFlags;
+    userBadges: Record<string, string>;
+    userState: Record<string, string>;
     customRewardId?: string;
+    flags: string;
+    timestamp: string;
     sinceLastCommand?: CommandTimestamp;
 }
 export interface CommandTimestamp {

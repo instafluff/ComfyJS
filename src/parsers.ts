@@ -210,21 +210,22 @@ export function buildUserExtra(msg: IRCMessage): UserExtra {
   const channel = msg.channel || '';
   
   return {
-    id: tags['user-id'] || '',
+    // v1 compatibility: `id` is the message ID (not user ID)
+    id: tags.id || '',
+    channel,
+    roomId: tags['room-id'] || '',
+    messageType: tags['msg-id'] || 'chat',
+    messageEmotes: parseEmotes(tags.emotes),
+    isEmoteOnly: tags['emote-only'] === '1',
+    userId: tags['user-id'] || '',
     username: msg.nick || tags.login || '',
     displayName: tags['display-name'] || msg.nick || '',
     userColor: tags.color || '',
-    channel,
-    roomId: tags['room-id'] || '',
-    messageId: tags.id || '',
-    timestamp: parseInt(tags['tmi-sent-ts'] || '0', 10) || Date.now(),
-    isEmoteOnly: tags['emote-only'] === '1',
-    messageType: tags['msg-id'] || 'chat',
-    messageEmotes: parseEmotes(tags.emotes),
-    badges: parseBadges(tags.badges),
-    badgeInfo: parseBadges(tags['badge-info']),
-    flags: parseUserFlags(tags, channel),
+    userBadges: parseBadges(tags.badges),
+    userState: tags, // Full tags for backward compatibility
     customRewardId: tags['custom-reward-id'],
+    flags: tags.flags || '',
+    timestamp: tags['tmi-sent-ts'] || String(Date.now()),
   };
 }
 
