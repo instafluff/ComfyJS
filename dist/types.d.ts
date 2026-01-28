@@ -59,6 +59,28 @@ export interface SubMysteryGiftExtra extends UserExtra {
     recipientCount: number;
     giftCount: number;
 }
+export interface RaidExtra {
+    channel: string;
+}
+export interface BanExtra {
+    roomId: string;
+    username: string;
+    bannedUserId: string;
+}
+export interface TimeoutExtra {
+    roomId: string;
+    username: string;
+    timedOutUserId: string;
+}
+export interface MessageDeletedExtra {
+    id: string;
+    roomId: string;
+    username: string;
+    message: string;
+}
+export interface JoinPartExtra {
+    channel: string;
+}
 export interface RewardExtra extends UserExtra {
     oderId: string;
     reward: string;
@@ -227,12 +249,12 @@ export type OnReconnectHandler = (reconnectCount: number) => void;
 export type OnChatHandler = (user: string, message: string, flags: UserFlags, self: boolean, extra: UserExtra) => void;
 export type OnCommandHandler = (user: string, command: string, message: string, flags: UserFlags, extra: UserExtra) => void;
 export type OnWhisperHandler = (user: string, message: string, flags: UserFlags, self: boolean, extra: UserExtra) => void;
-export type OnMessageDeletedHandler = (id: string, extra: UserExtra) => void;
-export type OnBanHandler = (bannedUsername: string, extra: UserExtra) => void;
-export type OnTimeoutHandler = (timedOutUsername: string, durationInSeconds: number, extra: UserExtra) => void;
-export type OnJoinHandler = (user: string, self: boolean, extra: UserExtra) => void;
-export type OnPartHandler = (user: string, self: boolean, extra: UserExtra) => void;
-export type OnRaidHandler = (user: string, viewers: number, extra: UserExtra) => void;
+export type OnMessageDeletedHandler = (id: string, extra: MessageDeletedExtra) => void;
+export type OnBanHandler = (bannedUsername: string, extra: BanExtra) => void;
+export type OnTimeoutHandler = (timedOutUsername: string, durationInSeconds: number, extra: TimeoutExtra) => void;
+export type OnJoinHandler = (user: string, self: boolean, extra: JoinPartExtra) => void;
+export type OnPartHandler = (user: string, self: boolean, extra: JoinPartExtra) => void;
+export type OnRaidHandler = (user: string, viewers: number, extra: RaidExtra) => void;
 export type OnSubHandler = (user: string, message: string, subTierInfo: SubTierInfo, extra: UserExtra) => void;
 export type OnResubHandler = (user: string, message: string, streakMonths: number, cumulativeMonths: number, subTierInfo: SubTierInfo, extra: UserExtra) => void;
 export type OnSubGiftHandler = (gifterUser: string, streakMonths: number, recipientUser: string, senderCount: number, subTierInfo: SubTierInfo, extra: SubGiftExtra) => void;

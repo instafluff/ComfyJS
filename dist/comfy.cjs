@@ -2030,7 +2030,11 @@ var ComfyJSImpl = class {
     const extra = buildUserExtra(msg);
     const bits = parseInt(msg.tags["bits"] || "0", 10);
     if (bits > 0 && !self) {
-      this.onCheer(username, message, bits, flags, extra);
+      const cheerExtra = {
+        ...extra,
+        subscriber: msg.tags["subscriber"] || ""
+      };
+      this.onCheer(username, message, bits, flags, cheerExtra);
       return;
     }
     const parsed = parseCommand(message);
@@ -2058,15 +2062,22 @@ var ComfyJSImpl = class {
   handleClearChat(msg) {
     const targetUser = msg.message || "";
     const duration = msg.tags["ban-duration"];
-    const extra = {
-      roomId: msg.tags["room-id"] || "",
-      username: targetUser,
-      bannedUserId: msg.tags["target-user-id"] || ""
-    };
+    const targetUserId = msg.tags["target-user-id"] || "";
+    const roomId = msg.tags["room-id"] || "";
     if (duration) {
-      this.onTimeout(targetUser, parseInt(duration, 10), extra);
+      const timeoutExtra = {
+        roomId,
+        username: targetUser,
+        timedOutUserId: targetUserId
+      };
+      this.onTimeout(targetUser, parseInt(duration, 10), timeoutExtra);
     } else if (targetUser) {
-      this.onBan(targetUser, extra);
+      const banExtra = {
+        roomId,
+        username: targetUser,
+        bannedUserId: targetUserId
+      };
+      this.onBan(targetUser, banExtra);
     }
   }
   handleClearMsg(msg) {
@@ -2154,7 +2165,8 @@ var ComfyJSImpl = class {
       }
       case "raid": {
         const viewers = parseInt(tags["msg-param-viewerCount"] || "0", 10);
-        this.onRaid(username, viewers, extra);
+        const raidExtra = { channel: msg.channel?.replace("#", "") || "" };
+        this.onRaid(username, viewers, raidExtra);
         break;
       }
     }

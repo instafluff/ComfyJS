@@ -563,7 +563,12 @@ class ComfyJSImpl implements ComfyJSInstance {
     // Check for cheers (bits)
     const bits = parseInt(msg.tags['bits'] || '0', 10);
     if (bits > 0 && !self) {
-      this.onCheer(username, message, bits, flags, extra);
+      // v1 parity: cheer extra has subscriber field
+      const cheerExtra = {
+        ...extra,
+        subscriber: msg.tags['subscriber'] || '',
+      };
+      this.onCheer(username, message, bits, flags, cheerExtra);
       return; // Cheers don't also trigger onChat in v1
     }
 
@@ -597,28 +602,37 @@ class ComfyJSImpl implements ComfyJSInstance {
   private handleClearChat(msg: IRCMessage): void {
     const targetUser = msg.message || '';
     const duration = msg.tags['ban-duration'];
-
-    const extra = {
-      roomId: msg.tags['room-id'] || '',
-      username: targetUser,
-      bannedUserId: msg.tags['target-user-id'] || '',
-    };
+    const targetUserId = msg.tags['target-user-id'] || '';
+    const roomId = msg.tags['room-id'] || '';
 
     if (duration) {
-      this.onTimeout(targetUser, parseInt(duration, 10), extra);
+      // v1 parity: timeout extra has timedOutUserId
+      const timeoutExtra = {
+        roomId,
+        username: targetUser,
+        timedOutUserId: targetUserId,
+      };
+      this.onTimeout(targetUser, parseInt(duration, 10), timeoutExtra);
     } else if (targetUser) {
-      this.onBan(targetUser, extra);
+      // v1 parity: ban extra has bannedUserId
+      const banExtra = {
+        roomId,
+        username: targetUser,
+        bannedUserId: targetUserId,
+      };
+      this.onBan(targetUser, banExtra);
     }
   }
 
   private handleClearMsg(msg: IRCMessage): void {
     const messageId = msg.tags['target-msg-id'] || '';
+    // v1 parity: minimal extra object
     const extra = {
       id: messageId,
       roomId: msg.tags['room-id'] || '',
       username: msg.tags['login'] || '',
       message: msg.message || '',
-    } as unknown as UserExtra;
+    };
 
     this.onMessageDeleted(messageId, extra);
   }
@@ -710,7 +724,9 @@ class ComfyJSImpl implements ComfyJSInstance {
 
       case 'raid': {
         const viewers = parseInt(tags['msg-param-viewerCount'] || '0', 10);
-        this.onRaid(username, viewers, extra);
+        // v1 parity: raid extra only contains channel
+        const raidExtra = { channel: msg.channel?.replace('#', '') || '' };
+        this.onRaid(username, viewers, raidExtra);
         break;
       }
     }
