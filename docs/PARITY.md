@@ -317,4 +317,8 @@ onMessageDeleted(id, extra)
 | onTimeout extra uses wrong field name | Low | ✅ Fixed | Uses timedOutUserId per v1 |
 | onJoin/onPart extra had full UserExtra | Low | ✅ Fixed | Changed to `{ channel }` only |
 | Extra type interfaces inconsistent | Low | ✅ Fixed | Added RaidExtra, BanExtra, TimeoutExtra, JoinPartExtra |
+| onShoutout missing timeRemaining | Medium | ✅ Fixed | Added timeRemaining parameter |
+| onHypeTrain missing timeRemaining | Medium | ✅ Fixed | Added timeRemaining parameter |
+| onPoll had wrong signature | Medium | ✅ Fixed | Changed to (type, title, choices[], votes[], timeRemaining, extra) |
+| onPrediction had wrong signature | Medium | ✅ Fixed | Changed to (type, title, outcomes[], topPredictors[][], timeRemaining, extra) |
 

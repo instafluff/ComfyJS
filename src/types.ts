@@ -366,10 +366,26 @@ export type OnGiftSubContinueHandler = (user: string, sender: string, extra: Use
 export type OnCheerHandler = (user: string, message: string, bits: number, flags: UserFlags, extra: UserExtra) => void;
 export type OnChatModeHandler = (flags: ChatModeFlags, channel: string) => void;
 export type OnRewardHandler = (user: string, reward: string, cost: number, message: string, extra: RewardExtra) => void;
-export type OnShoutoutHandler = (channelDisplayName: string, viewerCount: number, extra: UserExtra) => void;
-export type OnHypeTrainHandler = (type: HypeTrainEventType, level: number, progress: number, goal: number, total: number, extra: HypeTrainExtra) => void;
-export type OnPollHandler = (type: PollEventType, title: string, choices: PollChoice[], extra: PollExtra) => void;
-export type OnPredictionHandler = (type: PredictionEventType, title: string, outcomes: PredictionOutcome[], extra: PredictionExtra) => void;
+// v1 parity: shoutout extra has EventSub fields
+export interface ShoutoutExtra {
+  channelId: string;
+  channelName: string;
+  channelDisplayName: string;
+  shouterChannelId: string;
+  shouterChannelName: string;
+  shouterChannelDisplayName: string;
+  viewerCount: number;
+  startedAt: string;
+  cooldownEndsAt: string;
+  targetCooldownEndsAt: string;
+}
+
+export type OnShoutoutHandler = (channelDisplayName: string, viewerCount: number, timeRemaining: number, extra: ShoutoutExtra) => void;
+export type OnHypeTrainHandler = (type: HypeTrainEventType, level: number, progress: number, goal: number, total: number, timeRemaining: number, extra: HypeTrainExtra) => void;
+// v1 parity: onPoll has simplified arrays instead of PollChoice objects
+export type OnPollHandler = (type: PollEventType | 'close' | 'archive' | 'delete' | 'unknown', title: string, choices: string[], votes: number[], timeRemaining: number, extra: PollExtra) => void;
+// v1 parity: onPrediction has simplified arrays
+export type OnPredictionHandler = (type: PredictionEventType, title: string, outcomes: string[], topPredictors: unknown[][], timeRemaining: number, extra: PredictionExtra) => void;
 
 // v2 New Events
 export type OnFollowHandler = (user: string, extra: UserExtra) => void;
