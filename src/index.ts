@@ -560,6 +560,13 @@ class ComfyJSImpl implements ComfyJSInstance {
     const flags = parseUserFlags(msg.tags, channel);
     const extra = buildUserExtra(msg);
 
+    // Check for cheers (bits)
+    const bits = parseInt(msg.tags['bits'] || '0', 10);
+    if (bits > 0 && !self) {
+      this.onCheer(username, message, bits, flags, extra);
+      return; // Cheers don't also trigger onChat in v1
+    }
+
     // Check for commands
     const parsed = parseCommand(message);
 

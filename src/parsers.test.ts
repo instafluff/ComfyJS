@@ -257,6 +257,20 @@ describe('parseCommand', () => {
     const result = parseCommand('!SHOUT');
     expect(result?.command).toBe('shout');
   });
+
+  it('should parse @user !command format', () => {
+    const result = parseCommand('@SomeUser !hello world');
+    expect(result).toEqual({ command: 'hello', args: 'world' });
+  });
+
+  it('should parse @user !command without args', () => {
+    const result = parseCommand('@SomeUser !ping');
+    expect(result).toEqual({ command: 'ping', args: '' });
+  });
+
+  it('should return null for @ mention without command', () => {
+    expect(parseCommand('@SomeUser hello world')).toBeNull();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

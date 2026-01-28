@@ -289,15 +289,25 @@ export function parseSubTier(plan: string): { prime: boolean; plan: string; plan
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function parseCommand(message: string, prefix = '!'): { command: string; args: string } | null {
-  if (!message.startsWith(prefix)) return null;
-  
-  const spaceIdx = message.indexOf(' ');
-  if (spaceIdx === -1) {
-    return { command: message.slice(prefix.length).toLowerCase(), args: '' };
+  // Standard command: !command args
+  if (message.startsWith(prefix)) {
+    const spaceIdx = message.indexOf(' ');
+    if (spaceIdx === -1) {
+      return { command: message.slice(prefix.length).toLowerCase(), args: '' };
+    }
+    return {
+      command: message.slice(prefix.length, spaceIdx).toLowerCase(),
+      args: message.slice(spaceIdx + 1),
+    };
   }
   
-  return {
-    command: message.slice(prefix.length, spaceIdx).toLowerCase(),
-    args: message.slice(spaceIdx + 1),
-  };
+  // Alternative format: @user !command args (common in replies)
+  const parts = message.split(' ');
+  if (parts.length >= 2 && parts[0].startsWith('@') && parts[1].startsWith(prefix)) {
+    const command = parts[1].slice(prefix.length).toLowerCase();
+    const args = parts.slice(2).join(' ');
+    return { command, args };
+  }
+  
+  return null;
 }

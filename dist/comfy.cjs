@@ -218,16 +218,23 @@ function parseSubTier(plan) {
   return { prime: isPrime, plan: tier, planName };
 }
 function parseCommand(message, prefix = "!") {
-  if (!message.startsWith(prefix))
-    return null;
-  const spaceIdx = message.indexOf(" ");
-  if (spaceIdx === -1) {
-    return { command: message.slice(prefix.length).toLowerCase(), args: "" };
+  if (message.startsWith(prefix)) {
+    const spaceIdx = message.indexOf(" ");
+    if (spaceIdx === -1) {
+      return { command: message.slice(prefix.length).toLowerCase(), args: "" };
+    }
+    return {
+      command: message.slice(prefix.length, spaceIdx).toLowerCase(),
+      args: message.slice(spaceIdx + 1)
+    };
   }
-  return {
-    command: message.slice(prefix.length, spaceIdx).toLowerCase(),
-    args: message.slice(spaceIdx + 1)
-  };
+  const parts = message.split(" ");
+  if (parts.length >= 2 && parts[0].startsWith("@") && parts[1].startsWith(prefix)) {
+    const command = parts[1].slice(prefix.length).toLowerCase();
+    const args = parts.slice(2).join(" ");
+    return { command, args };
+  }
+  return null;
 }
 
 // src/irc.ts
@@ -2019,6 +2026,11 @@ var ComfyJSImpl = class {
     const self = msg.prefix?.split("!")[0]?.toLowerCase() === this.irc?.username;
     const flags = parseUserFlags(msg.tags, channel);
     const extra = buildUserExtra(msg);
+    const bits = parseInt(msg.tags["bits"] || "0", 10);
+    if (bits > 0 && !self) {
+      this.onCheer(username, message, bits, flags, extra);
+      return;
+    }
     const parsed = parseCommand(message);
     if (!self && parsed) {
       const sinceLastCmd = getTimePeriod(parsed.command, msg.tags["user-id"] || null);
