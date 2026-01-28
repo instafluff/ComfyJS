@@ -28,7 +28,7 @@
 | IRC Parsers | `src/parsers.ts` | ~305 | ✅ Complete + Tests |
 | IRC WebSocket Client | `src/irc.ts` | ~330 | ✅ Complete + Tests |
 | EventSub WebSocket | `src/eventsub.ts` | ~330 | ✅ Complete |
-| P2P Coordination | `src/p2p.ts` | ~715 | ✅ Complete (localStorage + WebRTC) |
+| P2P Coordination | `src/p2p.ts` | ~730 | ⏳ Pending OBS testing |
 | Twitch REST API | `src/api.ts` | ~280 | ✅ Complete |
 | Main Entry Point | `src/index.ts` | ~1000 | ✅ Complete |
 | **Total** | | **~3075** | |
@@ -49,16 +49,17 @@
 
 | Test File | Tests | Status |
 |-----------|-------|--------|
-| `src/parsers.test.ts` | 38 | ✅ All passing |
+| `src/parsers.test.ts` | 41 | ✅ All passing |
 | `src/irc.test.ts` | 13 | ✅ All passing |
-| **Total** | **51** | ✅ |
+| **Total** | **54** | ✅ |
 
 ### ✅ Examples
 
 | File | Purpose |
-|------|---------|
+|------|--------|
 | `examples/v2-test.html` | Browser test page with full UI |
 | `examples/test-node.mjs` | Node.js CLI test script |
+| `examples/live-test.mjs` | Live IRC parity verification |
 
 ---
 
@@ -320,16 +321,17 @@ node examples/test-node.mjs instafluff oauth:your_token_here
 
 ### High Priority
 
-- [ ] **Real-world IRC testing** - Verify connection and parsing works with live Twitch
+- [x] **Real-world IRC testing** - ✅ Verified with live Twitch (xqc channel)
 - [ ] **Real-world EventSub testing** - Verify channel points, polls, etc. work
-- [ ] **P2P signaling validation** - Test if IRC signaling actually works (may need alternative)
+- [x] **P2P signaling validation** - ✅ localStorage approach works in browsers
+- [ ] **P2P OBS testing** - Test in real OBS browser sources
 - [ ] **Integration test** - Full end-to-end with real Twitch account
 
 ### Medium Priority
 
 - [ ] **More unit tests** - EventSub, P2P, API modules
 - [ ] **Update README.md** - Usage docs for v2
-- [ ] **Clean up v1 files** - Archive app.js, remove old builds
+- [x] **Clean up v1 files** - ✅ Archived to archive/v1/
 - [ ] **npm publish config** - Verify package.json exports
 
 ### Low Priority
@@ -350,3 +352,6 @@ node examples/test-node.mjs instafluff oauth:your_token_here
 | 2026-01-28 | Added source maps to all builds |
 | 2026-01-28 | Added browser and Node.js test examples |
 | 2026-01-28 | Updated PLAN.md with implementation status |
+| 2026-01-28 | Replaced IRC P2P signaling with localStorage approach |
+| 2026-01-28 | Added live-test.mjs, verified IRC parity |
+| 2026-01-28 | Fixed UserExtra parity (54 tests passing) |
