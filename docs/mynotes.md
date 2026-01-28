@@ -1,0 +1,4 @@
+- We can probably even get rid of the tmi.js dependency by handling the websockets and IRC ourselves
+- The reference for these Twitch APIs are at https://dev.twitch.tv/docs/
+- It needs to be as clean and simple in code as possible because if the codebase gets very large and bloated, it will be difficult to maintain and figure out what's going on. If anything it should be clean and potentially even simpler than the original code.
+- We really need to figure out and ensure that everything is working properly and meets parity

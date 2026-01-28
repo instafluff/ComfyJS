@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ComfyJS v2 Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { color: #9146ff; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; color: #aaa; }
+    input, button {
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      background: #16213e;
+      color: #fff;
+    }
+    button {
+      background: #9146ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover { background: #7c3aed; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .btn-disconnect { background: #dc2626; }
+    .btn-disconnect:hover { background: #b91c1c; }
+    #log {
+      background: #0f0f23;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 15px;
+      height: 400px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .log-entry { margin-bottom: 5px; }
+    .log-chat { color: #60a5fa; }
+    .log-command { color: #fbbf24; }
+    .log-reward { color: #f472b6; }
+    .log-sub { color: #34d399; }
+    .log-system { color: #a78bfa; }
+    .log-error { color: #f87171; }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status-connected { background: #166534; color: #86efac; }
+    .status-disconnected { background: #7f1d1d; color: #fca5a5; }
+    .status-connecting { background: #854d0e; color: #fde047; }
+    .message-form {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .message-form input { flex: 1; }
+    .info-box {
+      background: #1e293b;
+      border-left: 4px solid #9146ff;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .info-box code {
+      background: #334155;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 ComfyJS v2 Test Page</h1>
+  
+  <div class="info-box">
+    <strong>How to use:</strong><br>
+    1. Enter your Twitch channel name<br>
+    2. Get an OAuth token from <a href="https://twitchapps.com/tmi/" target="_blank" style="color: #9146ff;">twitchapps.com/tmi</a><br>
+    3. Click "Connect" to start receiving chat events<br>
+    4. Try commands like <code>!hello</code> in your chat
+  </div>
+
+  <div class="form-group">
+    <label>Status</label>
+    <span id="status" class="status status-disconnected">Disconnected</span>
+    <span id="p2pStatus" class="status" style="margin-left: 10px; background: #334155; color: #94a3b8;">P2P: --</span>
+  </div>
+
+  <div class="form-group">
+    <label for="channel">Channel</label>
+    <input type="text" id="channel" placeholder="your_channel_name">
+  </div>
+
+  <div class="form-group">
+    <label for="oauth">OAuth Token (optional - for sending messages)</label>
+    <input type="password" id="oauth" placeholder="oauth:abc123...">
+  </div>
+
+  <div class="form-group">
+    <button id="connectBtn" onclick="connect()">Connect</button>
+    <button id="disconnectBtn" class="btn-disconnect" onclick="disconnect()" disabled>Disconnect</button>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <div class="message-form">
+    <input type="text" id="messageInput" placeholder="Type a message to send..." disabled>
+    <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
+  </div>
+
+  <h3>Event Log</h3>
+  <div id="log"></div>
+
+  <!-- Load ComfyJS v2 -->
+  <script src="../dist/comfy.min.js"></script>
+  <script>
+    const logEl = document.getElementById('log');
+    const statusEl = document.getElementById('status');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function log(message, type = 'system') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span style="color:#666">[${time}]</span> ${message}`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(status) {
+      statusEl.className = `status status-${status}`;
+      statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Set up ComfyJS event handlers
+    ComfyJS.default.onConnected = (address, port, isFirst) => {
+      log(`Connected to ${address}:${port} (first: ${isFirst})`, 'system');
+      setStatus('connected');
+      connectBtn.disabled = true;
+      disconnectBtn.disabled = false;
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+    };
+
+    ComfyJS.default.onReconnect = (count) => {
+      log(`Reconnecting... attempt ${count}`, 'system');
+      setStatus('connecting');
+    };
+
+    ComfyJS.default.onChat = (user, message, flags, self, extra) => {
+      const badges = [];
+      if (flags.broadcaster) badges.push('📺');
+      if (flags.mod) badges.push('⚔️');
+      if (flags.vip) badges.push('💎');
+      if (flags.subscriber) badges.push('⭐');
+      const badgeStr = badges.length ? badges.join('') + ' ' : '';
+      log(`${badgeStr}<strong>${escapeHtml(user)}</strong>: ${escapeHtml(message)}`, 'chat');
+    };
+
+    ComfyJS.default.onCommand = (user, command, message, flags, extra) => {
+      log(`<strong>${escapeHtml(user)}</strong> used command <strong>!${escapeHtml(command)}</strong> ${message ? `with args: ${escapeHtml(message)}` : ''}`, 'command');
+    };
+
+    ComfyJS.default.onReward = (user, reward, cost, message, extra) => {
+      log(`🎁 <strong>${escapeHtml(user)}</strong> redeemed <strong>${escapeHtml(reward)}</strong> for ${cost} points${message ? `: ${escapeHtml(message)}` : ''}`, 'reward');
+    };
+
+    ComfyJS.default.onSub = (user, message, subTierInfo, extra) => {
+      log(`🎉 <strong>${escapeHtml(user)}</strong> subscribed! (${subTierInfo.planName})`, 'sub');
+    };
+
+    ComfyJS.default.onResub = (user, message, streakMonths, cumulativeMonths, subTierInfo, extra) => {
+      log(`🎉 <strong>${escapeHtml(user)}</strong> resubscribed for ${cumulativeMonths} months! (${subTierInfo.planName})`, 'sub');
+    };
+
+    ComfyJS.default.onSubGift = (gifter, streakMonths, recipient, senderCount, subTierInfo, extra) => {
+      log(`🎁 <strong>${escapeHtml(gifter)}</strong> gifted a sub to <strong>${escapeHtml(recipient)}</strong>! (${subTierInfo.planName})`, 'sub');
+    };
+
+    ComfyJS.default.onCheer = (user, message, bits, flags, extra) => {
+      log(`💎 <strong>${escapeHtml(user)}</strong> cheered ${bits} bits! ${message ? escapeHtml(message) : ''}`, 'reward');
+    };
+
+    ComfyJS.default.onRaid = (user, viewers, extra) => {
+      log(`🚀 <strong>${escapeHtml(user)}</strong> is raiding with ${viewers} viewers!`, 'system');
+    };
+
+    ComfyJS.default.onJoin = (user, self, extra) => {
+      if (!self) {
+        log(`➡️ ${escapeHtml(user)} joined`, 'system');
+      }
+    };
+
+    ComfyJS.default.onPart = (user, self, extra) => {
+      if (!self) {
+        log(`⬅️ ${escapeHtml(user)} left`, 'system');
+      }
+    };
+
+    ComfyJS.default.onError = (error) => {
+      log(`Error: ${escapeHtml(error.message || String(error))}`, 'error');
+    };
+
+    ComfyJS.default.onHypeTrain = (type, level, progress, goal, total, timeRemaining, extra) => {
+      log(`🚂 Hype Train ${type}: Level ${level}, ${progress}/${goal}`, 'reward');
+    };
+
+    ComfyJS.default.onPoll = (type, title, choices, votes, timeRemaining, extra) => {
+      log(`📊 Poll ${type}: "${escapeHtml(title)}" - ${choices.map((c, i) => `${c}(${votes[i]})`).join(', ')}`, 'reward');
+    };
+
+    ComfyJS.default.onPrediction = (type, title, outcomes, topPredictors, timeRemaining, extra) => {
+      log(`🔮 Prediction ${type}: "${escapeHtml(title)}" - ${outcomes.join(' vs ')}`, 'reward');
+    };
+
+    // Connect/Disconnect functions
+    async function connect() {
+      const channel = document.getElementById('channel').value.trim();
+      const oauth = document.getElementById('oauth').value.trim();
+
+      if (!channel) {
+        log('Please enter a channel name', 'error');
+        return;
+      }
+
+      try {
+        setStatus('connecting');
+        connectBtn.disabled = true;
+        log(`Connecting to #${channel}...`, 'system');
+        
+        // Use anonymous connection if no oauth provided
+        const username = oauth ? channel : 'justinfan' + Math.floor(Math.random() * 100000);
+        const password = oauth || undefined;
+        
+        await ComfyJS.default.Init(username, password, channel, true);
+      } catch (err) {
+        log(`Connection failed: ${err.message}`, 'error');
+        setStatus('disconnected');
+        connectBtn.disabled = false;
+      }
+    }
+
+    function disconnect() {
+      ComfyJS.default.Disconnect();
+      log('Disconnected', 'system');
+      setStatus('disconnected');
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      messageInput.disabled = true;
+      sendBtn.disabled = true;
+    }
+
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+      
+      const channel = document.getElementById('channel').value.trim();
+      ComfyJS.default.Say(message, channel);
+      messageInput.value = '';
+    }
+
+    function clearLog() {
+      logEl.innerHTML = '';
+    }
+
+    // Enter key to send
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Initial log
+    log('ComfyJS v2 loaded. Enter your channel and click Connect.', 'system');
+    log(`Version: ${ComfyJS.default.version()}`, 'system');
+    
+    // Update P2P status periodically
+    function updateP2PStatus() {
+      const p2pStatusEl = document.getElementById('p2pStatus');
+      const role = ComfyJS.default.p2pRole();
+      const id = ComfyJS.default.p2pId();
+      const followers = ComfyJS.default.p2pFollowerCount();
+      
+      if (!role) {
+        p2pStatusEl.textContent = 'P2P: --';
+        p2pStatusEl.style.background = '#334155';
+        p2pStatusEl.style.color = '#94a3b8';
+      } else if (role === 'leader') {
+        p2pStatusEl.textContent = `P2P: LEADER (${followers} followers)`;
+        p2pStatusEl.style.background = '#166534';
+        p2pStatusEl.style.color = '#86efac';
+      } else if (role === 'follower') {
+        p2pStatusEl.textContent = 'P2P: FOLLOWER';
+        p2pStatusEl.style.background = '#854d0e';
+        p2pStatusEl.style.color = '#fde047';
+      } else {
+        p2pStatusEl.textContent = 'P2P: STANDALONE';
+        p2pStatusEl.style.background = '#475569';
+        p2pStatusEl.style.color = '#cbd5e1';
+      }
+      
+      // Add instance ID tooltip
+      if (id) {
+        p2pStatusEl.title = `Instance ID: ${id}`;
+      }
+    }
+    
+    setInterval(updateP2PStatus, 1000);
+  </script>
+</body>
+</html>

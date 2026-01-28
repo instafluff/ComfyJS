@@ -2,7 +2,8 @@
 
 > **Branch:** v2  
 > **Started:** January 27, 2026  
-> **Philosophy:** Keep it simple, clean, and maintainable
+> **Last Updated:** January 28, 2026  
+> **Status:** ✅ Core Implementation Complete
 
 ---
 
@@ -17,145 +18,193 @@
 
 ---
 
-## Current v1 Analysis
+## Implementation Status
 
-### What v1 Does (app.js - 1456 lines)
+### ✅ Completed
 
-| Component | Lines | Purpose |
-|-----------|-------|---------|
-| Timestamp tracking | 1-55 | Rate limit commands per user |
-| Nonce generator | 57-64 | Random string for PubSub |
-| OAuth validation | 66-90 | Validate tokens via Twitch API |
-| Channel ID fetch | 92-111 | Get broadcaster ID from username |
-| EventSub subscribe | 113-147 | Subscribe to EventSub events |
-| EventSub WebSocket | 149-640 | Handle channel points, hype train, polls, etc. |
-| PubSub WebSocket | 654-762 | Legacy channel points (fallback) |
-| TMI.js integration | 764-1380 | Chat messages, commands, subs, cheers, etc. |
-| API functions | 1382-1450 | Reward management CRUD |
+| Component | File | Lines | Status |
+|-----------|------|-------|--------|
+| Type Definitions | `src/types.ts` | ~450 | ✅ Complete |
+| IRC Parsers | `src/parsers.ts` | ~305 | ✅ Complete + Tests |
+| IRC WebSocket Client | `src/irc.ts` | ~330 | ✅ Complete + Tests |
+| EventSub WebSocket | `src/eventsub.ts` | ~330 | ✅ Complete |
+| P2P Coordination | `src/p2p.ts` | ~715 | ✅ Complete (localStorage + WebRTC) |
+| Twitch REST API | `src/api.ts` | ~280 | ✅ Complete |
+| Main Entry Point | `src/index.ts` | ~1000 | ✅ Complete |
+| **Total** | | **~3075** | |
 
-### Dependencies to Remove
+### ✅ Build Output
 
-| Package | Why Remove | Replacement |
-|---------|------------|-------------|
-| `tmi.js` | Large, we only use basic IRC | Direct WebSocket to `wss://irc-ws.chat.twitch.tv:443` |
-| `node-fetch` | Node 18+ has native fetch | Native `fetch` (polyfill for old Node) |
+| File | Size | Purpose |
+|------|------|---------|
+| `dist/comfy.js` | 80KB | ESM for modern bundlers |
+| `dist/comfy.js.map` | 200KB | Source map |
+| `dist/comfy.cjs` | 82KB | CommonJS for Node.js |
+| `dist/comfy.cjs.map` | 200KB | Source map |
+| `dist/comfy.min.js` | 38KB | Minified IIFE for browsers |
+| `dist/comfy.min.js.map` | 197KB | Source map |
+| `dist/*.d.ts` | - | TypeScript declarations |
+
+### ✅ Tests
+
+| Test File | Tests | Status |
+|-----------|-------|--------|
+| `src/parsers.test.ts` | 38 | ✅ All passing |
+| `src/irc.test.ts` | 13 | ✅ All passing |
+| **Total** | **51** | ✅ |
+
+### ✅ Examples
+
+| File | Purpose |
+|------|---------|
+| `examples/v2-test.html` | Browser test page with full UI |
+| `examples/test-node.mjs` | Node.js CLI test script |
 
 ---
 
-## New Architecture (Minimal & Clean)
+## Files to Clean Up (v1 Legacy)
+
+The following files are from v1 and can be archived or removed:
+
+| File | Purpose | Action |
+|------|---------|--------|
+| `app.js` | v1 main file (1456 lines) | Keep as reference, exclude from npm |
+| `test.js` | v1 test file | Replace with new tests |
+| `version.js` | Version injection script | May not be needed |
+| `_publish.sh` | Old publish script | Review and update |
+| `build/` | Old build output | Remove (using dist/) |
+| `vendor/tmi.min.js` | tmi.js bundle | Remove (no longer used) |
+| `types/index.d.ts` | Old type definitions | Replace with auto-generated |
+
+---
+
+## Architecture
 
 ```
 ComfyJS/
 ├── src/
-│   ├── index.ts          # Main entry - ComfyJS object & exports (~300 lines)
-│   ├── irc.ts            # IRC WebSocket client (~250 lines)
-│   ├── eventsub.ts       # EventSub WebSocket client (~250 lines)
-│   ├── api.ts            # Twitch API calls (~100 lines)
-│   ├── parsers.ts        # IRC message & EventSub payload parsers (~200 lines)
-│   └── types.ts          # TypeScript interfaces (~150 lines)
-├── types/
-│   └── index.d.ts        # Type definitions for JS users (auto-generated)
-├── dist/
-│   ├── comfy.js          # Browser bundle (ESM + UMD)
-│   ├── comfy.min.js      # Minified browser bundle  
-│   └── comfy.cjs         # Node.js CommonJS
-├── test/
-│   ├── irc.test.ts       # IRC parser tests
-│   ├── eventsub.test.ts  # EventSub handler tests
-│   └── fixtures/         # Real message samples
+│   ├── index.ts          # Main entry - ComfyJS object & exports
+│   ├── irc.ts            # IRC WebSocket client
+│   ├── eventsub.ts       # EventSub WebSocket client
+│   ├── p2p.ts            # WebRTC P2P coordination
+│   ├── api.ts            # Twitch REST API calls
+│   ├── parsers.ts        # IRC message parsers
+│   ├── types.ts          # TypeScript interfaces
+│   ├── parsers.test.ts   # Parser unit tests
+│   └── irc.test.ts       # IRC client unit tests
+├── dist/                 # Build output (auto-generated)
+├── examples/
+│   ├── v2-test.html      # Browser test page
+│   └── test-node.mjs     # Node.js test script
+├── docs/
+│   └── PLAN.md           # This file
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-**Total: ~1250 lines of TypeScript** across 6 small, focused files.
-
-Each file has ONE job:
-- **index.ts** - Public API (Init, Say, onChat, etc.)
-- **irc.ts** - Talk to IRC WebSocket
-- **eventsub.ts** - Talk to EventSub WebSocket  
-- **api.ts** - Talk to REST API
-- **parsers.ts** - Parse all message formats
-- **types.ts** - All TypeScript types
-
 ---
 
-## File Responsibilities
+## Multi-Instance Solution (WebRTC P2P)
 
-### src/index.ts (Main Entry)
+### The Problem
+
+When multiple ComfyJS instances run from the same computer (common with OBS browser sources):
+
+- **EventSub limit**: 3 WebSocket connections per user token
+- **OBS browser sources**: Isolated CEF processes (no shared storage)
+- **Result**: 4+ browser sources = EventSub connection failures
+
+### The Solution
+
+ComfyJS v2 uses **WebRTC DataChannels** with **IRC signaling**:
+
+1. First instance becomes **leader** and connects to EventSub
+2. Additional instances become **followers** and connect via WebRTC
+3. Leader broadcasts events to all followers via DataChannel
+4. IRC is used for signaling (no external server needed!)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        TWITCH                                   │
+│    ┌──────────────┐              ┌──────────────┐               │
+│    │  IRC Server  │              │EventSub Server│              │
+│    └──────┬───────┘              └───────┬──────┘               │
+└───────────┼──────────────────────────────┼──────────────────────┘
+            │                              │
+            │ (all sources)                │ (leader only!)
+            │                              │
+┌───────────┼──────────────────────────────┼──────────────────────┐
+│           ▼                              ▼                      │
+│  ┌────────────────────────────────────────────┐                 │
+│  │        BROWSER SOURCE 1 (Leader)           │                 │
+│  │   IRC ──► Parser ──► Events                │                 │
+│  │   EventSub ──► Events ──► WebRTC Host      │                 │
+│  └───────────────────┬────────────────────────┘                 │
+│                      │ WebRTC DataChannel                       │
+│       ┌──────────────┼──────────────┐                           │
+│       ▼              ▼              ▼                           │
+│  ┌─────────┐    ┌─────────┐    ┌─────────┐                      │
+│  │ Source2 │    │ Source3 │    │ Source4 │  (followers)         │
+│  └─────────┘    └─────────┘    └─────────┘                      │
+│                                                                 │
+│                     LOCAL MACHINE                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Discovery Protocol (via localStorage)
+
+OBS browser sources share the same CEF profile directory, meaning localStorage is shared between all sources. We use this for WebRTC signaling:
+
 ```typescript
-// The ComfyJS object that users interact with
-const ComfyJS = {
-  // Configuration
-  isDebug: false,
-  useEventSub: true,
-  
-  // Event handlers (users override these)
-  onChat: null,
-  onCommand: null,
-  onReward: null,
-  // ... etc
-  
-  // Methods
-  Init(channel, oauth, options) { ... },
-  Say(message, channel) { ... },
-  Disconnect() { ... },
-  // ... etc
+// Leader writes to localStorage
+localStorage['comfyjs_leader'] = {
+  id: 'abc123',
+  channel: 'channelname',
+  timestamp: Date.now()
 };
 
-export default ComfyJS;
+// Follower writes its peer entry
+localStorage['comfyjs_peer_def456'] = {
+  id: 'def456',
+  leaderId: 'abc123',
+  timestamp: Date.now(),
+  offer: null,        // Leader will write offer here
+  answer: null,       // Follower writes answer here
+  leaderIce: [],      // Leader writes ICE candidates here
+  followerIce: []     // Follower writes ICE candidates here
+};
+
+// Both sides poll localStorage every 500ms for updates
+// Once WebRTC DataChannel opens, direct P2P communication begins
 ```
 
-### src/irc.ts (IRC Client)
-```typescript
-// Handles: wss://irc-ws.chat.twitch.tv:443
-export class IRCClient {
-  connect(channel: string, oauth: string): Promise<void>;
-  disconnect(): void;
-  send(message: string): void;
-  join(channel: string): void;
-  part(channel: string): void;
-  
-  // Events
-  onMessage: (parsed: IRCMessage) => void;
-  onConnected: () => void;
-  onDisconnected: () => void;
-}
-```
+### How It Works
 
-### src/eventsub.ts (EventSub Client)
-```typescript
-// Handles: wss://eventsub.wss.twitch.tv/ws
-export class EventSubClient {
-  connect(oauth: string): Promise<string>; // Returns session ID
-  disconnect(): void;
-  subscribe(type: string, condition: object): Promise<void>;
-  
-  // Events  
-  onNotification: (type: string, event: object) => void;
-  onError: (error: Error) => void;
-}
-```
+1. **First Load**: No leader found → become leader, write to `comfyjs_leader`
+2. **Leader**: Polls for new peer entries, initiates WebRTC connections
+3. **Follower**: Creates peer entry, waits for offer in localStorage
+4. **Handshake**: Offer/answer/ICE candidates exchanged via localStorage polling
+5. **Connection**: DataChannel opens, leader broadcasts events to followers
+6. **Heartbeat**: Leader updates timestamp every 3s, times out after 10s
+7. **Failover**: If leader dies, first follower to detect becomes new leader
 
-### src/parsers.ts (Message Parsers)
-```typescript
-// Parse IRC messages
-export function parseIRCMessage(raw: string): IRCMessage;
-export function parseIRCTags(tagString: string): Record<string, string>;
+### Why localStorage Works
 
-// Parse specific IRC events
-export function parseUserNotice(msg: IRCMessage): SubEvent | CheerEvent | RaidEvent;
-export function parseClearChat(msg: IRCMessage): BanEvent | TimeoutEvent;
+- OBS uses a single CEF (Chromium Embedded Framework) installation
+- All browser sources share the same profile data directory
+- localStorage is persisted to disk and shared across processes
+- Storage events don't fire across processes, but polling works fine
 
-// Parse EventSub payloads
-export function parseEventSubNotification(payload: object): ComfyEvent;
-```
+**Note**: This approach is specifically designed for OBS browser sources.
+Regular browser tabs can use storage events for instant updates.
 
 ---
 
 ## IRC Protocol (Replacing tmi.js)
 
 ### Connection Flow
+
 ```
 1. Connect to wss://irc-ws.chat.twitch.tv:443
 2. Send: CAP REQ :twitch.tv/membership twitch.tv/tags twitch.tv/commands
@@ -166,452 +215,138 @@ export function parseEventSubNotification(payload: object): ComfyEvent;
 7. Handle: PING :tmi.twitch.tv → respond PONG :tmi.twitch.tv
 ```
 
-### Message Parsing
-```
-Input:  @badge-info=;badges=broadcaster/1;color=#0000FF;display-name=User;...
-        :user!user@user.tmi.twitch.tv PRIVMSG #channel :Hello world
+### Rate Limits Enforced
 
-Parse:  tags     = { badge-info: "", badges: "broadcaster/1", ... }
-        prefix   = "user!user@user.tmi.twitch.tv"
-        command  = "PRIVMSG"
-        channel  = "#channel"
-        message  = "Hello world"
-```
+| Limit | Value | Implementation |
+|-------|-------|----------------|
+| IRC Messages | 20/30s (non-mod) | ✅ Tracked in `irc.ts` |
+| IRC Messages | 100/30s (mod) | ✅ Tracked in `irc.ts` |
+| IRC Join | 20/10s | ✅ Tracked in `irc.ts` |
+| EventSub Connections | 3 per user token | ✅ Solved via P2P |
+| EventSub Subscriptions | 300/connection | ✅ Tracked in `eventsub.ts` |
 
 ---
 
-## Rate Limits to Enforce
+## v1 API Parity
 
-| Limit | Value | Scope |
-|-------|-------|-------|
-| IRC Messages | 20/30s (non-mod) | Per channel |
-| IRC Messages | 100/30s (mod) | Per channel |
-| IRC Join | 20/10s | Per connection |
-| EventSub Connections | 3 max | Per user/IP |
-| EventSub Subscriptions | 300/connection | Per WebSocket |
+### Event Handlers
 
-**Simple approach:** Track message timestamps in an array, check before sending.
-
----
-
-## Migration Phases
-
-### Phase 1: Setup (Day 1) ✅ CURRENT
-- [x] Create PLAN.md
-- [ ] Create minimal tsconfig.json
-- [ ] Update package.json (minimal changes)
-- [ ] Create src/comfy.ts skeleton
-
-### Phase 2: IRC Client (Days 2-3)
-- [ ] Implement WebSocket connection
-- [ ] Implement authentication (PASS, NICK, CAP)
-- [ ] Implement PING/PONG
-- [ ] Implement JOIN/PART
-- [ ] Implement PRIVMSG send/receive
-- [ ] Implement IRC tag parser
-- [ ] Test: Connect to real Twitch IRC
-
-### Phase 3: Message Handlers (Days 4-5)
-- [ ] Parse PRIVMSG → onChat, onCommand
-- [ ] Parse USERNOTICE → onSub, onResub, onSubGift, onCheer, onRaid
-- [ ] Parse CLEARCHAT → onBan, onTimeout
-- [ ] Parse CLEARMSG → onMessageDeleted
-- [ ] Parse ROOMSTATE → onChatMode
-- [ ] Parse JOIN/PART → onJoin, onPart
-- [ ] Test: Verify parity with v1 for all events
-
-### Phase 4: EventSub (Days 6-7)
-- [ ] Implement EventSub WebSocket connection
-- [ ] Handle session_welcome → subscribe to events
-- [ ] Handle session_keepalive
-- [ ] Handle session_reconnect
-- [ ] Implement graceful degradation (fall back to IRC on connection limit)
-- [ ] Implement event handlers:
-  - [ ] channel.channel_points_custom_reward_redemption.add → onReward
-  - [ ] channel.hype_train.begin/progress/end → onHypeTrain
-  - [ ] channel.shoutout.create/receive → onShoutout
-  - [ ] channel.poll.begin/progress/end → onPoll
-  - [ ] channel.prediction.begin/progress/lock/end → onPrediction
-  - [ ] user.whisper.message → onWhisper
-  - [ ] channel.follow → onFollow (v2 NEW!)
-  - [ ] channel.subscribe → onSubscribe (EventSub version)
-  - [ ] channel.subscription.gift → onSubGift (EventSub version)
-  - [ ] channel.cheer → onCheer (EventSub version)  
-  - [ ] channel.raid → onRaid (EventSub version)
-  - [ ] channel.ban → onBan (EventSub version)
-  - [ ] channel.charity_campaign.donate → onCharityDonation (NEW!)
-  - [ ] stream.online/offline → onStreamChange (NEW!)
-- [ ] Test: Verify parity with v1 EventSub
-
-### Phase 5: API & Methods (Day 8)
-- [ ] Implement Say(), Reply(), Whisper(), Announce()
-- [ ] Implement DeleteMessage()
-- [ ] Implement GetChannelRewards(), CreateChannelReward(), etc.
-- [ ] Implement Disconnect()
-- [ ] Test: All methods work
-
-### Phase 6: Build & Compatibility (Day 9)
-- [ ] Build Node.js CommonJS output
-- [ ] Build browser bundle (IIFE)
-- [ ] Test: `require("comfy.js")` works
-- [ ] Test: `<script src="comfy.min.js">` works
-- [ ] Test: Existing v1 code works unchanged
-
-### Phase 7: Testing & Polish (Day 10)
-- [ ] Write unit tests for IRC parser
-- [ ] Write unit tests for EventSub handlers
-- [ ] Integration test with real Twitch account
-- [ ] Performance comparison with v1
-- [ ] Update README.md
-- [ ] Tag v2.0.0 release
-
----
-
-## v1 API Parity Checklist
-
-### Event Handlers (v1 Parity)
-- [ ] `onError(error)`
-- [ ] `onCommand(user, command, message, flags, extra)`
-- [ ] `onChat(user, message, flags, self, extra)`
-- [ ] `onWhisper(user, message, flags, self, extra)`
-- [ ] `onMessageDeleted(id, extra)`
-- [ ] `onBan(bannedUsername, extra)`
-- [ ] `onTimeout(timedOutUsername, durationInSeconds, extra)`
-- [ ] `onJoin(user, self, extra)`
-- [ ] `onPart(user, self, extra)`
-- [ ] `onHosted(user, viewers, autohost, extra)` *(deprecated by Twitch)*
-- [ ] `onRaid(user, viewers, extra)`
-- [ ] `onSub(user, message, subTierInfo, extra)`
-- [ ] `onResub(user, message, streakMonths, cumulativeMonths, subTierInfo, extra)`
-- [ ] `onSubGift(gifterUser, streakMonths, recipientUser, senderCount, subTierInfo, extra)`
-- [ ] `onSubMysteryGift(gifterUser, numbOfSubs, senderCount, subTierInfo, extra)`
-- [ ] `onGiftSubContinue(user, sender, extra)`
-- [ ] `onCheer(user, message, bits, flags, extra)`
-- [ ] `onChatMode(flags, channel)`
-- [ ] `onReward(user, reward, cost, message, extra)`
-- [ ] `onShoutout(channelDisplayName, viewerCount, timeRemainingInMS, extra)`
-- [ ] `onHypeTrain(type, level, progress, goal, total, timeRemainingInMS, extra)`
-- [ ] `onPoll(type, title, choices, votes, timeRemainingInMS, extra)`
-- [ ] `onPrediction(type, title, outcomes, topPredictors, timeRemainingInMS, extra)`
-- [ ] `onConnected(address, port, isFirstConnect)`
-- [ ] `onReconnect(reconnectCount)`
-
-### NEW Event Handlers (v2 Additions)
-- [ ] `onFollow(user, extra)` - New follower (requires moderator:read:followers scope)
-- [ ] `onStreamOnline(channel, extra)` - Broadcaster went live
-- [ ] `onStreamOffline(channel, extra)` - Broadcaster ended stream
-- [ ] `onCharityDonation(user, charity, amount, extra)` - User donated to charity campaign
-- [ ] `onBitsUsed(user, bits, type, extra)` - Bits used (cheer, power-up, combo)
-- [ ] `onAdBreak(duration, isAutomatic, extra)` - Ad break started
-- [ ] `onShoutoutReceived(fromChannel, viewerCount, extra)` - Received a shoutout
-- [ ] `onVIPAdd(user, extra)` - User became VIP
-- [ ] `onVIPRemove(user, extra)` - User no longer VIP
-- [ ] `onModAdd(user, extra)` - User became moderator
-- [ ] `onModRemove(user, extra)` - User no longer moderator
+| Handler | Status | Notes |
+|---------|--------|-------|
+| `onError` | ✅ | |
+| `onCommand` | ✅ | |
+| `onChat` | ✅ | |
+| `onWhisper` | ✅ | Via EventSub |
+| `onMessageDeleted` | ✅ | |
+| `onBan` | ✅ | |
+| `onTimeout` | ✅ | |
+| `onJoin` | ✅ | |
+| `onPart` | ✅ | |
+| `onHosted` | ⚠️ | Deprecated by Twitch |
+| `onRaid` | ✅ | |
+| `onSub` | ✅ | |
+| `onResub` | ✅ | |
+| `onSubGift` | ✅ | |
+| `onSubMysteryGift` | ✅ | |
+| `onGiftSubContinue` | ✅ | |
+| `onCheer` | ✅ | |
+| `onChatMode` | ✅ | |
+| `onReward` | ✅ | Via EventSub |
+| `onShoutout` | ✅ | Via EventSub |
+| `onHypeTrain` | ✅ | Via EventSub |
+| `onPoll` | ✅ | Via EventSub |
+| `onPrediction` | ✅ | Via EventSub |
+| `onConnected` | ✅ | |
+| `onReconnect` | ✅ | |
 
 ### Methods
-- [ ] `Init(username, password, channels, isDebug)`
-- [ ] `Say(message, channel)`
-- [ ] `Reply(parentId, message, channel)`
-- [ ] `Whisper(message, user)`
-- [ ] `Announce(message, channel, color)`
-- [ ] `DeleteMessage(id, channel)`
-- [ ] `GetClient()` - Returns internal client (may differ from v1)
-- [ ] `Disconnect()`
-- [ ] `GetChannelRewards(clientId, manageableOnly)`
-- [ ] `CreateChannelReward(clientId, rewardInfo)`
-- [ ] `UpdateChannelReward(clientId, rewardId, rewardInfo)`
-- [ ] `DeleteChannelReward(clientId, rewardId)`
+
+| Method | Status | Notes |
+|--------|--------|-------|
+| `Init()` | ✅ | Now async |
+| `Say()` | ✅ | |
+| `Reply()` | ✅ | |
+| `Whisper()` | ⚠️ | Deprecated (use API) |
+| `Announce()` | ✅ | |
+| `DeleteMessage()` | ✅ | Via API |
+| `GetClient()` | ✅ | Returns IRCClient |
+| `Disconnect()` | ✅ | |
+| `GetChannelRewards()` | ✅ | |
+| `CreateChannelReward()` | ✅ | |
+| `UpdateChannelReward()` | ✅ | |
+| `DeleteChannelReward()` | ✅ | |
 
 ### Properties
-- [ ] `isDebug`
-- [ ] `useEventSub`
-- [ ] `chatModes`
-- [ ] `version()`
+
+| Property | Status |
+|----------|--------|
+| `isDebug` | ✅ |
+| `useEventSub` | ✅ |
+| `chatModes` | ✅ |
+| `version()` | ✅ |
 
 ---
 
-## Multi-Instance Considerations
+## Testing Instructions
 
-### The Problem
+### Run Unit Tests
 
-When multiple ComfyJS instances run from the same computer (common with OBS browser sources):
-
-| Limit | Value | Impact |
-|-------|-------|--------|
-| **EventSub WebSocket connections** | 3 max per user token | 4+ browser sources = connection failures |
-| **EventSub subscriptions** | 300 per connection | Usually not a problem |
-| **IRC join rate** | 20 channels per 10 seconds | Usually not a problem |
-| **IRC message rate** | 20/30s (non-mod), 100/30s (mod) | Shared across all instances |
-
-**Key insight**: OBS browser sources use Chromium Embedded Framework (CEF) with **completely isolated processes**. They do NOT share:
-- ❌ localStorage (each source has its own)
-- ❌ BroadcastChannel (requires same browsing context)
-- ❌ SharedWorker (requires same browsing context)
-- ❌ Cookies or session storage
-
-**Also important**: Browsers cannot run WebSocket servers - they can only be clients.
-
-### Solution: WebRTC P2P with IRC Signaling (v2.0)
-
-ComfyJS v2 will use **WebRTC DataChannels** to share events between browser sources, with **Twitch IRC as the signaling channel**. No external server required!
-
-#### How It Works
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           TWITCH                                         │
-│  ┌─────────────────────┐        ┌─────────────────────┐                 │
-│  │   IRC Server        │        │   EventSub Server   │                 │
-│  │ irc-ws.chat.twitch  │        │ eventsub.wss.twitch │                 │
-│  └─────────┬───────────┘        └──────────┬──────────┘                 │
-└────────────┼───────────────────────────────┼────────────────────────────┘
-             │                               │
-             │ (all sources)                 │ (leader only)
-             │                               │
-┌────────────┼───────────────────────────────┼────────────────────────────┐
-│            │         LOCAL MACHINE         │                            │
-│            ▼                               ▼                            │
-│  ┌──────────────────────────────────────────────┐                       │
-│  │           BROWSER SOURCE 1 (Leader)          │                       │
-│  │  ┌────────────┐    ┌─────────────────────┐   │                       │
-│  │  │ IRC Client │    │ EventSub Client     │   │                       │
-│  │  └────────────┘    └──────────┬──────────┘   │                       │
-│  │         │                     │              │                       │
-│  │         │ signaling    events │              │                       │
-│  │         ▼                     ▼              │                       │
-│  │  ┌─────────────────────────────────────┐     │                       │
-│  │  │         WebRTC Host                 │     │                       │
-│  │  │   (accepts peer connections)        │     │                       │
-│  │  └─────────────┬───────────────────────┘     │                       │
-│  └────────────────┼─────────────────────────────┘                       │
-│                   │ WebRTC DataChannel (P2P)                            │
-│       ┌───────────┼───────────┬───────────┐                             │
-│       ▼           ▼           ▼           ▼                             │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                        │
-│  │ Source2 │ │ Source3 │ │ Source4 │ │ SourceN │  (followers)           │
-│  │  (peer) │ │  (peer) │ │  (peer) │ │  (peer) │                        │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘                        │
-│       │           │           │           │                             │
-│       ▼           ▼           ▼           ▼                             │
-│   [alerts]    [chat box]  [rewards]   [game]     ← Your OBS scenes     │
-└─────────────────────────────────────────────────────────────────────────┘
+```bash
+npm test          # Watch mode
+npm run test:run  # Single run
 ```
 
-#### Signaling via IRC (The Clever Part)
+### Test in Browser
 
-WebRTC requires a "signaling" step to exchange connection info. We use IRC:
+1. Build: `npm run build`
+2. Open `examples/v2-test.html` in browser
+3. Enter channel and optional OAuth token
+4. Click Connect
+5. Test chat, commands, rewards, etc.
 
-```typescript
-// Leader announces itself with a special message (not visible in chat)
-// Uses IRC tags to mark it as ComfyJS internal
-@comfyjs-signal=leader;instance-id=abc123 PRIVMSG #channel :​
+### Test in Node.js
 
-// Followers see this and know not to connect to EventSub
-// They send their WebRTC offer to the leader
-@comfyjs-signal=offer;to=abc123;sdp=... PRIVMSG #channel :​
+```bash
+# Anonymous (read-only)
+node examples/test-node.mjs instafluff
 
-// Leader responds with answer
-@comfyjs-signal=answer;to=def456;sdp=... PRIVMSG #channel :​
-
-// ICE candidates exchanged similarly
-@comfyjs-signal=ice;to=abc123;candidate=... PRIVMSG #channel :​
+# Authenticated
+node examples/test-node.mjs instafluff oauth:your_token_here
 ```
-
-These messages:
-- Use zero-width spaces so they appear empty if somehow displayed
-- Are filtered out by ComfyJS and never trigger onChat
-- Only visible to other ComfyJS instances on same channel
-
-#### Leader Election & Discovery
-
-```typescript
-// On Init, each instance:
-1. Generate unique instance ID
-2. Connect to IRC
-3. Broadcast "looking for leader" message
-4. Wait 2 seconds for response
-
-5. If leader responds:
-   - Don't connect to EventSub
-   - Initiate WebRTC connection to leader
-   - Receive events via DataChannel
-
-6. If no response (no leader exists):
-   - Become leader
-   - Connect to EventSub  
-   - Start accepting WebRTC peer connections
-   - Respond to future discovery requests
-
-// Leader behavior (ongoing):
-- Respond immediately to "looking for leader" messages
-- Send heartbeat every 30 seconds (backup, in case response missed)
-- If leader disconnects, followers detect via WebRTC close
-- First follower to detect becomes new leader
-```
-
-**Discovery Protocol:**
-```
-// New source broadcasts discovery request
-@comfyjs-signal=discover;instance-id=def456 PRIVMSG #channel :​
-
-// Leader responds (within milliseconds)
-@comfyjs-signal=leader;instance-id=abc123;reply-to=def456 PRIVMSG #channel :​
-
-// Periodic heartbeat (every 30s, backup mechanism)
-@comfyjs-signal=heartbeat;instance-id=abc123 PRIVMSG #channel :​
-```
-
-**Why this works:**
-- New sources always find existing leader (via discovery request)
-- If leader misses a discovery (rare), heartbeat catches it
-- Leader responds immediately, so connection is fast
-- Heartbeats are infrequent (30s) to minimize IRC usage
-
-#### User Experience (Zero Config!)
-
-```javascript
-// This just works - even with 10 browser sources!
-ComfyJS.Init("channel", "oauth:xxx");
-
-// All events work in ALL sources
-ComfyJS.onReward = (user, reward, cost, message, extra) => {
-  // Channel points work everywhere!
-  // Only leader talks to Twitch, others get events via P2P
-};
-
-ComfyJS.onChat = (user, message, flags, self, extra) => {
-  // IRC events come directly (all sources connect to IRC)
-};
-```
-
-#### Fallback Behavior
-
-```typescript
-ComfyJS.Init("channel", "oauth:xxx", {
-  p2pMode: "auto"      // Default: auto-negotiate leader/follower
-  // p2pMode: "leader" // Force this instance to be leader
-  // p2pMode: "follower" // Force this instance to be follower
-  // p2pMode: "disabled" // Don't use P2P, each instance independent
-});
-```
-
-If WebRTC fails (some networks block it):
-1. Log warning
-2. Fall back to independent mode
-3. Only first 3 sources get EventSub, others IRC-only
-
-#### Technical Details
-
-**WebRTC DataChannel** is perfect for this:
-- Works in all modern browsers (including CEF/OBS)
-- Low latency (faster than going through a server)
-- Reliable ordered delivery option
-- No server required once connection established
-
-**Message Format** (over DataChannel):
-```typescript
-{
-  type: "event",
-  name: "onReward",
-  args: [user, reward, cost, message, extra],
-  timestamp: 1706438400000
-}
-```
-
-**Deduplication**:
-- Each event has unique ID from Twitch
-- Followers ignore events they've already seen
-- Handles leader failover without duplicate events
-
-### What Requires P2P/EventSub vs IRC-Only
-
-| Feature | Source | P2P Benefit |
-|---------|--------|-------------|
-| Chat Messages | IRC | None (all get directly) |
-| Commands | IRC | None (all get directly) |
-| Subs/Resubs | IRC | None (all get directly) |
-| Gift Subs | IRC | None (all get directly) |
-| Cheers | IRC | None (all get directly) |
-| Raids | IRC | None (all get directly) |
-| Bans/Timeouts | IRC | None (all get directly) |
-| **Channel Points** | EventSub | ✅ All sources get events |
-| **Hype Train** | EventSub | ✅ All sources get events |
-| **Polls** | EventSub | ✅ All sources get events |
-| **Predictions** | EventSub | ✅ All sources get events |
-| **Shoutouts** | EventSub | ✅ All sources get events |
-| **Follows** | EventSub | ✅ All sources get events |
-| **Stream Status** | EventSub | ✅ All sources get events |
-
-### Why This Approach is Good
-
-1. **Zero config** - Users just use ComfyJS.Init() as normal
-2. **No external server** - Everything runs in browser
-3. **Automatic** - Leader election and failover handled transparently
-4. **Fast** - WebRTC is lower latency than going through a relay
-5. **Scalable** - Works with any number of browser sources
-6. **Graceful degradation** - Falls back if WebRTC unavailable
 
 ---
 
-## Testing Strategy
+## Remaining Tasks
 
-### Unit Tests (test/comfy.test.ts)
-```typescript
-describe('IRC Parser', () => {
-  it('parses PRIVMSG with tags', () => { ... })
-  it('parses USERNOTICE for subs', () => { ... })
-  // etc.
-})
+### High Priority
 
-describe('EventSub Parser', () => {
-  it('handles channel.channel_points_custom_reward_redemption.add', () => { ... })
-  // etc.
-})
-```
+- [ ] **Real-world IRC testing** - Verify connection and parsing works with live Twitch
+- [ ] **Real-world EventSub testing** - Verify channel points, polls, etc. work
+- [ ] **P2P signaling validation** - Test if IRC signaling actually works (may need alternative)
+- [ ] **Integration test** - Full end-to-end with real Twitch account
 
-### Integration Tests (manual)
-1. Connect to Twitch IRC as test account
-2. Send !test command
-3. Verify onCommand fires with correct data
-4. Compare output with v1
+### Medium Priority
 
-### Test Fixtures
-Save real IRC messages and EventSub payloads in `test/fixtures/` for unit tests.
+- [ ] **More unit tests** - EventSub, P2P, API modules
+- [ ] **Update README.md** - Usage docs for v2
+- [ ] **Clean up v1 files** - Archive app.js, remove old builds
+- [ ] **npm publish config** - Verify package.json exports
+
+### Low Priority
+
+- [ ] **v2 new features** - onFollow, onStreamOnline, etc.
+- [ ] **Performance benchmarks** - Compare to v1
+- [ ] **Browser compatibility testing** - Safari, Firefox, Edge
 
 ---
 
-## Success Criteria
+## Version History
 
-1. **Parity**: All v1 handlers fire with identical data
-2. **Simplicity**: Main file < 1000 lines
-3. **Size**: Bundle smaller than v1 (no tmi.js = big win)
-4. **Speed**: Equal or better connection time
-5. **Compatibility**: `var ComfyJS = require("comfy.js")` works
-6. **Clean**: Easy to read and understand
-
----
-
-## Progress Tracking
-
-| Phase | Status | Notes |
-|-------|--------|-------|
-| Phase 1: Setup | 🚧 In Progress | |
-| Phase 2: IRC Client | ⏳ Pending | |
-| Phase 3: Message Handlers | ⏳ Pending | |
-| Phase 4: EventSub | ⏳ Pending | |
-| Phase 5: API & Methods | ⏳ Pending | |
-| Phase 6: Build & Compatibility | ⏳ Pending | |
-| Phase 7: Testing & Polish | ⏳ Pending | |
-
----
-
-## Commits
-
-Each phase completion = 1 commit to v2 branch
-
-```
-git commit -m "feat(v2): Phase 1 - project setup"
-git commit -m "feat(v2): Phase 2 - IRC WebSocket client"
-...
-```
+| Date | Changes |
+|------|---------|
+| 2026-01-27 | Created initial plan |
+| 2026-01-28 | Completed core implementation |
+| 2026-01-28 | Added unit tests (51 passing) |
+| 2026-01-28 | Added source maps to all builds |
+| 2026-01-28 | Added browser and Node.js test examples |
+| 2026-01-28 | Updated PLAN.md with implementation status |

@@ -1,15 +1,29 @@
 {
   "name": "comfy.js",
-  "version": "1.1.29",
-  "description": "Twitch-Integrated Bot Module for Coding Cafe",
-  "main": "app.js",
+  "version": "2.0.0-alpha.1",
+  "description": "Twitch Chat & Events Made Easy",
+  "main": "dist/comfy.cjs",
+  "module": "dist/comfy.js",
+  "types": "dist/index.d.ts",
+  "browser": "dist/comfy.min.js",
+  "exports": {
+    ".": {
+      "require": "./dist/comfy.cjs",
+      "import": "./dist/comfy.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "npm-run-all --sequential build:*",
-    "build:browserify": "browserify app.js -o ./dist/comfy.js",
-    "build:version": "node version.js",
-    "build:uglify": "terser --compress --mangle --source-map --output ./dist/comfy.min.js ./dist/comfy.js",
-    "test": "echo \"Error: no test specified\"",
-    "serve": "static -p 8000"
+    "build:clean": "rimraf dist",
+    "build:types": "tsc",
+    "build:bundle": "esbuild src/index.ts --bundle --format=esm --sourcemap --outfile=dist/comfy.js --platform=browser",
+    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --sourcemap --outfile=dist/comfy.cjs --platform=node",
+    "build:minify": "esbuild src/index.ts --bundle --minify --sourcemap --format=iife --global-name=ComfyJS --outfile=dist/comfy.min.js --platform=browser",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -21,19 +35,11 @@
     "url": "https://github.com/instafluff/ComfyJS/issues"
   },
   "homepage": "https://github.com/instafluff/ComfyJS#readme",
-  "dependencies": {
-    "node-fetch": "^2.6.0",
-    "tmi.js": "^1.8.5"
-  },
   "devDependencies": {
-    "babelify": "7.2.0",
-    "browserify": "^16.5.1",
-    "dotenv": "^8.2.0",
+    "esbuild": "^0.20.0",
     "npm-run-all": "^4.1.5",
-    "terser": "^4.8.0"
-  },
-  "browser": {
-    "tmi.js": "./vendor/tmi.min.js"
-  },
-  "typings": "./types/index.d.ts"
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
 }
