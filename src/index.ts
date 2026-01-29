@@ -285,7 +285,8 @@ class ComfyJSImpl implements ComfyJSInstance {
     this.mainChannel = channelList[0].toLowerCase().replace('#', '');
     this.password = password?.replace('oauth:', '') ?? '';
 
-    // Validate token and get scopes
+    // Validate token and get scopes + actual login
+    let authenticatedLogin = '';
     if (this.password) {
       const validation = await this.validateToken(this.password);
       if (!validation) {
@@ -294,6 +295,7 @@ class ComfyJSImpl implements ComfyJSInstance {
       this.clientId = validation.clientId;
       this.userId = validation.userId;
       this.scopes = validation.scopes;
+      authenticatedLogin = validation.login; // The actual username from the token
 
       // Initialize API client
       this.api = new TwitchAPI({
@@ -314,8 +316,9 @@ class ComfyJSImpl implements ComfyJSInstance {
     this.setupIRCHandlers();
 
     // Connect to IRC
+    // For authenticated connections, use the actual login from the token (not the username param)
     // For anonymous connections, use justinfan username
-    const ircUsername = this.password ? username.toLowerCase() : `justinfan${Math.floor(Math.random() * 99999)}`;
+    const ircUsername = this.password ? authenticatedLogin : `justinfan${Math.floor(Math.random() * 99999)}`;
     const ircPassword = this.password || 'SCHMOOPIIE';
     await this.irc.connect(ircPassword, ircUsername);
 
@@ -348,6 +351,37 @@ class ComfyJSImpl implements ComfyJSInstance {
     
     const targetChannel = channel ?? this.mainChannel;
     this.irc.say(targetChannel, message).catch(this.onError);
+    
+    // Simulate echo like tmi.js does - trigger onChat with self=true
+    // This mimics v1 behavior where messages sent via Say() are echoed back
+    const selfFlags = {
+      broadcaster: false,
+      mod: false,
+      vip: false,
+      subscriber: false,
+      founder: false,
+      highlighted: false,
+      customReward: false,
+    };
+    const selfExtra = {
+      id: '',
+      channel: targetChannel,
+      roomId: '',
+      messageType: 'chat',
+      messageEmotes: undefined,
+      isEmoteOnly: false,
+      userId: this.userId,
+      username: this.irc.username,
+      displayName: this.irc.username,
+      userColor: '',
+      userBadges: {},
+      userState: {},
+      customRewardId: undefined,
+      flags: '',
+      timestamp: String(Date.now()),
+    };
+    this.onChat(this.irc.username, message, selfFlags, true, selfExtra as never);
+    
     return true;
   }
 
@@ -466,6 +500,7 @@ class ComfyJSImpl implements ComfyJSInstance {
   private async validateToken(token: string): Promise<{
     clientId: string;
     userId: string;
+    login: string;
     scopes: string[];
   } | null> {
     try {
@@ -478,12 +513,14 @@ class ComfyJSImpl implements ComfyJSInstance {
       const data = await response.json() as {
         client_id: string;
         user_id: string;
+        login: string;
         scopes: string[];
       };
       
       return {
         clientId: data.client_id,
         userId: data.user_id,
+        login: data.login,
         scopes: data.scopes,
       };
     } catch {
@@ -564,7 +601,12 @@ class ComfyJSImpl implements ComfyJSInstance {
     const channel = msg.channel?.replace('#', '') || '';
     const username = msg.tags['display-name'] || msg.prefix?.split('!')[0] || '';
     const message = msg.message || '';
-    const self = msg.prefix?.split('!')[0]?.toLowerCase() === this.irc?.username;
+    
+    // Note: In v1/tmi.js, 'self' is only true for messages sent via client.say()
+    // Since we don't request echo-message capability, we don't receive our own sent messages
+    // Any PRIVMSG we receive was typed in the Twitch interface, not sent by our client
+    // So self should always be false for received messages
+    const self = false;
 
     const flags = parseUserFlags(msg.tags, channel);
     const extra = buildUserExtra(msg);

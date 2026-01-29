@@ -1810,6 +1810,7 @@ var ComfyJSImpl = class {
     this.isDebug = isDebug ?? false;
     this.mainChannel = channelList[0].toLowerCase().replace("#", "");
     this.password = password?.replace("oauth:", "") ?? "";
+    let authenticatedLogin = "";
     if (this.password) {
       const validation = await this.validateToken(this.password);
       if (!validation) {
@@ -1818,6 +1819,7 @@ var ComfyJSImpl = class {
       this.clientId = validation.clientId;
       this.userId = validation.userId;
       this.scopes = validation.scopes;
+      authenticatedLogin = validation.login;
       this.api = new TwitchAPI({
         clientId: this.clientId,
         accessToken: this.password,
@@ -1830,7 +1832,7 @@ var ComfyJSImpl = class {
     }
     this.irc = new IRCClient({ debug: this.isDebug });
     this.setupIRCHandlers();
-    const ircUsername = this.password ? username.toLowerCase() : `justinfan${Math.floor(Math.random() * 99999)}`;
+    const ircUsername = this.password ? authenticatedLogin : `justinfan${Math.floor(Math.random() * 99999)}`;
     const ircPassword = this.password || "SCHMOOPIIE";
     await this.irc.connect(ircPassword, ircUsername);
     for (const channel of channelList) {
@@ -1854,6 +1856,33 @@ var ComfyJSImpl = class {
       return false;
     const targetChannel = channel ?? this.mainChannel;
     this.irc.say(targetChannel, message).catch(this.onError);
+    const selfFlags = {
+      broadcaster: false,
+      mod: false,
+      vip: false,
+      subscriber: false,
+      founder: false,
+      highlighted: false,
+      customReward: false
+    };
+    const selfExtra = {
+      id: "",
+      channel: targetChannel,
+      roomId: "",
+      messageType: "chat",
+      messageEmotes: void 0,
+      isEmoteOnly: false,
+      userId: this.userId,
+      username: this.irc.username,
+      displayName: this.irc.username,
+      userColor: "",
+      userBadges: {},
+      userState: {},
+      customRewardId: void 0,
+      flags: "",
+      timestamp: String(Date.now())
+    };
+    this.onChat(this.irc.username, message, selfFlags, true, selfExtra);
     return true;
   }
   Reply(parentId, message, channel) {
@@ -1967,6 +1996,7 @@ var ComfyJSImpl = class {
       return {
         clientId: data.client_id,
         userId: data.user_id,
+        login: data.login,
         scopes: data.scopes
       };
     } catch {
@@ -2030,7 +2060,7 @@ var ComfyJSImpl = class {
     const channel = msg.channel?.replace("#", "") || "";
     const username = msg.tags["display-name"] || msg.prefix?.split("!")[0] || "";
     const message = msg.message || "";
-    const self = msg.prefix?.split("!")[0]?.toLowerCase() === this.irc?.username;
+    const self = false;
     const flags = parseUserFlags(msg.tags, channel);
     const extra = buildUserExtra(msg);
     const bits = parseInt(msg.tags["bits"] || "0", 10);

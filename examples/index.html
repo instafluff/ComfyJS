@@ -3,30 +3,33 @@
     <script src="../dist/comfy.min.js"></script>
   </head>
   <body>
+    <pre id="log"></pre>
     <script type="text/javascript">
-      console.log("1. ComfyJS loaded:", typeof ComfyJS);
-      console.log("2. ComfyJS.Init:", typeof ComfyJS.Init);
+      const log = (msg) => {
+        console.log(msg);
+        document.getElementById('log').textContent += msg + '\n';
+      };
       
       ComfyJS.onError = (error) => {
-        console.error("ComfyJS Error:", error);
+        log("ERROR: " + error);
       };
       
       ComfyJS.onConnected = (address, port, isFirstConnect) => {
-        console.log("5. Connected to", address + ":" + port);
+        log("Connected to " + address + ":" + port);
+      };
+      
+      ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
+        log("COMMAND: " + user + " used !" + command + " with: " + message);
       };
       
       ComfyJS.onChat = ( user, message, flags, self, extra ) => {
-        console.log( user + ":", message );
-      }
-      
-      console.log("3. About to call Init...");
+        log("CHAT [self=" + self + "]: " + user + ": " + message);
+      };
       
       // Pass true as 4th argument for debug mode
       ComfyJS.Init( "instafluff", null, null, true )
-        .then(() => console.log("6. Init complete!"))
-        .catch(err => console.error("Init failed:", err));
-      
-      console.log("4. Init called (async, waiting for connection...)");
+        .then(() => log("Init complete!"))
+        .catch(err => log("Init failed: " + err));
     </script>
   </body>
 </html>
