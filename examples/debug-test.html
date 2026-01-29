@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ComfyJS Debug Test</title>
+</head>
+<body>
+  <h1>ComfyJS Debug Test</h1>
+  <pre id="output"></pre>
+  
+  <script src="../dist/comfy.min.js"></script>
+  <script>
+    const log = (msg) => {
+      console.log(msg);
+      document.getElementById('output').textContent += msg + '\n';
+    };
+    
+    log('Script loaded');
+    log('typeof ComfyJS: ' + typeof ComfyJS);
+    log('typeof ComfyJSModule: ' + typeof ComfyJSModule);
+    
+    if (typeof ComfyJS !== 'undefined') {
+      log('ComfyJS exists');
+      log('typeof ComfyJS.Init: ' + typeof ComfyJS.Init);
+      log('typeof ComfyJS.onChat: ' + typeof ComfyJS.onChat);
+      log('ComfyJS keys: ' + Object.keys(ComfyJS).slice(0, 10).join(', '));
+    }
+    
+    if (typeof ComfyJSModule !== 'undefined') {
+      log('ComfyJSModule exists');
+      log('ComfyJSModule keys: ' + Object.keys(ComfyJSModule).join(', '));
+      if (ComfyJSModule.default) {
+        log('typeof ComfyJSModule.default.Init: ' + typeof ComfyJSModule.default.Init);
+      }
+    }
+  </script>
+</body>
+</html>

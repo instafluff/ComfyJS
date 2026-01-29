@@ -314,7 +314,10 @@ class ComfyJSImpl implements ComfyJSInstance {
     this.setupIRCHandlers();
 
     // Connect to IRC
-    await this.irc.connect(this.password || 'SCHMOOPIIE', username.toLowerCase());
+    // For anonymous connections, use justinfan username
+    const ircUsername = this.password ? username.toLowerCase() : `justinfan${Math.floor(Math.random() * 99999)}`;
+    const ircPassword = this.password || 'SCHMOOPIIE';
+    await this.irc.connect(ircPassword, ircUsername);
 
     // Join channels
     for (const channel of channelList) {

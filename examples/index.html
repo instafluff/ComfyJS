@@ -4,15 +4,29 @@
   </head>
   <body>
     <script type="text/javascript">
-      ComfyJS.onCommand = ( user, command, message, flags, extra ) => {
-        if( flags.broadcaster && command == "test" ) {
-          console.log( "!test was typed in chat" );
-        }
-      }
+      console.log("1. ComfyJS loaded:", typeof ComfyJS);
+      console.log("2. ComfyJS.Init:", typeof ComfyJS.Init);
+      
+      ComfyJS.onError = (error) => {
+        console.error("ComfyJS Error:", error);
+      };
+      
+      ComfyJS.onConnected = (address, port, isFirstConnect) => {
+        console.log("5. Connected to", address + ":" + port);
+      };
+      
       ComfyJS.onChat = ( user, message, flags, self, extra ) => {
         console.log( user + ":", message );
       }
-      ComfyJS.Init( "instafluff" );
+      
+      console.log("3. About to call Init...");
+      
+      // Pass true as 4th argument for debug mode
+      ComfyJS.Init( "instafluff", null, null, true )
+        .then(() => console.log("6. Init complete!"))
+        .catch(err => console.error("Init failed:", err));
+      
+      console.log("4. Init called (async, waiting for connection...)");
     </script>
   </body>
 </html>

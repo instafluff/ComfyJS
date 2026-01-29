@@ -1830,7 +1830,9 @@ var ComfyJSImpl = class {
     }
     this.irc = new IRCClient({ debug: this.isDebug });
     this.setupIRCHandlers();
-    await this.irc.connect(this.password || "SCHMOOPIIE", username.toLowerCase());
+    const ircUsername = this.password ? username.toLowerCase() : `justinfan${Math.floor(Math.random() * 99999)}`;
+    const ircPassword = this.password || "SCHMOOPIIE";
+    await this.irc.connect(ircPassword, ircUsername);
     for (const channel of channelList) {
       await this.irc.join(channel);
     }

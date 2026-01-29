@@ -19,7 +19,7 @@
     "build:types": "tsc",
     "build:bundle": "esbuild src/index.ts --bundle --format=esm --sourcemap --outfile=dist/comfy.js --platform=browser",
     "build:cjs": "esbuild src/index.ts --bundle --format=cjs --sourcemap --outfile=dist/comfy.cjs --platform=node",
-    "build:minify": "esbuild src/index.ts --bundle --minify --sourcemap --format=iife --global-name=ComfyJSModule --footer:js=\"ComfyJS=ComfyJSModule.default\" --outfile=dist/comfy.min.js --platform=browser",
+    "build:minify": "esbuild src/index.ts --bundle --minify --sourcemap --format=iife --global-name=ComfyJSModule --footer:js=\"window.ComfyJS=ComfyJSModule.default\" --outfile=dist/comfy.min.js --platform=browser",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:run": "vitest run",
