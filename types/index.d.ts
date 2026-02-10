@@ -31,6 +31,7 @@ export type OnMessageFlags = {
   vip: boolean;
   highlighted: boolean;
   customReward: boolean;
+  firstMessage: boolean;
 }
 
 export type OnRewardExtra = {

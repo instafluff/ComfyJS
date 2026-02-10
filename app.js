@@ -1053,6 +1053,7 @@ var comfyJS = {
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
         var customRewardId = userstate[ "custom-reward-id" ] || null;
+        var isFirstMessage = ( userstate[ "first-msg" ] && userstate[ "first-msg" ] === "1" ) || false;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
@@ -1060,7 +1061,8 @@ var comfyJS = {
           subscriber: isSubscriber || isFounder,
           vip: isVIP,
           highlighted: isHighlightedMessage,
-          customReward: !!customRewardId
+          customReward: !!customRewardId,
+          firstMessage: isFirstMessage
         };
         var extra = {
           id: messageId,
