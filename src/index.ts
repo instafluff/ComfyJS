@@ -128,6 +128,24 @@ const SCOPE_TO_EVENTSUB: Record<string, string[]> = {
   ],
 } as unknown as Record<string, string[]>;
 
+const CONDITION_FIELDS: Record<string, string[]> = {
+  'channel.channel_points_custom_reward_redemption.add': ['broadcaster_user_id'],
+  'channel.channel_points_automatic_reward_redemption.add': ['broadcaster_user_id'],
+  'channel.follow': ['broadcaster_user_id', 'moderator_user_id'],
+  'channel.hype_train.begin': ['broadcaster_user_id'],
+  'channel.hype_train.progress': ['broadcaster_user_id'],
+  'channel.hype_train.end': ['broadcaster_user_id'],
+  'channel.shoutout.create': ['broadcaster_user_id', 'moderator_user_id'],
+  'user.whisper.message': ['user_id'],
+  'channel.poll.begin': ['broadcaster_user_id'],
+  'channel.poll.progress': ['broadcaster_user_id'],
+  'channel.poll.end': ['broadcaster_user_id'],
+  'channel.prediction.begin': ['broadcaster_user_id'],
+  'channel.prediction.progress': ['broadcaster_user_id'],
+  'channel.prediction.lock': ['broadcaster_user_id'],
+  'channel.prediction.end': ['broadcaster_user_id'],
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ComfyJS Instance
 // ─────────────────────────────────────────────────────────────────────────────
@@ -329,12 +347,29 @@ class ComfyJSImpl implements ComfyJSInstance {
 
     // Initialize P2P coordination (non-blocking — don't let P2P failure block IRC)
     this.initializeP2P().then(async () => {
+      if (!this.password || !this.useEventSub) return;
+
       // Initialize EventSub if we have auth and are the leader
-      if (this.password && this.useEventSub && (this.p2p?.isLeader || this.p2p?.currentRole === 'standalone')) {
+      if (this.p2p?.isLeader || this.p2p?.currentRole === 'standalone') {
         await this.initializeEventSub();
+      } else if (this.p2p?.currentRole === 'follower') {
+        setTimeout(async () => {
+          if (this.p2p && this.p2p.followerCount === 0) {
+            console.warn('P2P DataChannel failed to connect. Falling back to EventSub directly.');
+            await this.initializeEventSub();
+          }
+        }, 15000);
       }
-    }).catch((e) => {
-      if (this.isDebug) console.warn('P2P/EventSub initialization failed:', e);
+    }).catch(async (e) => {
+      console.error('P2P/EventSub initialization failed:', e);
+      if (this.password && this.useEventSub) {
+        console.warn('Attempting EventSub directly due to P2P failure.');
+        try {
+          await this.initializeEventSub();
+        } catch (subErr) {
+          console.error('Fallback EventSub initialization also failed:', subErr);
+        }
+      }
     });
   }
 
@@ -873,12 +908,22 @@ class ComfyJSImpl implements ComfyJSInstance {
         subscribedTypes.add(type);
 
         try {
-          await this.eventSub.subscribe(type, version, {
-            broadcaster_user_id: this.channelId,
-            moderator_user_id: this.userId,
-            user_id: this.userId,
-          });
+          const allowedFields = CONDITION_FIELDS[type] || ['broadcaster_user_id'];
+          const condition: Record<string, string> = {};
+
+          if (allowedFields.includes('broadcaster_user_id')) {
+            condition.broadcaster_user_id = this.channelId;
+          }
+          if (allowedFields.includes('moderator_user_id')) {
+            condition.moderator_user_id = this.userId;
+          }
+          if (allowedFields.includes('user_id')) {
+            condition.user_id = this.userId;
+          }
+
+          await this.eventSub.subscribe(type, version, condition);
         } catch (err) {
+          console.error(`Failed to subscribe to ${type}:`, err);
           this.log(`Failed to subscribe to ${type}: ${err}`);
         }
       }
