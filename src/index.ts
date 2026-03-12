@@ -170,6 +170,7 @@ class ComfyJSImpl implements ComfyJSInstance {
   private scopes: string[] = [];
   
   private isFirstConnect = true;
+  private boundBeforeUnload: (() => void) | null = null;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Event Handlers (with default implementations)
@@ -374,6 +375,12 @@ class ComfyJSImpl implements ComfyJSInstance {
   }
 
   Disconnect(): void {
+    // Remove beforeunload listener
+    if (typeof window !== 'undefined' && this.boundBeforeUnload) {
+      window.removeEventListener('beforeunload', this.boundBeforeUnload);
+      this.boundBeforeUnload = null;
+    }
+
     this.p2p?.destroy();
     this.eventSub?.disconnect();
     this.irc?.disconnect();
@@ -870,6 +877,12 @@ class ComfyJSImpl implements ComfyJSInstance {
   private async initializeEventSub(): Promise<void> {
     if (!this.api) return;
 
+    // Clean up stale EventSub subscriptions from previous sessions
+    // (e.g., after OBS browser source refresh). Old subs in
+    // "websocket_disconnected" status still count against Twitch's
+    // total cost limit (~10 per client_id+user_id).
+    await this.cleanupStaleSubscriptions();
+
     this.eventSub = new EventSubClient({ debug: this.isDebug });
     
     // Set up subscription handler
@@ -892,6 +905,49 @@ class ComfyJSImpl implements ComfyJSInstance {
 
     // Subscribe based on scopes
     await this.subscribeToScopedEvents();
+
+    // Register beforeunload to clean up on page close/refresh
+    if (typeof window !== 'undefined') {
+      this.boundBeforeUnload = () => {
+        this.eventSub?.disconnect();
+      };
+      window.addEventListener('beforeunload', this.boundBeforeUnload);
+    }
+  }
+
+  /**
+   * Delete stale EventSub subscriptions (websocket_disconnected, etc.)
+   * that linger after page refreshes and eat into the cost limit.
+   */
+  private async cleanupStaleSubscriptions(): Promise<void> {
+    if (!this.api) return;
+
+    try {
+      const result = await this.api.getEventSubSubscriptions();
+      const staleStatuses = ['websocket_disconnected', 'notification_failures_exceeded', 'authorization_revoked', 'user_removed', 'version_removed'];
+      const staleSubs = result.subscriptions.filter(
+        (s) => staleStatuses.includes(s.status)
+      );
+
+      if (staleSubs.length > 0) {
+        this.log(`Cleaning up ${staleSubs.length} stale EventSub subscriptions (total cost: ${result.totalCost}/${result.maxTotalCost})`);
+        console.log(`[ComfyJS] Cleaning up ${staleSubs.length} stale EventSub subscriptions`);
+
+        for (const sub of staleSubs) {
+          try {
+            await this.api.deleteEventSubSubscription(sub.id);
+            this.log(`Deleted stale sub: ${sub.type} (${sub.status})`);
+          } catch (err) {
+            this.log(`Failed to delete stale sub ${sub.id}: ${err}`);
+          }
+        }
+      } else {
+        this.log(`No stale subscriptions found (total cost: ${result.totalCost}/${result.maxTotalCost})`);
+      }
+    } catch (err) {
+      // Non-fatal — we'll still try to subscribe even if cleanup fails
+      console.warn('[ComfyJS] Failed to clean up stale EventSub subscriptions:', err);
+    }
   }
 
   private async subscribeToScopedEvents(): Promise<void> {

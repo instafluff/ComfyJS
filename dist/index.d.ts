@@ -15,6 +15,7 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     private channelId;
     private scopes;
     private isFirstConnect;
+    private boundBeforeUnload;
     onError: ErrorHandler;
     onCommand: CommandHandler;
     onChat: ChatHandler;
@@ -67,6 +68,11 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     private handlePart;
     private initializeP2P;
     private initializeEventSub;
+    /**
+     * Delete stale EventSub subscriptions (websocket_disconnected, etc.)
+     * that linger after page refreshes and eat into the cost limit.
+     */
+    private cleanupStaleSubscriptions;
     private subscribeToScopedEvents;
     private handleEventSubNotification;
     private handleRewardEvent;

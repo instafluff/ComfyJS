@@ -1706,6 +1706,7 @@ var ComfyJSImpl = class {
     this.channelId = "";
     this.scopes = [];
     this.isFirstConnect = true;
+    this.boundBeforeUnload = null;
     // ─────────────────────────────────────────────────────────────────────────
     // Event Handlers (with default implementations)
     // ─────────────────────────────────────────────────────────────────────────
@@ -1881,6 +1882,10 @@ var ComfyJSImpl = class {
     });
   }
   Disconnect() {
+    if (typeof window !== "undefined" && this.boundBeforeUnload) {
+      window.removeEventListener("beforeunload", this.boundBeforeUnload);
+      this.boundBeforeUnload = null;
+    }
     this.p2p?.destroy();
     this.eventSub?.disconnect();
     this.irc?.disconnect();
@@ -2280,6 +2285,7 @@ var ComfyJSImpl = class {
   async initializeEventSub() {
     if (!this.api)
       return;
+    await this.cleanupStaleSubscriptions();
     this.eventSub = new EventSubClient({ debug: this.isDebug });
     this.eventSub.createSubscription = async (sessionId, type, version, condition) => {
       const sub = await this.api.createEventSubSubscription(sessionId, type, version, condition);
@@ -2292,6 +2298,43 @@ var ComfyJSImpl = class {
     };
     await this.eventSub.connect();
     await this.subscribeToScopedEvents();
+    if (typeof window !== "undefined") {
+      this.boundBeforeUnload = () => {
+        this.eventSub?.disconnect();
+      };
+      window.addEventListener("beforeunload", this.boundBeforeUnload);
+    }
+  }
+  /**
+   * Delete stale EventSub subscriptions (websocket_disconnected, etc.)
+   * that linger after page refreshes and eat into the cost limit.
+   */
+  async cleanupStaleSubscriptions() {
+    if (!this.api)
+      return;
+    try {
+      const result = await this.api.getEventSubSubscriptions();
+      const staleStatuses = ["websocket_disconnected", "notification_failures_exceeded", "authorization_revoked", "user_removed", "version_removed"];
+      const staleSubs = result.subscriptions.filter(
+        (s) => staleStatuses.includes(s.status)
+      );
+      if (staleSubs.length > 0) {
+        this.log(`Cleaning up ${staleSubs.length} stale EventSub subscriptions (total cost: ${result.totalCost}/${result.maxTotalCost})`);
+        console.log(`[ComfyJS] Cleaning up ${staleSubs.length} stale EventSub subscriptions`);
+        for (const sub of staleSubs) {
+          try {
+            await this.api.deleteEventSubSubscription(sub.id);
+            this.log(`Deleted stale sub: ${sub.type} (${sub.status})`);
+          } catch (err) {
+            this.log(`Failed to delete stale sub ${sub.id}: ${err}`);
+          }
+        }
+      } else {
+        this.log(`No stale subscriptions found (total cost: ${result.totalCost}/${result.maxTotalCost})`);
+      }
+    } catch (err) {
+      console.warn("[ComfyJS] Failed to clean up stale EventSub subscriptions:", err);
+    }
   }
   async subscribeToScopedEvents() {
     if (!this.eventSub)
