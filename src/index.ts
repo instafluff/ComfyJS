@@ -327,13 +327,15 @@ class ComfyJSImpl implements ComfyJSInstance {
       await this.irc.join(channel);
     }
 
-    // Initialize P2P coordination (always, even for anonymous users)
-    await this.initializeP2P();
-
-    // Initialize EventSub if we have auth
-    if (this.password && this.useEventSub && (this.p2p?.isLeader || this.p2p?.currentRole === 'standalone')) {
-      await this.initializeEventSub();
-    }
+    // Initialize P2P coordination (non-blocking — don't let P2P failure block IRC)
+    this.initializeP2P().then(async () => {
+      // Initialize EventSub if we have auth and are the leader
+      if (this.password && this.useEventSub && (this.p2p?.isLeader || this.p2p?.currentRole === 'standalone')) {
+        await this.initializeEventSub();
+      }
+    }).catch((e) => {
+      if (this.isDebug) console.warn('P2P/EventSub initialization failed:', e);
+    });
   }
 
   Disconnect(): void {

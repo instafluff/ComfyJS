@@ -1838,10 +1838,14 @@ var ComfyJSImpl = class {
     for (const channel of channelList) {
       await this.irc.join(channel);
     }
-    await this.initializeP2P();
-    if (this.password && this.useEventSub && (this.p2p?.isLeader || this.p2p?.currentRole === "standalone")) {
-      await this.initializeEventSub();
-    }
+    this.initializeP2P().then(async () => {
+      if (this.password && this.useEventSub && (this.p2p?.isLeader || this.p2p?.currentRole === "standalone")) {
+        await this.initializeEventSub();
+      }
+    }).catch((e) => {
+      if (this.isDebug)
+        console.warn("P2P/EventSub initialization failed:", e);
+    });
   }
   Disconnect() {
     this.p2p?.destroy();
