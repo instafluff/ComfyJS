@@ -1807,6 +1807,13 @@ var ComfyJSImpl = class {
     };
     this.onReconnect = () => {
     };
+    /**
+     * EventSub lifecycle status callback.
+     * Fired for: cleanup, subscription success/failure, P2P role, connection status.
+     * Games/diagnostics can hook this to track what's happening with channel points.
+     */
+    this.onEventSubStatus = () => {
+    };
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Public Methods
@@ -1857,26 +1864,37 @@ var ComfyJSImpl = class {
       await this.irc.join(channel);
     }
     this.initializeP2P().then(async () => {
-      if (!this.password || !this.useEventSub)
+      if (!this.password || !this.useEventSub) {
+        this.emitEventSubStatus("eventsub-skipped", this.password ? "useEventSub=false" : "no-auth");
         return;
+      }
+      const role = this.p2p?.currentRole || "unknown";
+      this.emitEventSubStatus("p2p-role", role);
       if (this.p2p?.isLeader || this.p2p?.currentRole === "standalone") {
         await this.initializeEventSub();
       } else if (this.p2p?.currentRole === "follower") {
+        this.emitEventSubStatus("p2p-follower-waiting", "waiting 15s for DataChannel from leader");
         setTimeout(async () => {
           if (this.p2p && this.p2p.followerCount === 0) {
             console.warn("P2P DataChannel failed to connect. Falling back to EventSub directly.");
+            this.emitEventSubStatus("p2p-fallback", "DataChannel not connected after 15s, initializing EventSub directly");
             await this.initializeEventSub();
+          } else {
+            this.emitEventSubStatus("p2p-connected", `DataChannel active, ${this.p2p?.followerCount || 0} channels`);
           }
         }, 15e3);
       }
     }).catch(async (e) => {
       console.error("P2P/EventSub initialization failed:", e);
+      this.emitEventSubStatus("p2p-error", String(e));
       if (this.password && this.useEventSub) {
         console.warn("Attempting EventSub directly due to P2P failure.");
+        this.emitEventSubStatus("eventsub-fallback", "P2P failed, attempting direct EventSub");
         try {
           await this.initializeEventSub();
         } catch (subErr) {
           console.error("Fallback EventSub initialization also failed:", subErr);
+          this.emitEventSubStatus("eventsub-fallback-failed", String(subErr));
         }
       }
     });
@@ -2297,6 +2315,7 @@ var ComfyJSImpl = class {
       this.p2p?.broadcastEvent(event);
     };
     await this.eventSub.connect();
+    this.emitEventSubStatus("eventsub-connected", `session: ${this.eventSub.session}`);
     await this.subscribeToScopedEvents();
     if (typeof window !== "undefined") {
       this.boundBeforeUnload = () => {
@@ -2318,22 +2337,33 @@ var ComfyJSImpl = class {
       const staleSubs = result.subscriptions.filter(
         (s) => staleStatuses.includes(s.status)
       );
+      this.emitEventSubStatus("stale-cleanup-start", `Found ${staleSubs.length} stale of ${result.subscriptions.length} total subs`, {
+        staleCount: staleSubs.length,
+        totalCount: result.subscriptions.length,
+        totalCost: result.totalCost,
+        maxTotalCost: result.maxTotalCost
+      });
       if (staleSubs.length > 0) {
         this.log(`Cleaning up ${staleSubs.length} stale EventSub subscriptions (total cost: ${result.totalCost}/${result.maxTotalCost})`);
         console.log(`[ComfyJS] Cleaning up ${staleSubs.length} stale EventSub subscriptions`);
+        let deletedCount = 0;
         for (const sub of staleSubs) {
           try {
             await this.api.deleteEventSubSubscription(sub.id);
+            deletedCount++;
             this.log(`Deleted stale sub: ${sub.type} (${sub.status})`);
           } catch (err) {
             this.log(`Failed to delete stale sub ${sub.id}: ${err}`);
+            this.emitEventSubStatus("stale-cleanup-error", `Failed to delete ${sub.type}: ${String(err)}`, { subId: sub.id, type: sub.type });
           }
         }
+        this.emitEventSubStatus("stale-cleanup-done", `Deleted ${deletedCount}/${staleSubs.length} stale subs`, { deletedCount, staleCount: staleSubs.length });
       } else {
         this.log(`No stale subscriptions found (total cost: ${result.totalCost}/${result.maxTotalCost})`);
       }
     } catch (err) {
       console.warn("[ComfyJS] Failed to clean up stale EventSub subscriptions:", err);
+      this.emitEventSubStatus("stale-cleanup-error", `Cleanup failed: ${String(err)}`, { error: String(err) });
     }
   }
   async subscribeToScopedEvents() {
@@ -2361,9 +2391,11 @@ var ComfyJSImpl = class {
             condition.user_id = this.userId;
           }
           await this.eventSub.subscribe(type, version, condition);
+          this.emitEventSubStatus("eventsub-subscribed", type, { version, condition });
         } catch (err) {
           console.error(`Failed to subscribe to ${type}:`, err);
           this.log(`Failed to subscribe to ${type}: ${err}`);
+          this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: ${String(err)}`, { type, error: String(err) });
         }
       }
     }
@@ -2590,6 +2622,16 @@ var ComfyJSImpl = class {
   // ─────────────────────────────────────────────────────────────────────────
   // Utilities
   // ─────────────────────────────────────────────────────────────────────────
+  emitEventSubStatus(event, detail, data) {
+    this.log(`EventSub status: ${event} \u2014 ${detail}`);
+    try {
+      if (this.onEventSubStatus) {
+        this.onEventSubStatus(event, detail, data);
+      }
+    } catch (err) {
+      console.warn("[ComfyJS] onEventSubStatus callback error:", err);
+    }
+  }
   log(msg) {
     if (this.isDebug) {
       console.log(`[ComfyJS] ${msg}`);

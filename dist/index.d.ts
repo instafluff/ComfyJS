@@ -42,6 +42,12 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     onRawMessage: RawMessageHandler;
     onConnected: ConnectedHandler;
     onReconnect: ReconnectHandler;
+    /**
+     * EventSub lifecycle status callback.
+     * Fired for: cleanup, subscription success/failure, P2P role, connection status.
+     * Games/diagnostics can hook this to track what's happening with channel points.
+     */
+    onEventSubStatus: ((event: string, detail: string, data?: Record<string, unknown>) => void);
     version(): string;
     Init(username: string, password?: string, channels?: string | string[], isDebug?: boolean): Promise<void>;
     Disconnect(): void;
@@ -93,6 +99,7 @@ declare class ComfyJSImpl implements ComfyJSInstance {
      * Get the number of connected followers (leader only)
      */
     p2pFollowerCount(): number;
+    private emitEventSubStatus;
     private log;
 }
 declare const ComfyJS: ComfyJSImpl;
