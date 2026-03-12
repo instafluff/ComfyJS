@@ -1850,9 +1850,15 @@ var ComfyJSImpl = class {
         accessToken: this.password,
         debug: this.isDebug
       });
-      const user = await this.api.getUserByLogin(this.mainChannel);
-      if (user) {
-        this.channelId = user.id;
+      try {
+        const user = await this.api.getUserByLogin(this.mainChannel);
+        if (user) {
+          this.channelId = user.id;
+        } else {
+          console.warn(`[ComfyJS] Channel '${this.mainChannel}' not found on Twitch`);
+        }
+      } catch (err) {
+        console.error(`[ComfyJS] Failed to look up channel '${this.mainChannel}':`, err);
       }
     }
     this.irc = new IRCClient({ debug: this.isDebug });
