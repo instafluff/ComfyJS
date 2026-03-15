@@ -2400,6 +2400,11 @@ var ComfyJSImpl = class {
           if (allowedFields.includes("user_id")) {
             condition.user_id = this.userId;
           }
+          if (allowedFields.includes("broadcaster_user_id") && !this.channelId) {
+            this.log(`Skipping ${type}: no channelId available`);
+            this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: No channel ID available (getUserByLogin may have failed)`, { type, error: "no-channel-id" });
+            continue;
+          }
           await this.eventSub.subscribe(type, version, condition);
           this.emitEventSubStatus("eventsub-subscribed", type, { version, condition });
         } catch (err) {
