@@ -1860,6 +1860,10 @@ var ComfyJSImpl = class {
       } catch (err) {
         console.error(`[ComfyJS] Failed to look up channel '${this.mainChannel}':`, err);
       }
+      if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() === this.mainChannel) {
+        this.channelId = this.userId;
+        this.log(`Using token userId as channelId for ${this.mainChannel}`);
+      }
     }
     this.irc = new IRCClient({ debug: this.isDebug });
     this.setupIRCHandlers();

@@ -341,6 +341,12 @@ class ComfyJSImpl implements ComfyJSInstance {
       } catch (err) {
         console.error(`[ComfyJS] Failed to look up channel '${this.mainChannel}':`, err);
       }
+
+      // Fallback: if getUserByLogin failed but channel is the authenticated user, use token's userId
+      if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() === this.mainChannel) {
+        this.channelId = this.userId;
+        this.log(`Using token userId as channelId for ${this.mainChannel}`);
+      }
     }
 
     // Initialize IRC client
