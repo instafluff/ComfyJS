@@ -1869,9 +1869,10 @@ var ComfyJSImpl = class {
       }
       if (!this.channelId) {
         const nameMatch = authenticatedLogin ? authenticatedLogin.toLowerCase() === this.mainChannel : false;
+        const details = `channel=${this.mainChannel}, login=${authenticatedLogin || "(none)"}, match=${nameMatch}, lookup=${lookupError || "unknown"}`;
         this.emitEventSubStatus(
           "eventsub-no-channel-id",
-          `No channel ID available for '${this.mainChannel}'`,
+          `No channel ID available for '${this.mainChannel}' [${details}]`,
           {
             mainChannel: this.mainChannel,
             authenticatedLogin: authenticatedLogin || "(none)",
