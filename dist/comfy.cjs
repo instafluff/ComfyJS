@@ -1850,19 +1850,35 @@ var ComfyJSImpl = class {
         accessToken: this.password,
         debug: this.isDebug
       });
+      let lookupError = null;
       try {
         const user = await this.api.getUserByLogin(this.mainChannel);
         if (user) {
           this.channelId = user.id;
         } else {
+          lookupError = "not-found";
           console.warn(`[ComfyJS] Channel '${this.mainChannel}' not found on Twitch`);
         }
       } catch (err) {
+        lookupError = `error: ${err instanceof Error ? err.message : String(err)}`;
         console.error(`[ComfyJS] Failed to look up channel '${this.mainChannel}':`, err);
       }
       if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() === this.mainChannel) {
         this.channelId = this.userId;
         this.log(`Using token userId as channelId for ${this.mainChannel}`);
+      }
+      if (!this.channelId) {
+        const nameMatch = authenticatedLogin ? authenticatedLogin.toLowerCase() === this.mainChannel : false;
+        this.emitEventSubStatus(
+          "eventsub-no-channel-id",
+          `No channel ID available for '${this.mainChannel}'`,
+          {
+            mainChannel: this.mainChannel,
+            authenticatedLogin: authenticatedLogin || "(none)",
+            nameMatch,
+            lookupError: lookupError || "unknown"
+          }
+        );
       }
     }
     this.irc = new IRCClient({ debug: this.isDebug });
