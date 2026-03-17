@@ -1867,6 +1867,28 @@ var ComfyJSImpl = class {
         this.channelId = this.userId;
         this.log(`Using token userId as channelId for ${this.mainChannel}`);
       }
+      if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() !== this.mainChannel) {
+        const originalChannel = this.mainChannel;
+        try {
+          const authUser = await this.api.getUserByLogin(authenticatedLogin);
+          if (authUser) {
+            this.channelId = authUser.id;
+            this.mainChannel = authenticatedLogin.toLowerCase();
+            console.warn(`[ComfyJS] Channel '${originalChannel}' resolved via token login '${authenticatedLogin}' (likely renamed account)`);
+            this.emitEventSubStatus(
+              "eventsub-channel-resolved",
+              `Resolved channel via token login: '${originalChannel}' -> '${authenticatedLogin}'`,
+              {
+                originalChannel,
+                resolvedLogin: authenticatedLogin,
+                channelId: authUser.id
+              }
+            );
+          }
+        } catch (err) {
+          console.error(`[ComfyJS] Fallback lookup for '${authenticatedLogin}' also failed:`, err);
+        }
+      }
       if (!this.channelId) {
         const nameMatch = authenticatedLogin ? authenticatedLogin.toLowerCase() === this.mainChannel : false;
         const details = `channel=${this.mainChannel}, login=${authenticatedLogin || "(none)"}, match=${nameMatch}, lookup=${lookupError || "unknown"}`;

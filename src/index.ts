@@ -345,13 +345,35 @@ class ComfyJSImpl implements ComfyJSInstance {
         console.error(`[ComfyJS] Failed to look up channel '${this.mainChannel}':`, err);
       }
 
-      // Fallback: if getUserByLogin failed but channel is the authenticated user, use token's userId
+      // Fallback 1: if channel matches authenticated user, use token's userId directly
       if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() === this.mainChannel) {
         this.channelId = this.userId;
         this.log(`Using token userId as channelId for ${this.mainChannel}`);
       }
 
-      // Emit diagnostic when channelId resolution fails
+      // Fallback 2: if channel lookup failed and token login differs (user renamed their Twitch account),
+      // try looking up the authenticated login instead — the token IS the streamer
+      if (!this.channelId && authenticatedLogin && authenticatedLogin.toLowerCase() !== this.mainChannel) {
+        const originalChannel = this.mainChannel;
+        try {
+          const authUser = await this.api.getUserByLogin(authenticatedLogin);
+          if (authUser) {
+            this.channelId = authUser.id;
+            this.mainChannel = authenticatedLogin.toLowerCase();
+            console.warn(`[ComfyJS] Channel '${originalChannel}' resolved via token login '${authenticatedLogin}' (likely renamed account)`);
+            this.emitEventSubStatus('eventsub-channel-resolved',
+              `Resolved channel via token login: '${originalChannel}' -> '${authenticatedLogin}'`, {
+              originalChannel,
+              resolvedLogin: authenticatedLogin,
+              channelId: authUser.id,
+            });
+          }
+        } catch (err) {
+          console.error(`[ComfyJS] Fallback lookup for '${authenticatedLogin}' also failed:`, err);
+        }
+      }
+
+      // Emit diagnostic when channelId resolution fails after all fallbacks
       if (!this.channelId) {
         const nameMatch = authenticatedLogin ? authenticatedLogin.toLowerCase() === this.mainChannel : false;
         const details = `channel=${this.mainChannel}, login=${authenticatedLogin || '(none)'}, match=${nameMatch}, lookup=${lookupError || 'unknown'}`;
