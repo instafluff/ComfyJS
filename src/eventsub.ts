@@ -117,6 +117,24 @@ export class EventSubClient {
     this.isConnecting = true;
 
     return new Promise((resolve, reject) => {
+      // Timeout: if WebSocket doesn't connect and receive welcome within 15s, fail
+      const connectTimeout = setTimeout(() => {
+        if (this.isConnecting) {
+          this.isConnecting = false;
+          try { this.ws?.close(); } catch (_) { /* ignore */ }
+          reject(new Error('EventSub connection timed out after 15s'));
+        }
+      }, 15000);
+
+      const clearAndResolve = (sessionId: string) => {
+        clearTimeout(connectTimeout);
+        resolve(sessionId);
+      };
+      const clearAndReject = (err: Error) => {
+        clearTimeout(connectTimeout);
+        reject(err);
+      };
+
       try {
         this.ws = new WebSocket(EVENTSUB_URL);
 
@@ -125,7 +143,7 @@ export class EventSubClient {
         };
 
         this.ws.onmessage = (event: MessageEvent) => {
-          this.handleMessage(event.data as string, resolve);
+          this.handleMessage(event.data as string, clearAndResolve);
         };
 
         this.ws.onclose = (event: CloseEvent) => {
@@ -135,12 +153,12 @@ export class EventSubClient {
         this.ws.onerror = () => {
           if (this.isConnecting) {
             this.isConnecting = false;
-            reject(new Error('EventSub connection failed'));
+            clearAndReject(new Error('EventSub connection failed'));
           }
         };
       } catch (err) {
         this.isConnecting = false;
-        reject(err);
+        clearAndReject(err instanceof Error ? err : new Error(String(err)));
       }
     });
   }

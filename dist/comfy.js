@@ -547,13 +547,31 @@ var EventSubClient = class {
     }
     this.isConnecting = true;
     return new Promise((resolve, reject) => {
+      const connectTimeout = setTimeout(() => {
+        if (this.isConnecting) {
+          this.isConnecting = false;
+          try {
+            this.ws?.close();
+          } catch (_) {
+          }
+          reject(new Error("EventSub connection timed out after 15s"));
+        }
+      }, 15e3);
+      const clearAndResolve = (sessionId) => {
+        clearTimeout(connectTimeout);
+        resolve(sessionId);
+      };
+      const clearAndReject = (err) => {
+        clearTimeout(connectTimeout);
+        reject(err);
+      };
       try {
         this.ws = new WebSocket(EVENTSUB_URL);
         this.ws.onopen = () => {
           this.log("WebSocket connected, waiting for welcome...");
         };
         this.ws.onmessage = (event) => {
-          this.handleMessage(event.data, resolve);
+          this.handleMessage(event.data, clearAndResolve);
         };
         this.ws.onclose = (event) => {
           this.handleClose(event.reason || "Connection closed");
@@ -561,12 +579,12 @@ var EventSubClient = class {
         this.ws.onerror = () => {
           if (this.isConnecting) {
             this.isConnecting = false;
-            reject(new Error("EventSub connection failed"));
+            clearAndReject(new Error("EventSub connection failed"));
           }
         };
       } catch (err) {
         this.isConnecting = false;
-        reject(err);
+        clearAndReject(err instanceof Error ? err : new Error(String(err)));
       }
     });
   }
@@ -2395,29 +2413,50 @@ var ComfyJSImpl = class {
         if (subscribedTypes.has(type))
           continue;
         subscribedTypes.add(type);
+        const allowedFields = CONDITION_FIELDS[type] || ["broadcaster_user_id"];
+        const condition = {};
+        if (allowedFields.includes("broadcaster_user_id")) {
+          condition.broadcaster_user_id = this.channelId;
+        }
+        if (allowedFields.includes("moderator_user_id")) {
+          condition.moderator_user_id = this.userId;
+        }
+        if (allowedFields.includes("user_id")) {
+          condition.user_id = this.userId;
+        }
+        if (allowedFields.includes("broadcaster_user_id") && !this.channelId) {
+          this.log(`Skipping ${type}: no channelId available`);
+          this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: No channel ID available (getUserByLogin may have failed)`, { type, error: "no-channel-id" });
+          continue;
+        }
         try {
-          const allowedFields = CONDITION_FIELDS[type] || ["broadcaster_user_id"];
-          const condition = {};
-          if (allowedFields.includes("broadcaster_user_id")) {
-            condition.broadcaster_user_id = this.channelId;
-          }
-          if (allowedFields.includes("moderator_user_id")) {
-            condition.moderator_user_id = this.userId;
-          }
-          if (allowedFields.includes("user_id")) {
-            condition.user_id = this.userId;
-          }
-          if (allowedFields.includes("broadcaster_user_id") && !this.channelId) {
-            this.log(`Skipping ${type}: no channelId available`);
-            this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: No channel ID available (getUserByLogin may have failed)`, { type, error: "no-channel-id" });
-            continue;
-          }
           await this.eventSub.subscribe(type, version, condition);
           this.emitEventSubStatus("eventsub-subscribed", type, { version, condition });
         } catch (err) {
+          const errStr = String(err);
+          if (errStr.includes("429") && errStr.includes("maximum subscriptions")) {
+            this.log(`429 hit for ${type}, attempting to delete existing subs and retry`);
+            try {
+              const result = await this.api.getEventSubSubscriptions();
+              const duplicates = result.subscriptions.filter(
+                (s) => s.type === type && s.status === "enabled"
+              );
+              for (const dup of duplicates) {
+                await this.api.deleteEventSubSubscription(dup.id);
+                this.log(`Deleted existing sub ${dup.id} (${dup.type})`);
+              }
+              await this.eventSub.subscribe(type, version, condition);
+              this.emitEventSubStatus("eventsub-subscribed", type, { version, condition, retriedAfter429: true });
+              continue;
+            } catch (retryErr) {
+              console.error(`Retry after 429 cleanup failed for ${type}:`, retryErr);
+              this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: ${String(retryErr)} (after 429 retry)`, { type, error: String(retryErr) });
+              continue;
+            }
+          }
           console.error(`Failed to subscribe to ${type}:`, err);
           this.log(`Failed to subscribe to ${type}: ${err}`);
-          this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: ${String(err)}`, { type, error: String(err) });
+          this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: ${errStr}`, { type, error: errStr });
         }
       }
     }
