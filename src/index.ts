@@ -1073,6 +1073,13 @@ class ComfyJSImpl implements ComfyJSInstance {
         } catch (err) {
           const errStr = String(err);
 
+          // Handle 409: subscription already exists — treat as success
+          if (errStr.includes('409') && errStr.includes('already exists')) {
+            this.log(`Subscription ${type} already exists, treating as success`);
+            this.emitEventSubStatus('eventsub-subscribed', type, { version, condition, alreadyExisted: true });
+            continue;
+          }
+
           // Handle 429: max subscriptions for this type+condition — delete existing enabled subs and retry once
           if (errStr.includes('429') && errStr.includes('maximum subscriptions')) {
             this.log(`429 hit for ${type}, attempting to delete existing subs and retry`);

@@ -2466,6 +2466,11 @@ var ComfyJSImpl = class {
           this.emitEventSubStatus("eventsub-subscribed", type, { version, condition });
         } catch (err) {
           const errStr = String(err);
+          if (errStr.includes("409") && errStr.includes("already exists")) {
+            this.log(`Subscription ${type} already exists, treating as success`);
+            this.emitEventSubStatus("eventsub-subscribed", type, { version, condition, alreadyExisted: true });
+            continue;
+          }
           if (errStr.includes("429") && errStr.includes("maximum subscriptions")) {
             this.log(`429 hit for ${type}, attempting to delete existing subs and retry`);
             try {
