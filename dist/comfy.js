@@ -1895,7 +1895,8 @@ var ComfyJSImpl = class {
     const ircUsername = this.password ? authenticatedLogin : `justinfan${Math.floor(Math.random() * 99999)}`;
     const ircPassword = this.password || "SCHMOOPIIE";
     await this.irc.connect(ircPassword, ircUsername);
-    for (const channel of channelList) {
+    const channelsToJoin = this.mainChannel !== channelList[0].toLowerCase() ? [this.mainChannel] : channelList;
+    for (const channel of channelsToJoin) {
       await this.irc.join(channel);
     }
     this.initializeP2P().then(async () => {
