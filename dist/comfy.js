@@ -1,5 +1,5 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-// Comfy.JS v1.1.29
+// Comfy.JS v1.1.30
 var tmi = require( "tmi.js" );
 var fetch = require( "node-fetch" );
 var NodeSocket = require( "ws" );
@@ -814,7 +814,7 @@ var comfyJS = {
   useEventSub: true, // set to false to use PubSub
   chatModes: {},
   version: function() {
-    return "1.1.29";
+    return "1.1.30";
   },
   onError: function( error ) {
     console.error( "Error:", error );
@@ -1054,6 +1054,7 @@ var comfyJS = {
         var isEmoteOnly = userstate[ "emote-only" ] || false;
         var messageType = userstate[ "message-type" ];
         var customRewardId = userstate[ "custom-reward-id" ] || null;
+        var isFirstMessage = ( userstate[ "first-msg" ] && userstate[ "first-msg" ] === "1" ) || false;
         var flags = {
           broadcaster: isBroadcaster,
           mod: isMod,
@@ -1061,7 +1062,8 @@ var comfyJS = {
           subscriber: isSubscriber || isFounder,
           vip: isVIP,
           highlighted: isHighlightedMessage,
-          customReward: !!customRewardId
+          customReward: !!customRewardId,
+          firstMessage: isFirstMessage
         };
         var extra = {
           id: messageId,
@@ -1346,6 +1348,7 @@ var comfyJS = {
   },
   GetChannelRewards: async function( clientId, manageableOnly = false ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1369,6 +1372,7 @@ var comfyJS = {
   },
   CreateChannelReward: async function( clientId, rewardInfo ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1395,6 +1399,7 @@ var comfyJS = {
   },
   UpdateChannelReward: async function( clientId, rewardId, rewardInfo ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1421,6 +1426,7 @@ var comfyJS = {
   },
   DeleteChannelReward: async function( clientId, rewardId ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
