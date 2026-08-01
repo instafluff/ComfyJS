@@ -1345,6 +1345,7 @@ var comfyJS = {
   },
   GetChannelRewards: async function( clientId, manageableOnly = false ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1368,6 +1369,7 @@ var comfyJS = {
   },
   CreateChannelReward: async function( clientId, rewardInfo ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1394,6 +1396,7 @@ var comfyJS = {
   },
   UpdateChannelReward: async function( clientId, rewardId, rewardInfo ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
@@ -1420,6 +1423,7 @@ var comfyJS = {
   },
   DeleteChannelReward: async function( clientId, rewardId ) {
       if( channelPassword ) {
+          channelPassword = channelPassword.replace( "oauth:", "" );
           if( !channelInfo ) {
               let info = await fetch( `https://api.twitch.tv/helix/users?login=${mainChannel}`, {
                   headers: {
