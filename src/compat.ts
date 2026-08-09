@@ -10,13 +10,18 @@ export type EventSubCallback = (
 ) => void;
 
 export interface ComfyJSModernExtensions {
+  /** Awaitable counterpart to the legacy fire-and-forget Init(). */
+  InitAsync(
+    username: string,
+    password?: string,
+    channels?: string | string[],
+    isDebug?: boolean
+  ): Promise<void>;
+
   /** Receives every EventSub notification before any convenience callback runs. */
   onEventSub: EventSubCallback;
 
-  /**
-   * Subscribe to any Twitch EventSub type without waiting for a ComfyJS release.
-   * The caller supplies Twitch's subscription type, version, and condition.
-   */
+  /** Subscribe to any Twitch EventSub type without waiting for a ComfyJS release. */
   SubscribeEventSub(
     type: string,
     version: string,
@@ -28,16 +33,39 @@ export interface ComfyJSModernExtensions {
 
   /** Return Twitch's current EventSub subscription inventory for this token/app. */
   GetEventSubSubscriptions(): Promise<unknown>;
+
+  /** Get the currently pinned mod message for a channel. */
+  GetPinnedChatMessage(channel?: string): Promise<unknown[]>;
+
+  /** Pin an existing chat message. Twitch currently accepts 30-1800 seconds. */
+  PinChatMessage(messageId: string, durationSeconds?: number, channel?: string): Promise<void>;
+
+  /** Change the remaining duration of the current pinned chat message. */
+  UpdatePinnedChatMessage(messageId: string, durationSeconds?: number, channel?: string): Promise<void>;
+
+  /** Unpin an existing chat message. */
+  UnpinChatMessage(messageId: string, channel?: string): Promise<void>;
 }
 
-export type ComfyJSPublicInstance = ComfyJSInstance & ComfyJSModernExtensions;
+type LegacyInit = (
+  username: string,
+  password?: string,
+  channels?: string | string[],
+  isDebug?: boolean
+) => void;
+
+export type ComfyJSPublicInstance = Omit<ComfyJSInstance, 'Init'> &
+  ComfyJSModernExtensions & {
+    /** v1-compatible fire-and-forget initialization. Use InitAsync to await readiness. */
+    Init: LegacyInit;
+  };
 
 /**
  * Compatibility boundary for the public ComfyJS singleton.
  *
  * v2 internals are free to evolve, but the handlers installed here preserve the
- * observable v1 IRC callback contract. New data is exposed through additive
- * APIs/events rather than changing the arguments of legacy callbacks.
+ * observable v1 contract. New data is exposed through additive APIs/events
+ * rather than changing legacy callbacks or method return values.
  */
 const comfy = ComfyJS as any;
 
@@ -89,8 +117,135 @@ function legacyExtra(msg: IRCMessage, messageType: string): UserExtra {
   };
 }
 
+function reportAsyncError(instance: any, error: unknown): void {
+  instance.onError(error instanceof Error ? error : new Error(String(error)));
+}
+
+function afterInit(instance: any, action: () => boolean | void | Promise<unknown>): void {
+  const pending = instance.__comfyInitPromise as Promise<void> | undefined;
+  const run = async (): Promise<void> => {
+    if (pending) await pending;
+    await action();
+  };
+  void run().catch(error => reportAsyncError(instance, error));
+}
+
+async function resolveChannelId(instance: any, channel?: string): Promise<string> {
+  const target = channel?.replace('#', '').toLowerCase();
+  if (!target || target === instance.mainChannel) {
+    if (!instance.channelId) throw new Error('Channel ID is not available');
+    return instance.channelId;
+  }
+  if (!instance.api) throw new Error('Twitch API is not initialized');
+  const user = await instance.api.getUserByLogin(target);
+  if (!user) throw new Error(`Twitch channel '${target}' was not found`);
+  return user.id;
+}
+
+async function twitchRequest(instance: any, path: string, init: RequestInit = {}): Promise<Response> {
+  if (!instance.password || !instance.clientId) {
+    throw new Error('An OAuth token is required for this Twitch API operation');
+  }
+  const response = await fetch(`https://api.twitch.tv/helix${path}`, {
+    ...init,
+    headers: {
+      'Client-ID': instance.clientId,
+      'Authorization': `Bearer ${instance.password}`,
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers || {}),
+    },
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Twitch API ${response.status}: ${body || response.statusText}`);
+  }
+  return response;
+}
+
+const originalInit = comfy.Init.bind(comfy);
+const originalSay = comfy.Say.bind(comfy);
+const originalReply = comfy.Reply.bind(comfy);
 const originalHandleUserNotice = comfy.handleUserNotice.bind(comfy);
 const originalHandleEventSubNotification = comfy.handleEventSubNotification.bind(comfy);
+
+function beginInit(
+  instance: any,
+  username: string,
+  password?: string,
+  channels?: string | string[],
+  isDebug?: boolean
+): Promise<void> {
+  const promise = originalInit(username, password, channels, isDebug);
+  instance.__comfyInitPromise = promise;
+  void promise.finally(() => {
+    if (instance.__comfyInitPromise === promise) instance.__comfyInitPromise = undefined;
+  }).catch(() => {});
+  return promise;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frozen v1 method contract
+// ─────────────────────────────────────────────────────────────────────────────
+
+comfy.Init = function InitCompat(
+  username: string,
+  password?: string,
+  channels?: string | string[],
+  isDebug?: boolean
+): void {
+  void beginInit(this, username, password, channels, isDebug)
+    .catch(error => reportAsyncError(this, error));
+};
+
+comfy.InitAsync = function InitAsync(
+  username: string,
+  password?: string,
+  channels?: string | string[],
+  isDebug?: boolean
+): Promise<void> {
+  return beginInit(this, username, password, channels, isDebug);
+};
+
+comfy.Say = function SayCompat(message: string, channel?: string): boolean {
+  if (this.irc) return originalSay(message, channel);
+  if (!this.__comfyInitPromise) return false;
+  afterInit(this, () => originalSay(message, channel));
+  return true;
+};
+
+comfy.Reply = function ReplyCompat(parentId: string, message: string, channel?: string): boolean {
+  if (this.irc) return originalReply(parentId, message, channel);
+  if (!this.__comfyInitPromise) return false;
+  afterInit(this, () => originalReply(parentId, message, channel));
+  return true;
+};
+
+comfy.Whisper = function WhisperCompat(message: string, user: string): boolean {
+  if (!this.irc && !this.__comfyInitPromise) return false;
+
+  afterInit(this, async () => {
+    if (!this.api || !this.userId) throw new Error('Whisper requires an authenticated ComfyJS connection');
+    const target = await this.api.getUserByLogin(user);
+    if (!target) throw new Error(`Twitch user '${user}' was not found`);
+    await twitchRequest(
+      this,
+      `/whispers?from_user_id=${encodeURIComponent(this.userId)}&to_user_id=${encodeURIComponent(target.id)}`,
+      { method: 'POST', body: JSON.stringify({ message }) }
+    );
+  });
+  return true;
+};
+
+comfy.DeleteMessage = function DeleteMessageCompat(id: string, channel?: string): boolean {
+  if (!this.irc && !this.__comfyInitPromise) return false;
+
+  afterInit(this, async () => {
+    if (!this.api || !this.userId) throw new Error('DeleteMessage requires an authenticated ComfyJS connection');
+    const broadcasterId = await resolveChannelId(this, channel);
+    await this.api.deleteMessage(broadcasterId, this.userId, id);
+  });
+  return true;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Frozen v1 IRC callback contract
@@ -107,8 +262,6 @@ comfy.handlePrivmsg = function handlePrivmsgCompat(msg: IRCMessage): void {
 
     const bits = Number.parseInt(msg.tags.bits || '0', 10);
     if (bits > 0) {
-      // v1's cheer event had a deliberately smaller flags object and a
-      // cheer-specific extra payload. Preserve that shape exactly.
       const cheerFlags = {
         broadcaster: flags.broadcaster,
         mod: flags.mod,
@@ -234,6 +387,55 @@ comfy.GetEventSubSubscriptions = async function GetEventSubSubscriptions(): Prom
     throw new Error('Twitch API is not initialized. Call ComfyJS.Init() with an OAuth token first.');
   }
   return this.api.getEventSubSubscriptions();
+};
+
+comfy.GetPinnedChatMessage = async function GetPinnedChatMessage(channel?: string): Promise<unknown[]> {
+  const broadcasterId = await resolveChannelId(this, channel);
+  const response = await twitchRequest(
+    this,
+    `/chat/pins?broadcaster_id=${encodeURIComponent(broadcasterId)}&moderator_id=${encodeURIComponent(this.userId)}`
+  );
+  const data = await response.json() as { data?: unknown[] };
+  return data.data || [];
+};
+
+async function mutatePin(
+  instance: any,
+  method: 'PUT' | 'PATCH' | 'DELETE',
+  messageId: string,
+  durationSeconds?: number,
+  channel?: string
+): Promise<void> {
+  const broadcasterId = await resolveChannelId(instance, channel);
+  const params = new URLSearchParams({
+    broadcaster_id: broadcasterId,
+    moderator_id: instance.userId,
+    message_id: messageId,
+  });
+  if (durationSeconds !== undefined && method !== 'DELETE') {
+    params.set('duration_seconds', String(durationSeconds));
+  }
+  await twitchRequest(instance, `/chat/pins?${params}`, { method });
+}
+
+comfy.PinChatMessage = function PinChatMessage(
+  messageId: string,
+  durationSeconds?: number,
+  channel?: string
+): Promise<void> {
+  return mutatePin(this, 'PUT', messageId, durationSeconds, channel);
+};
+
+comfy.UpdatePinnedChatMessage = function UpdatePinnedChatMessage(
+  messageId: string,
+  durationSeconds?: number,
+  channel?: string
+): Promise<void> {
+  return mutatePin(this, 'PATCH', messageId, durationSeconds, channel);
+};
+
+comfy.UnpinChatMessage = function UnpinChatMessage(messageId: string, channel?: string): Promise<void> {
+  return mutatePin(this, 'DELETE', messageId, undefined, channel);
 };
 
 const PublicComfyJS = ComfyJS as ComfyJSPublicInstance;
