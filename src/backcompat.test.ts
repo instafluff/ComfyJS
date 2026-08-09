@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import ComfyJS from './index';
+import ComfyJS from './compat';
 import { parseIRCMessage } from './parsers';
 
 const comfy = ComfyJS as any;
