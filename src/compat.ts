@@ -438,7 +438,7 @@ comfy.UnpinChatMessage = function UnpinChatMessage(messageId: string, channel?: 
   return mutatePin(this, 'DELETE', messageId, undefined, channel);
 };
 
-const PublicComfyJS = ComfyJS as ComfyJSPublicInstance;
+const PublicComfyJS = ComfyJS as unknown as ComfyJSPublicInstance;
 
 export default PublicComfyJS;
 export * from './types';
