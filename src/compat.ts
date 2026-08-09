@@ -1,12 +1,42 @@
 import ComfyJS from './index';
-import type { IRCMessage, UserExtra } from './types';
+import type { ComfyJSInstance, IRCMessage, UserExtra } from './types';
+import type { EventSubNotification } from './eventsub';
 import { buildUserExtra, parseCommand, parseUserFlags } from './parsers';
+
+export type EventSubCallback = (
+  type: string,
+  event: Record<string, unknown>,
+  version: string
+) => void;
+
+export interface ComfyJSModernExtensions {
+  /** Receives every EventSub notification before any convenience callback runs. */
+  onEventSub: EventSubCallback;
+
+  /**
+   * Subscribe to any Twitch EventSub type without waiting for a ComfyJS release.
+   * The caller supplies Twitch's subscription type, version, and condition.
+   */
+  SubscribeEventSub(
+    type: string,
+    version: string,
+    condition: Record<string, string>
+  ): Promise<unknown>;
+
+  /** Remove an EventSub subscription by Twitch subscription ID. */
+  UnsubscribeEventSub(id: string): Promise<void>;
+
+  /** Return Twitch's current EventSub subscription inventory for this token/app. */
+  GetEventSubSubscriptions(): Promise<unknown>;
+}
+
+export type ComfyJSPublicInstance = ComfyJSInstance & ComfyJSModernExtensions;
 
 /**
  * Compatibility boundary for the public ComfyJS singleton.
  *
  * v2 internals are free to evolve, but the handlers installed here preserve the
- * observable v1 IRC callback contract. New data should be exposed through new
+ * observable v1 IRC callback contract. New data is exposed through additive
  * APIs/events rather than changing the arguments of legacy callbacks.
  */
 const comfy = ComfyJS as any;
@@ -60,6 +90,11 @@ function legacyExtra(msg: IRCMessage, messageType: string): UserExtra {
 }
 
 const originalHandleUserNotice = comfy.handleUserNotice.bind(comfy);
+const originalHandleEventSubNotification = comfy.handleEventSubNotification.bind(comfy);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frozen v1 IRC callback contract
+// ─────────────────────────────────────────────────────────────────────────────
 
 comfy.handlePrivmsg = function handlePrivmsgCompat(msg: IRCMessage): void {
   try {
@@ -153,7 +188,57 @@ comfy.handleUserNotice = function handleUserNoticeCompat(msg: IRCMessage): void 
   originalHandleUserNotice(msg);
 };
 
-export default ComfyJS;
+// ─────────────────────────────────────────────────────────────────────────────
+// Additive modern EventSub surface
+// ─────────────────────────────────────────────────────────────────────────────
+
+comfy.onEventSub = (_type: string, _event: Record<string, unknown>, _version: string): void => {};
+
+comfy.handleEventSubNotification = function handleEventSubNotificationCompat(
+  notification: EventSubNotification
+): void {
+  try {
+    this.onEventSub(
+      notification.subscriptionType,
+      notification.event,
+      notification.subscriptionVersion
+    );
+  } catch (error) {
+    this.onError(error instanceof Error ? error : new Error(String(error)));
+  }
+
+  originalHandleEventSubNotification(notification);
+};
+
+comfy.SubscribeEventSub = async function SubscribeEventSub(
+  type: string,
+  version: string,
+  condition: Record<string, string>
+): Promise<unknown> {
+  if (!this.eventSub) {
+    throw new Error('EventSub is not initialized. Call ComfyJS.Init() with an OAuth token first.');
+  }
+  return this.eventSub.subscribe(type, version, condition);
+};
+
+comfy.UnsubscribeEventSub = async function UnsubscribeEventSub(id: string): Promise<void> {
+  if (!this.api) {
+    throw new Error('Twitch API is not initialized. Call ComfyJS.Init() with an OAuth token first.');
+  }
+  await this.api.deleteEventSubSubscription(id);
+  this.eventSub?.unregisterSubscription(id);
+};
+
+comfy.GetEventSubSubscriptions = async function GetEventSubSubscriptions(): Promise<unknown> {
+  if (!this.api) {
+    throw new Error('Twitch API is not initialized. Call ComfyJS.Init() with an OAuth token first.');
+  }
+  return this.api.getEventSubSubscriptions();
+};
+
+const PublicComfyJS = ComfyJS as ComfyJSPublicInstance;
+
+export default PublicComfyJS;
 export * from './types';
 export { IRCClient } from './irc';
 export { EventSubClient, EventSubTypes } from './eventsub';
