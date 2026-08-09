@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ComfyJS v1 ↔ v2 Live Differential</title>
+  <style>
+    body { font: 14px/1.45 system-ui, sans-serif; margin: 24px; max-width: 1200px; }
+    h1 { margin-bottom: 6px; }
+    .controls { display: grid; grid-template-columns: 1fr 2fr auto auto; gap: 8px; margin: 18px 0; }
+    input, button { font: inherit; padding: 8px 10px; }
+    .summary { display: flex; gap: 18px; margin: 12px 0 18px; }
+    .ok { color: #167b38; } .bad { color: #b42318; } .pending { color: #8a6100; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid #ddd; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; max-height: 240px; overflow: auto; }
+    iframe { width: 1px; height: 1px; position: absolute; left: -10000px; }
+    .note { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>ComfyJS live differential</h1>
+  <p class="note">Runs released <strong>1.1.30</strong> and the local candidate build against the same Twitch channel, then correlates public callbacks and compares their serialized arguments. OAuth is optional; without it you can still exercise IRC events. The token is kept in page memory and sent only to the two ComfyJS instances.</p>
+
+  <div class="controls">
+    <input id="channel" value="instafluff" placeholder="Twitch channel" />
+    <input id="token" type="password" placeholder="Optional oauth:... token" autocomplete="off" />
+    <button id="start">Start</button>
+    <button id="stop" disabled>Stop</button>
+  </div>
+
+  <div class="summary">
+    <strong id="status">Loading clients…</strong>
+    <span class="ok">Matches: <b id="matches">0</b></span>
+    <span class="bad">Differences: <b id="diffs">0</b></span>
+    <span class="pending">Unpaired: <b id="unpaired">0</b></span>
+  </div>
+
+  <table>
+    <thead><tr><th>Result</th><th>Callback / key</th><th>v1 arguments</th><th>v2 arguments</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <iframe id="v1" src="differential-client.html?mode=v1"></iframe>
+  <iframe id="v2" src="differential-client.html?mode=v2"></iframe>
+
+<script>
+(() => {
+  const clients = { v1: false, v2: false };
+  const pending = { v1: new Map(), v2: new Map() };
+  let matchCount = 0;
+  let diffCount = 0;
+
+  const $ = id => document.getElementById(id);
+  const frames = { v1: $('v1'), v2: $('v2') };
+
+  function stable(value) {
+    if (Array.isArray(value)) return value.map(stable);
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])]));
+    }
+    return value;
+  }
+
+  function serialized(args) {
+    return JSON.stringify(stable(args));
+  }
+
+  function eventKey(message) {
+    const args = message.args || [];
+    const objects = args.filter(x => x && typeof x === 'object' && !Array.isArray(x));
+    const extra = objects.at(-1) || {};
+    const identity = extra.id || extra.customRewardId || extra.pollId || extra.predictionId || extra.whisperId;
+    if (identity) return `${message.handler}:${identity}`;
+
+    if (message.handler === 'onChatMode') return `${message.handler}:${args[1] || ''}`;
+    if (['onJoin', 'onPart', 'onHosted', 'onRaid'].includes(message.handler)) {
+      return `${message.handler}:${args[0] || ''}:${extra.channel || ''}`;
+    }
+    if (message.handler === 'onConnected') return 'onConnected:first';
+    if (message.handler === 'onReconnect') return `${message.handler}:${args[0] || ''}`;
+    if (message.handler === 'onError') return `${message.handler}:${JSON.stringify(args[0] || '')}`;
+
+    // EventSub callbacks commonly expose their stable ID in a nested object.
+    const nestedId = extra.reward?.id || extra.hypeEvent?.id;
+    if (nestedId) return `${message.handler}:${nestedId}`;
+
+    // Fallback: pair in callback order. This is intentionally visible as a
+    // weaker correlation key so suspicious matches can be inspected manually.
+    return `${message.handler}:sequence`;
+  }
+
+  function enqueue(side, key, message) {
+    const queue = pending[side].get(key) || [];
+    queue.push(message);
+    pending[side].set(key, queue);
+  }
+
+  function dequeue(side, key) {
+    const queue = pending[side].get(key) || [];
+    const item = queue.shift();
+    if (queue.length) pending[side].set(key, queue); else pending[side].delete(key);
+    return item;
+  }
+
+  function pendingCount() {
+    return ['v1', 'v2'].reduce((total, side) =>
+      total + [...pending[side].values()].reduce((n, q) => n + q.length, 0), 0);
+  }
+
+  function addRow(key, left, right) {
+    const equal = serialized(left.args) === serialized(right.args);
+    if (equal) matchCount++; else diffCount++;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="${equal ? 'ok' : 'bad'}"><strong>${equal ? 'MATCH' : 'DIFF'}</strong></td>
+      <td><code>${key}</code><br><small>Δ receive ${Math.abs(left.receivedAt - right.receivedAt)} ms</small></td>
+      <td><pre></pre></td>
+      <td><pre></pre></td>`;
+    tr.children[2].querySelector('pre').textContent = JSON.stringify(left.args, null, 2);
+    tr.children[3].querySelector('pre').textContent = JSON.stringify(right.args, null, 2);
+    $('rows').prepend(tr);
+    $('matches').textContent = matchCount;
+    $('diffs').textContent = diffCount;
+    $('unpaired').textContent = pendingCount();
+  }
+
+  function receive(message) {
+    if (message.ready) {
+      clients[message.mode] = true;
+      if (clients.v1 && clients.v2) $('status').textContent = 'Both clients ready';
+      return;
+    }
+    if (message.fatal) {
+      $('status').textContent = `${message.mode}: ${message.fatal}`;
+      $('status').className = 'bad';
+      return;
+    }
+    if (!message.handler || message.handler === 'onEventSub') return;
+
+    const key = eventKey(message);
+    const other = message.mode === 'v1' ? 'v2' : 'v1';
+    const pair = dequeue(other, key);
+    if (pair) {
+      addRow(key, message.mode === 'v1' ? message : pair, message.mode === 'v2' ? message : pair);
+    } else {
+      enqueue(message.mode, key, message);
+      $('unpaired').textContent = pendingCount();
+    }
+  }
+
+  addEventListener('message', event => {
+    if (event.origin !== location.origin || event.data?.source !== 'comfy-differential') return;
+    receive(event.data);
+  });
+
+  $('start').onclick = () => {
+    if (!clients.v1 || !clients.v2) {
+      $('status').textContent = 'Clients are still loading';
+      return;
+    }
+    const channel = $('channel').value.trim();
+    const token = $('token').value.trim();
+    if (!channel) return;
+
+    for (const frame of Object.values(frames)) {
+      frame.contentWindow.postMessage({
+        source: 'comfy-differential-control', action: 'start', channel, token
+      }, location.origin);
+    }
+    $('status').textContent = `Comparing live events in #${channel}`;
+    $('start').disabled = true;
+    $('stop').disabled = false;
+  };
+
+  $('stop').onclick = () => {
+    for (const frame of Object.values(frames)) {
+      frame.contentWindow.postMessage({ source: 'comfy-differential-control', action: 'stop' }, location.origin);
+    }
+    $('status').textContent = 'Stopped';
+    $('start').disabled = false;
+    $('stop').disabled = true;
+  };
+})();
+</script>
+</body>
+</html>
