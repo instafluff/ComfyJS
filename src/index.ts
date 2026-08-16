@@ -170,7 +170,12 @@ class ComfyJSImpl implements ComfyJSInstance {
   private scopes: string[] = [];
   
   private isFirstConnect = true;
+  private eventSubStarting = false;
   private boundBeforeUnload: (() => void) | null = null;
+
+  // Recently handled events, for suppressing duplicates
+  private seenEvents: Set<string> = new Set();
+  private seenEventOrder: string[] = [];
 
   // ─────────────────────────────────────────────────────────────────────────
   // Event Handlers (with default implementations)
@@ -280,6 +285,13 @@ class ComfyJSImpl implements ComfyJSInstance {
    * Games/diagnostics can hook this to track what's happening with channel points.
    */
   onEventSubStatus: ((event: string, detail: string, data?: Record<string, unknown>) => void) = () => {};
+
+  /**
+   * Message received from another browser source of the same channel.
+   * Paired with Broadcast(); used to coordinate work between overlays that
+   * run side by side in OBS.
+   */
+  onBroadcast: ((payload: unknown, fromId: string) => void) = () => {};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Public Methods
@@ -422,7 +434,7 @@ class ComfyJSImpl implements ComfyJSInstance {
       } else if (this.p2p?.currentRole === 'follower') {
         this.emitEventSubStatus('p2p-follower-waiting', 'waiting 15s for DataChannel from leader');
         setTimeout(async () => {
-          if (this.p2p && this.p2p.followerCount === 0) {
+          if (this.p2p && this.p2p.currentRole === 'follower' && this.p2p.followerCount === 0) {
             console.warn('P2P DataChannel failed to connect. Falling back to EventSub directly.');
             this.emitEventSubStatus('p2p-fallback', 'DataChannel not connected after 15s, initializing EventSub directly');
             await this.initializeEventSub();
@@ -608,6 +620,52 @@ class ComfyJSImpl implements ComfyJSInstance {
       }
     );
     return response.text();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Channel Point Redemptions
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Resolve a pending redemption. `CANCELED` refunds the points to the viewer.
+   *
+   * Requires the channel:manage:redemptions scope, a reward created by this
+   * client id, and a reward configured with
+   * should_redemptions_skip_request_queue: false — Twitch auto-fulfills
+   * skip-the-queue redemptions and refuses to change them afterwards.
+   */
+  async UpdateRedemptionStatus(
+    rewardId: string,
+    redemptionId: string,
+    status: 'FULFILLED' | 'CANCELED'
+  ): Promise<unknown> {
+    if (!this.api) throw new Error('Not connected');
+    if (!this.channelId) throw new Error('No channel ID available');
+    return this.api.updateRedemptionStatus(this.channelId, rewardId, redemptionId, status);
+  }
+
+  /** Refund a redemption's channel points to the viewer. */
+  async RefundRedemption(rewardId: string, redemptionId: string): Promise<unknown> {
+    return this.UpdateRedemptionStatus(rewardId, redemptionId, 'CANCELED');
+  }
+
+  /** Mark a redemption as completed so it leaves the streamer's queue. */
+  async FulfillRedemption(rewardId: string, redemptionId: string): Promise<unknown> {
+    return this.UpdateRedemptionStatus(rewardId, redemptionId, 'FULFILLED');
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Cross-Source Messaging
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Send a message to the other browser sources running the same channel.
+   * Delivered over the same BroadcastChannel used to relay EventSub events.
+   */
+  Broadcast(payload: unknown): boolean {
+    if (!this.p2p) return false;
+    this.p2p.sendAppMessage(payload);
+    return true;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -941,6 +999,25 @@ class ComfyJSImpl implements ComfyJSInstance {
     this.p2p.onEvent = (event) => {
       this.handleEventSubNotification(event);
     };
+
+    this.p2p.onAppMessage = (payload, fromId) => {
+      try {
+        this.onBroadcast(payload, fromId);
+      } catch (err) {
+        this.onError(err instanceof Error ? err : new Error(String(err)));
+      }
+    };
+
+    this.p2p.onRoleChange = (newRole) => {
+      this.emitEventSubStatus('p2p-role', newRole);
+      // A follower promoted after the previous leader's source closed must take
+      // over the EventSub connection, otherwise nobody is listening any more.
+      if (newRole === 'leader' && this.password && this.useEventSub && !this.eventSub) {
+        this.initializeEventSub().catch((err) => {
+          this.emitEventSubStatus('eventsub-fallback-failed', String(err));
+        });
+      }
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -949,43 +1026,53 @@ class ComfyJSImpl implements ComfyJSInstance {
 
   private async initializeEventSub(): Promise<void> {
     if (!this.api) return;
+    // Promotion, relay fallback and the initial connect can all race here.
+    if (this.eventSub || this.eventSubStarting) return;
+    this.eventSubStarting = true;
 
-    // Clean up stale EventSub subscriptions from previous sessions
-    // (e.g., after OBS browser source refresh). Old subs in
-    // "websocket_disconnected" status still count against Twitch's
-    // total cost limit (~10 per client_id+user_id).
-    await this.cleanupStaleSubscriptions();
+    try {
+      // Clean up stale EventSub subscriptions from previous sessions
+      // (e.g., after OBS browser source refresh). Old subs in
+      // "websocket_disconnected" status still count against Twitch's
+      // total cost limit (~10 per client_id+user_id).
+      await this.cleanupStaleSubscriptions();
 
-    this.eventSub = new EventSubClient({ debug: this.isDebug });
-    
-    // Set up subscription handler
-    this.eventSub.createSubscription = async (sessionId, type, version, condition) => {
-      const sub = await this.api!.createEventSubSubscription(sessionId, type, version, condition);
-      this.eventSub!.registerSubscription(sub);
-      return sub;
-    };
+      const eventSub = new EventSubClient({ debug: this.isDebug });
+      this.eventSub = eventSub;
 
-    // Set up event handler
-    this.eventSub.onEvent = (event) => {
-      // Handle locally
-      this.handleEventSubNotification(event);
-      // Broadcast to followers
-      this.p2p?.broadcastEvent(event);
-    };
-
-    // Connect
-    await this.eventSub.connect();
-    this.emitEventSubStatus('eventsub-connected', `session: ${this.eventSub.session}`);
-
-    // Subscribe based on scopes
-    await this.subscribeToScopedEvents();
-
-    // Register beforeunload to clean up on page close/refresh
-    if (typeof window !== 'undefined') {
-      this.boundBeforeUnload = () => {
-        this.eventSub?.disconnect();
+      // Set up subscription handler
+      eventSub.createSubscription = async (sessionId, type, version, condition) => {
+        const sub = await this.api!.createEventSubSubscription(sessionId, type, version, condition);
+        eventSub.registerSubscription(sub);
+        return sub;
       };
-      window.addEventListener('beforeunload', this.boundBeforeUnload);
+
+      // Set up event handler
+      eventSub.onEvent = (event) => {
+        // Relay first so followers are not delayed by local game logic
+        this.p2p?.broadcastEvent(event);
+        this.handleEventSubNotification(event);
+      };
+
+      // Connect
+      await eventSub.connect();
+      this.emitEventSubStatus('eventsub-connected', `session: ${eventSub.session}`);
+
+      // Subscribe based on scopes
+      await this.subscribeToScopedEvents();
+
+      // Register beforeunload to clean up on page close/refresh
+      if (typeof window !== 'undefined' && !this.boundBeforeUnload) {
+        this.boundBeforeUnload = () => {
+          this.eventSub?.disconnect();
+        };
+        window.addEventListener('beforeunload', this.boundBeforeUnload);
+      }
+    } catch (err) {
+      this.eventSub = null;
+      throw err;
+    } finally {
+      this.eventSubStarting = false;
     }
   }
 
@@ -1083,27 +1170,17 @@ class ComfyJSImpl implements ComfyJSInstance {
             continue;
           }
 
-          // Handle 429: max subscriptions for this type+condition — delete existing enabled subs and retry once
+          // Handle 429: Twitch caps subscriptions per type+condition. Another
+          // browser source already holds a working subscription, and events
+          // reach us through the leader relay, so treat this as success.
+          // Deleting the existing subscription here used to take channel points
+          // down for every overlay on the machine.
           if (errStr.includes('429') && errStr.includes('maximum subscriptions')) {
-            this.log(`429 hit for ${type}, attempting to delete existing subs and retry`);
-            try {
-              const result = await this.api!.getEventSubSubscriptions();
-              const duplicates = result.subscriptions.filter(
-                (s) => s.type === type && s.status === 'enabled'
-              );
-              for (const dup of duplicates) {
-                await this.api!.deleteEventSubSubscription(dup.id);
-                this.log(`Deleted existing sub ${dup.id} (${dup.type})`);
-              }
-              // Retry the subscribe
-              await this.eventSub.subscribe(type, version, condition);
-              this.emitEventSubStatus('eventsub-subscribed', type, { version, condition, retriedAfter429: true });
-              continue;
-            } catch (retryErr) {
-              console.error(`Retry after 429 cleanup failed for ${type}:`, retryErr);
-              this.emitEventSubStatus('eventsub-subscribe-failed', `${type}: ${String(retryErr)} (after 429 retry)`, { type, error: String(retryErr) });
-              continue;
-            }
+            this.log(`429 for ${type}: subscription cap reached, relying on existing subscription`);
+            this.emitEventSubStatus('eventsub-subscribe-capped',
+              `${type}: subscription cap reached, another browser source already holds one`,
+              { type, condition });
+            continue;
           }
 
           console.error(`Failed to subscribe to ${type}:`, err);
@@ -1116,6 +1193,14 @@ class ComfyJSImpl implements ComfyJSInstance {
 
   private handleEventSubNotification(notification: EventSubNotification): void {
     const { subscriptionType, event } = notification;
+
+    // A source can receive the same event over the relay and over its own
+    // fallback connection. Redemptions carry an id that is stable across
+    // EventSub sessions, so the game callback (and any refund) runs once.
+    if (!this.markEventSeen(notification)) {
+      this.log(`Duplicate ${subscriptionType} ignored`);
+      return;
+    }
 
     try {
       switch (subscriptionType) {
@@ -1405,6 +1490,33 @@ class ComfyJSImpl implements ComfyJSInstance {
       // Never let callback errors break the EventSub flow
       console.warn('[ComfyJS] onEventSubStatus callback error:', err);
     }
+  }
+
+  /**
+   * Returns true the first time an event is seen. Redemptions are keyed on the
+   * redemption id so they still deduplicate across two EventSub sessions;
+   * everything else falls back to the per-message id, which catches Twitch's
+   * own retransmissions.
+   */
+  private markEventSeen(notification: EventSubNotification): boolean {
+    const isRedemption = notification.subscriptionType === 'channel.channel_points_custom_reward_redemption.add'
+      || notification.subscriptionType === 'channel.channel_points_automatic_reward_redemption.add';
+    const eventId = notification.event?.id;
+
+    const key = isRedemption && typeof eventId === 'string'
+      ? `${notification.subscriptionType}:${eventId}`
+      : (notification.messageId ? `msg:${notification.messageId}` : '');
+
+    if (!key) return true;
+    if (this.seenEvents.has(key)) return false;
+
+    this.seenEvents.add(key);
+    this.seenEventOrder.push(key);
+    if (this.seenEventOrder.length > 400) {
+      const evicted = this.seenEventOrder.shift();
+      if (evicted) this.seenEvents.delete(evicted);
+    }
+    return true;
   }
 
   private log(msg: string): void {

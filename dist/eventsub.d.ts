@@ -3,6 +3,7 @@ export interface EventSubNotification {
     subscriptionType: string;
     subscriptionVersion: string;
     event: Record<string, unknown>;
+    messageId?: string;
 }
 export interface EventSubClientOptions {
     debug?: boolean;

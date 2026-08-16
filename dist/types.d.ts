@@ -353,6 +353,8 @@ export interface ComfyJSInstance {
     onRawMessage: RawMessageHandler;
     onConnected: ConnectedHandler;
     onReconnect: ReconnectHandler;
+    onEventSubStatus: (event: string, detail: string, data?: Record<string, unknown>) => void;
+    onBroadcast: (payload: unknown, fromId: string) => void;
     version(): string;
     p2pRole(): 'leader' | 'follower' | 'standalone' | null;
     p2pId(): string | null;
@@ -369,4 +371,8 @@ export interface ComfyJSInstance {
     CreateChannelReward(clientId: string, rewardInfo: unknown): Promise<unknown>;
     UpdateChannelReward(clientId: string, rewardId: string, rewardInfo: unknown): Promise<unknown>;
     DeleteChannelReward(clientId: string, rewardId: string): Promise<string>;
+    UpdateRedemptionStatus(rewardId: string, redemptionId: string, status: 'FULFILLED' | 'CANCELED'): Promise<unknown>;
+    RefundRedemption(rewardId: string, redemptionId: string): Promise<unknown>;
+    FulfillRedemption(rewardId: string, redemptionId: string): Promise<unknown>;
+    Broadcast(payload: unknown): boolean;
 }

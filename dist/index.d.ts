@@ -15,7 +15,10 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     private channelId;
     private scopes;
     private isFirstConnect;
+    private eventSubStarting;
     private boundBeforeUnload;
+    private seenEvents;
+    private seenEventOrder;
     onError: ErrorHandler;
     onCommand: CommandHandler;
     onChat: ChatHandler;
@@ -48,6 +51,12 @@ declare class ComfyJSImpl implements ComfyJSInstance {
      * Games/diagnostics can hook this to track what's happening with channel points.
      */
     onEventSubStatus: ((event: string, detail: string, data?: Record<string, unknown>) => void);
+    /**
+     * Message received from another browser source of the same channel.
+     * Paired with Broadcast(); used to coordinate work between overlays that
+     * run side by side in OBS.
+     */
+    onBroadcast: ((payload: unknown, fromId: string) => void);
     version(): string;
     Init(username: string, password?: string, channels?: string | string[], isDebug?: boolean): Promise<void>;
     Disconnect(): void;
@@ -61,6 +70,24 @@ declare class ComfyJSImpl implements ComfyJSInstance {
     CreateChannelReward(clientId: string, rewardInfo: unknown): Promise<unknown>;
     UpdateChannelReward(clientId: string, rewardId: string, rewardInfo: unknown): Promise<unknown>;
     DeleteChannelReward(clientId: string, rewardId: string): Promise<string>;
+    /**
+     * Resolve a pending redemption. `CANCELED` refunds the points to the viewer.
+     *
+     * Requires the channel:manage:redemptions scope, a reward created by this
+     * client id, and a reward configured with
+     * should_redemptions_skip_request_queue: false — Twitch auto-fulfills
+     * skip-the-queue redemptions and refuses to change them afterwards.
+     */
+    UpdateRedemptionStatus(rewardId: string, redemptionId: string, status: 'FULFILLED' | 'CANCELED'): Promise<unknown>;
+    /** Refund a redemption's channel points to the viewer. */
+    RefundRedemption(rewardId: string, redemptionId: string): Promise<unknown>;
+    /** Mark a redemption as completed so it leaves the streamer's queue. */
+    FulfillRedemption(rewardId: string, redemptionId: string): Promise<unknown>;
+    /**
+     * Send a message to the other browser sources running the same channel.
+     * Delivered over the same BroadcastChannel used to relay EventSub events.
+     */
+    Broadcast(payload: unknown): boolean;
     private validateToken;
     private setupIRCHandlers;
     private handleIRCMessage;
@@ -100,6 +127,13 @@ declare class ComfyJSImpl implements ComfyJSInstance {
      */
     p2pFollowerCount(): number;
     private emitEventSubStatus;
+    /**
+     * Returns true the first time an event is seen. Redemptions are keyed on the
+     * redemption id so they still deduplicate across two EventSub sessions;
+     * everything else falls back to the per-message id, which catches Twitch's
+     * own retransmissions.
+     */
+    private markEventSeen;
     private log;
 }
 declare const ComfyJS: ComfyJSImpl;

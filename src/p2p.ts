@@ -21,6 +21,7 @@ const LEADER_TIMEOUT_MS = 10000; // Consider leader dead after 10s no heartbeat
 const HEARTBEAT_INTERVAL_MS = 3000; // Leader heartbeat every 3s
 const POLL_INTERVAL_MS = 500; // Poll localStorage every 500ms
 const ELECTION_DELAY_MAX_MS = 500; // Random delay to avoid race conditions
+const ELECTION_CONFIRM_MS = 150; // Re-read delay to settle a contested claim
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -43,11 +44,18 @@ interface PeerEntry {
   id: string;
   leaderId: string;
   timestamp: number;
-  offer?: string; // JSON stringified RTCSessionDescriptionInit
   answer?: string; // JSON stringified RTCSessionDescriptionInit
-  leaderIce: string[]; // JSON stringified RTCIceCandidateInit[]
   followerIce: string[]; // JSON stringified RTCIceCandidateInit[]
-  connected: boolean;
+}
+
+// The leader's half of the handshake lives in its own key. Leader and follower
+// each write only the key they own; when both wrote the same entry the 500ms
+// polls raced and silently dropped offers, answers and ICE candidates.
+interface OfferEntry {
+  leaderId: string;
+  timestamp: number;
+  offer?: string; // JSON stringified RTCSessionDescriptionInit
+  leaderIce: string[]; // JSON stringified RTCIceCandidateInit[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,12 +81,21 @@ export class P2PCoordinator {
   
   // Track which peers we've started connecting to
   private connectingPeers: Set<string> = new Set();
+
+  // True while an election is in flight
+  private electing = false;
+
+  // ICE candidates already handed to each peer connection
+  private appliedIce: Map<string, Set<string>> = new Map();
+
+  private unloadListener: (() => void) | null = null;
   
   // Event handlers
   public onEvent: ((event: EventSubNotification) => void) | null = null;
   public onRoleChange: ((role: P2PRole) => void) | null = null;
   public onFollowerConnected: ((instanceId: string) => void) | null = null;
   public onFollowerDisconnected: ((instanceId: string) => void) | null = null;
+  public onAppMessage: ((payload: unknown, fromId: string) => void) | null = null;
 
   constructor(options: P2PCoordinatorOptions) {
     this.instanceId = this.generateInstanceId();
@@ -103,6 +120,14 @@ export class P2PCoordinator {
     return `${this.peerPrefix}${peerId}`;
   }
 
+  private get offerPrefix(): string {
+    return `${STORAGE_PREFIX}offer_${this.channel}_`;
+  }
+
+  private offerKey(peerId: string): string {
+    return `${this.offerPrefix}${peerId}`;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Initialization
   // ─────────────────────────────────────────────────────────────────────────
@@ -117,6 +142,7 @@ export class P2PCoordinator {
 
     // Clean up any stale entries first
     this.cleanupStaleEntries();
+    this.registerUnloadHandler();
 
     // Check for existing leader for our channel
     const leader = this.getLeader();
@@ -142,6 +168,18 @@ export class P2PCoordinator {
   // ─────────────────────────────────────────────────────────────────────────
 
   private async tryBecomeLeader(): Promise<void> {
+    // The 500ms poll keeps firing while we wait below, so without this guard a
+    // single dead leader triggers several overlapping elections.
+    if (this.electing) return;
+    this.electing = true;
+    try {
+      await this.runElection();
+    } finally {
+      this.electing = false;
+    }
+  }
+
+  private async runElection(): Promise<void> {
     // Add small random delay to avoid race conditions when multiple instances start simultaneously
     await this.delay(Math.random() * ELECTION_DELAY_MAX_MS);
     
@@ -153,10 +191,6 @@ export class P2PCoordinator {
       return;
     }
     
-    // Become leader
-    this.role = 'leader';
-    this.currentLeaderId = this.instanceId;
-    
     // Write leader entry to localStorage
     const leaderEntry: LeaderEntry = {
       id: this.instanceId,
@@ -165,6 +199,21 @@ export class P2PCoordinator {
     };
     
     this.setStorageItem(this.leaderKey, leaderEntry);
+
+    // Two sources can pass the check above at the same time and both write.
+    // Last write wins, so read it back and only take the role if it is ours —
+    // otherwise both would open an EventSub connection and hit Twitch's
+    // per-type subscription limit.
+    await this.delay(ELECTION_CONFIRM_MS);
+    const confirmed = this.getLeader();
+    if (confirmed && confirmed.id !== this.instanceId) {
+      this.log(`Lost election to ${confirmed.id}`);
+      await this.becomeFollower(confirmed);
+      return;
+    }
+
+    this.role = 'leader';
+    this.currentLeaderId = this.instanceId;
     this.log('Became leader');
     
     // Start heartbeat to keep leader entry fresh
@@ -176,6 +225,7 @@ export class P2PCoordinator {
   private async becomeFollower(leader: LeaderEntry): Promise<void> {
     this.role = 'follower';
     this.currentLeaderId = leader.id;
+    this.appliedIce.clear();
     this.log(`Becoming follower of ${leader.id}`);
     
     // Create our peer entry
@@ -183,9 +233,7 @@ export class P2PCoordinator {
       id: this.instanceId,
       leaderId: leader.id,
       timestamp: Date.now(),
-      leaderIce: [],
       followerIce: [],
-      connected: false,
     };
     
     this.setStorageItem(this.peerKey(this.instanceId), peerEntry);
@@ -228,7 +276,6 @@ export class P2PCoordinator {
     
     for (const peer of peers) {
       if (peer.leaderId !== this.instanceId) continue;
-      if (peer.connected) continue;
       if (this.connectingPeers.has(peer.id)) continue;
       
       // New peer wants to connect, initiate WebRTC
@@ -272,17 +319,28 @@ export class P2PCoordinator {
       this.becomeFollower(leader);
       return;
     }
-    
+
+    // Keep our entry fresh so the leader does not treat us as stale
+    this.touchOwnPeerEntry();
+
     // Check for offer from leader
+    const offerEntry = this.getStorageItem<OfferEntry>(this.offerKey(this.instanceId));
+    if (!offerEntry || offerEntry.leaderId !== leader.id) return;
+
     const myEntry = this.getStorageItem<PeerEntry>(this.peerKey(this.instanceId));
-    if (myEntry && myEntry.offer && !myEntry.answer) {
-      this.handleLeaderOffer(myEntry);
+    if (offerEntry.offer && myEntry && !myEntry.answer) {
+      this.handleLeaderOffer(offerEntry);
     }
     
     // Process ICE candidates from leader
-    if (myEntry) {
-      this.processLeaderIceCandidates(myEntry);
-    }
+    this.processLeaderIceCandidates(offerEntry);
+  }
+
+  private touchOwnPeerEntry(): void {
+    const entry = this.getStorageItem<PeerEntry>(this.peerKey(this.instanceId));
+    if (!entry) return;
+    entry.timestamp = Date.now();
+    this.setStorageItem(this.peerKey(this.instanceId), entry);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -302,14 +360,14 @@ export class P2PCoordinator {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     
-    // Write offer to peer's entry
-    const peerEntry = this.getStorageItem<PeerEntry>(this.peerKey(peerId));
-    if (peerEntry) {
-      peerEntry.offer = JSON.stringify(offer);
-      peerEntry.timestamp = Date.now();
-      this.setStorageItem(this.peerKey(peerId), peerEntry);
-      this.log(`Wrote offer to ${peerId}'s entry`);
-    }
+    // Written to the leader-owned key so the follower's writes cannot clobber it
+    this.setStorageItem(this.offerKey(peerId), {
+      leaderId: this.instanceId,
+      timestamp: Date.now(),
+      offer: JSON.stringify(offer),
+      leaderIce: [],
+    } as OfferEntry);
+    this.log(`Wrote offer for ${peerId}`);
   }
 
   private async handlePeerAnswer(peer: PeerEntry): Promise<void> {
@@ -320,10 +378,6 @@ export class P2PCoordinator {
       const answer = JSON.parse(peer.answer) as RTCSessionDescriptionInit;
       await pc.setRemoteDescription(answer);
       this.log(`Set remote description from ${peer.id}`);
-      
-      // Mark as connected
-      peer.connected = true;
-      this.setStorageItem(this.peerKey(peer.id), peer);
     } catch (e) {
       this.log(`Error handling answer from ${peer.id}: ${e}`);
     }
@@ -334,6 +388,7 @@ export class P2PCoordinator {
     if (!pc || pc.remoteDescription === null) return;
     
     for (const candidateJson of peer.followerIce) {
+      if (!this.markIceApplied(peer.id, candidateJson)) continue;
       try {
         const candidate = JSON.parse(candidateJson) as RTCIceCandidateInit;
         pc.addIceCandidate(candidate).catch(() => {});
@@ -347,37 +402,41 @@ export class P2PCoordinator {
   // WebRTC - Follower Side
   // ─────────────────────────────────────────────────────────────────────────
 
-  private async handleLeaderOffer(myEntry: PeerEntry): Promise<void> {
-    if (!myEntry.offer || !this.currentLeaderId) return;
+  private async handleLeaderOffer(offerEntry: OfferEntry): Promise<void> {
+    if (!offerEntry.offer || !this.currentLeaderId) return;
     
     this.log('Received offer from leader');
     
     const pc = this.createPeerConnection(this.currentLeaderId);
     
     try {
-      const offer = JSON.parse(myEntry.offer) as RTCSessionDescriptionInit;
+      const offer = JSON.parse(offerEntry.offer) as RTCSessionDescriptionInit;
       await pc.setRemoteDescription(offer);
       
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       
-      // Write answer back
-      myEntry.answer = JSON.stringify(answer);
-      myEntry.timestamp = Date.now();
-      this.setStorageItem(this.peerKey(this.instanceId), myEntry);
-      this.log('Wrote answer to localStorage');
+      // Write the answer into our own entry, never the leader's
+      const myEntry = this.getStorageItem<PeerEntry>(this.peerKey(this.instanceId));
+      if (myEntry) {
+        myEntry.answer = JSON.stringify(answer);
+        myEntry.timestamp = Date.now();
+        this.setStorageItem(this.peerKey(this.instanceId), myEntry);
+        this.log('Wrote answer to localStorage');
+      }
     } catch (e) {
       this.log(`Error handling offer: ${e}`);
     }
   }
 
-  private processLeaderIceCandidates(myEntry: PeerEntry): void {
+  private processLeaderIceCandidates(offerEntry: OfferEntry): void {
     if (!this.currentLeaderId) return;
     
     const pc = this.peerConnections.get(this.currentLeaderId);
     if (!pc || pc.remoteDescription === null) return;
     
-    for (const candidateJson of myEntry.leaderIce) {
+    for (const candidateJson of offerEntry.leaderIce) {
+      if (!this.markIceApplied(this.currentLeaderId, candidateJson)) continue;
       try {
         const candidate = JSON.parse(candidateJson) as RTCIceCandidateInit;
         pc.addIceCandidate(candidate).catch(() => {});
@@ -385,6 +444,18 @@ export class P2PCoordinator {
         // Ignore parse errors
       }
     }
+  }
+
+  /** Returns true the first time a candidate is seen for a peer. */
+  private markIceApplied(peerId: string, candidateJson: string): boolean {
+    let applied = this.appliedIce.get(peerId);
+    if (!applied) {
+      applied = new Set();
+      this.appliedIce.set(peerId, applied);
+    }
+    if (applied.has(candidateJson)) return false;
+    applied.add(candidateJson);
+    return true;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -445,22 +516,18 @@ export class P2PCoordinator {
     const candidateJson = JSON.stringify(candidate);
     
     if (this.role === 'leader') {
-      // Add to peer's leaderIce array
-      const peerEntry = this.getStorageItem<PeerEntry>(this.peerKey(peerId));
-      if (peerEntry) {
-        if (!peerEntry.leaderIce.includes(candidateJson)) {
-          peerEntry.leaderIce.push(candidateJson);
-          this.setStorageItem(this.peerKey(peerId), peerEntry);
-        }
+      const offerEntry = this.getStorageItem<OfferEntry>(this.offerKey(peerId));
+      if (offerEntry && !offerEntry.leaderIce.includes(candidateJson)) {
+        offerEntry.leaderIce.push(candidateJson);
+        offerEntry.timestamp = Date.now();
+        this.setStorageItem(this.offerKey(peerId), offerEntry);
       }
     } else {
-      // Add to our own followerIce array
       const myEntry = this.getStorageItem<PeerEntry>(this.peerKey(this.instanceId));
-      if (myEntry) {
-        if (!myEntry.followerIce.includes(candidateJson)) {
-          myEntry.followerIce.push(candidateJson);
-          this.setStorageItem(this.peerKey(this.instanceId), myEntry);
-        }
+      if (myEntry && !myEntry.followerIce.includes(candidateJson)) {
+        myEntry.followerIce.push(candidateJson);
+        myEntry.timestamp = Date.now();
+        this.setStorageItem(this.peerKey(this.instanceId), myEntry);
       }
     }
   }
@@ -486,6 +553,14 @@ export class P2PCoordinator {
         if (data.type === 'event') {
           this.onEvent?.(data.event as EventSubNotification);
         }
+        else if (data.type === 'app') {
+          const from = (data.from as string) || peerId;
+          this.onAppMessage?.(data.payload, from);
+          // The leader is the hub, so pass it on to the other followers
+          if (this.role === 'leader') {
+            this.sendToChannels(JSON.stringify(data), peerId);
+          }
+        }
       } catch {
         this.log('Failed to parse DataChannel message');
       }
@@ -506,6 +581,7 @@ export class P2PCoordinator {
     }
     
     this.connectingPeers.delete(peerId);
+    this.appliedIce.delete(peerId);
     
     if (this.role === 'leader') {
       this.onFollowerDisconnected?.(peerId);
@@ -528,11 +604,13 @@ export class P2PCoordinator {
     // Close existing connections
     this.closeAllConnections();
     
-    // Clean up our old peer entry
+    // Clean up our old peer entry and the dead leader's offer to us
     this.removeStorageItem(this.peerKey(this.instanceId));
+    this.removeStorageItem(this.offerKey(this.instanceId));
     
     // Reset state
     this.connectingPeers.clear();
+    this.appliedIce.clear();
     this.currentLeaderId = null;
     
     // Try to become leader
@@ -584,6 +662,26 @@ export class P2PCoordinator {
         } catch (e) {
           this.log(`Failed to send to ${peerId}: ${e}`);
         }
+      }
+    }
+  }
+
+  /**
+   * Send an application-level message to the other browser sources. Followers
+   * send to the leader, which relays it on to everyone else.
+   */
+  sendAppMessage(payload: unknown): void {
+    this.sendToChannels(JSON.stringify({ type: 'app', from: this.instanceId, payload }));
+  }
+
+  private sendToChannels(message: string, exceptPeerId?: string): void {
+    for (const [peerId, dc] of this.dataChannels) {
+      if (peerId === exceptPeerId) continue;
+      if (dc.readyState !== 'open') continue;
+      try {
+        dc.send(message);
+      } catch (e) {
+        this.log(`Failed to send to ${peerId}: ${e}`);
       }
     }
   }
@@ -658,17 +756,40 @@ export class P2PCoordinator {
       this.removeStorageItem(this.leaderKey);
     }
     
-    // Clean up stale peer entries
+    // Clean up stale peer and offer entries
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (!key?.startsWith(this.peerPrefix)) continue;
-      
-      const peer = this.getStorageItem<PeerEntry>(key);
-      if (peer && now - peer.timestamp > LEADER_TIMEOUT_MS * 3) {
-        this.log(`Cleaning up stale peer: ${peer.id}`);
-        this.removeStorageItem(key);
+      if (!key) continue;
+
+      if (key.startsWith(this.peerPrefix)) {
+        const peer = this.getStorageItem<PeerEntry>(key);
+        if (peer && now - peer.timestamp > LEADER_TIMEOUT_MS * 3) {
+          this.log(`Cleaning up stale peer: ${peer.id}`);
+          this.removeStorageItem(key);
+        }
+      }
+      else if (key.startsWith(this.offerPrefix)) {
+        const offer = this.getStorageItem<OfferEntry>(key);
+        if (offer && now - offer.timestamp > LEADER_TIMEOUT_MS * 3) {
+          this.removeStorageItem(key);
+        }
       }
     }
+  }
+
+  private registerUnloadHandler(): void {
+    if (typeof window === 'undefined') return;
+    // OBS tears down browser sources on scene changes. Releasing the lock here
+    // lets a sibling take over right away instead of waiting out the timeout.
+    this.unloadListener = () => {
+      const leader = this.getLeader();
+      if (this.role === 'leader' && leader && leader.id === this.instanceId) {
+        this.removeStorageItem(this.leaderKey);
+      }
+      this.removeStorageItem(this.peerKey(this.instanceId));
+    };
+    window.addEventListener('pagehide', this.unloadListener);
+    window.addEventListener('beforeunload', this.unloadListener);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -701,10 +822,20 @@ export class P2PCoordinator {
     this.stopHeartbeat();
     this.stopPolling();
     this.closeAllConnections();
+
+    if (this.unloadListener && typeof window !== 'undefined') {
+      window.removeEventListener('pagehide', this.unloadListener);
+      window.removeEventListener('beforeunload', this.unloadListener);
+      this.unloadListener = null;
+    }
+    this.appliedIce.clear();
     
     // Clean up our entries from localStorage
     if (this.role === 'leader') {
       this.removeStorageItem(this.leaderKey);
+      for (const peerId of this.connectingPeers) {
+        this.removeStorageItem(this.offerKey(peerId));
+      }
     }
     this.removeStorageItem(this.peerKey(this.instanceId));
   }

@@ -116,6 +116,10 @@ export class TwitchAPI {
     return this.request<T>('POST', endpoint, body);
   }
 
+  private async patch<T>(endpoint: string, body: unknown): Promise<T> {
+    return this.request<T>('PATCH', endpoint, body);
+  }
+
   private async delete(endpoint: string): Promise<void> {
     await this.request<void>('DELETE', endpoint);
   }
@@ -261,6 +265,39 @@ export class TwitchAPI {
       totalCost: response.total_cost,
       maxTotalCost: response.max_total_cost,
     };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Channel Point Redemptions
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Resolve a pending channel point redemption.
+   *
+   * CANCELED refunds the points to the viewer. Only works for rewards created
+   * by this client id, and only while the redemption is still UNFULFILLED —
+   * which requires the reward to have should_redemptions_skip_request_queue
+   * set to false.
+   */
+  async updateRedemptionStatus(
+    broadcasterId: string,
+    rewardId: string,
+    redemptionId: string,
+    status: 'FULFILLED' | 'CANCELED'
+  ): Promise<Record<string, unknown> | null> {
+    const params = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      reward_id: rewardId,
+      id: redemptionId,
+    });
+
+    const response = await this.patch<APIResponse<Record<string, unknown>>>(
+      `/channel_points/custom_rewards/redemptions?${params.toString()}`,
+      { status }
+    );
+
+    this.log(`Redemption ${redemptionId} -> ${status}`);
+    return response.data?.[0] ?? null;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

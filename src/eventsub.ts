@@ -9,6 +9,8 @@ export interface EventSubNotification {
   subscriptionType: string;
   subscriptionVersion: string;
   event: Record<string, unknown>;
+  // Twitch's per-message id, used to drop retransmissions and relayed duplicates
+  messageId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -245,6 +247,7 @@ export class EventSubClient {
       subscriptionType: msg.metadata.subscription_type!,
       subscriptionVersion: msg.metadata.subscription_version!,
       event: msg.payload.event!,
+      messageId: msg.metadata.message_id,
     };
     
     this.log(`Event: ${notification.subscriptionType}`);

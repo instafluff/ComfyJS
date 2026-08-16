@@ -34,6 +34,7 @@ export declare class TwitchAPI {
     private request;
     private get;
     private post;
+    private patch;
     private delete;
     getUsers(logins?: string[], ids?: string[]): Promise<TwitchUser[]>;
     getCurrentUser(): Promise<TwitchUser | null>;
@@ -48,6 +49,15 @@ export declare class TwitchAPI {
         totalCost: number;
         maxTotalCost: number;
     }>;
+    /**
+     * Resolve a pending channel point redemption.
+     *
+     * CANCELED refunds the points to the viewer. Only works for rewards created
+     * by this client id, and only while the redemption is still UNFULFILLED —
+     * which requires the reward to have should_redemptions_skip_request_queue
+     * set to false.
+     */
+    updateRedemptionStatus(broadcasterId: string, rewardId: string, redemptionId: string, status: 'FULFILLED' | 'CANCELED'): Promise<Record<string, unknown> | null>;
     getChatters(broadcasterId: string, moderatorId: string): Promise<{
         users: Array<{
             userId: string;

@@ -650,7 +650,8 @@ var EventSubClient = class {
     const notification = {
       subscriptionType: msg.metadata.subscription_type,
       subscriptionVersion: msg.metadata.subscription_version,
-      event: msg.payload.event
+      event: msg.payload.event,
+      messageId: msg.metadata.message_id
     };
     this.log(`Event: ${notification.subscriptionType}`);
     this.onEvent?.(notification);
@@ -869,6 +870,7 @@ var LEADER_TIMEOUT_MS = 1e4;
 var HEARTBEAT_INTERVAL_MS = 3e3;
 var POLL_INTERVAL_MS = 500;
 var ELECTION_DELAY_MAX_MS = 500;
+var ELECTION_CONFIRM_MS = 150;
 var P2PCoordinator = class {
   constructor(options) {
     this.role = "standalone";
@@ -882,11 +884,17 @@ var P2PCoordinator = class {
     this.pollTimer = null;
     // Track which peers we've started connecting to
     this.connectingPeers = /* @__PURE__ */ new Set();
+    // True while an election is in flight
+    this.electing = false;
+    // ICE candidates already handed to each peer connection
+    this.appliedIce = /* @__PURE__ */ new Map();
+    this.unloadListener = null;
     // Event handlers
     this.onEvent = null;
     this.onRoleChange = null;
     this.onFollowerConnected = null;
     this.onFollowerDisconnected = null;
+    this.onAppMessage = null;
     this.instanceId = this.generateInstanceId();
     this.options = options;
     this.channel = options.channel.toLowerCase().replace("#", "");
@@ -904,6 +912,12 @@ var P2PCoordinator = class {
   peerKey(peerId) {
     return `${this.peerPrefix}${peerId}`;
   }
+  get offerPrefix() {
+    return `${STORAGE_PREFIX}offer_${this.channel}_`;
+  }
+  offerKey(peerId) {
+    return `${this.offerPrefix}${peerId}`;
+  }
   // ─────────────────────────────────────────────────────────────────────────
   // Initialization
   // ─────────────────────────────────────────────────────────────────────────
@@ -914,6 +928,7 @@ var P2PCoordinator = class {
       return this.role;
     }
     this.cleanupStaleEntries();
+    this.registerUnloadHandler();
     const leader = this.getLeader();
     if (leader && leader.channel === this.channel && this.isLeaderAlive(leader)) {
       this.log(`Found existing leader: ${leader.id}`);
@@ -929,6 +944,16 @@ var P2PCoordinator = class {
   // Leader Election
   // ─────────────────────────────────────────────────────────────────────────
   async tryBecomeLeader() {
+    if (this.electing)
+      return;
+    this.electing = true;
+    try {
+      await this.runElection();
+    } finally {
+      this.electing = false;
+    }
+  }
+  async runElection() {
     await this.delay(Math.random() * ELECTION_DELAY_MAX_MS);
     const leader = this.getLeader();
     if (leader && leader.channel === this.channel && this.isLeaderAlive(leader)) {
@@ -936,14 +961,21 @@ var P2PCoordinator = class {
       await this.becomeFollower(leader);
       return;
     }
-    this.role = "leader";
-    this.currentLeaderId = this.instanceId;
     const leaderEntry = {
       id: this.instanceId,
       channel: this.channel,
       timestamp: Date.now()
     };
     this.setStorageItem(this.leaderKey, leaderEntry);
+    await this.delay(ELECTION_CONFIRM_MS);
+    const confirmed = this.getLeader();
+    if (confirmed && confirmed.id !== this.instanceId) {
+      this.log(`Lost election to ${confirmed.id}`);
+      await this.becomeFollower(confirmed);
+      return;
+    }
+    this.role = "leader";
+    this.currentLeaderId = this.instanceId;
     this.log("Became leader");
     this.startHeartbeat();
     this.onRoleChange?.("leader");
@@ -951,14 +983,13 @@ var P2PCoordinator = class {
   async becomeFollower(leader) {
     this.role = "follower";
     this.currentLeaderId = leader.id;
+    this.appliedIce.clear();
     this.log(`Becoming follower of ${leader.id}`);
     const peerEntry = {
       id: this.instanceId,
       leaderId: leader.id,
       timestamp: Date.now(),
-      leaderIce: [],
-      followerIce: [],
-      connected: false
+      followerIce: []
     };
     this.setStorageItem(this.peerKey(this.instanceId), peerEntry);
     this.onRoleChange?.("follower");
@@ -990,8 +1021,6 @@ var P2PCoordinator = class {
     const peers = this.getAllPeerEntries();
     for (const peer of peers) {
       if (peer.leaderId !== this.instanceId)
-        continue;
-      if (peer.connected)
         continue;
       if (this.connectingPeers.has(peer.id))
         continue;
@@ -1028,13 +1057,22 @@ var P2PCoordinator = class {
       this.becomeFollower(leader);
       return;
     }
+    this.touchOwnPeerEntry();
+    const offerEntry = this.getStorageItem(this.offerKey(this.instanceId));
+    if (!offerEntry || offerEntry.leaderId !== leader.id)
+      return;
     const myEntry = this.getStorageItem(this.peerKey(this.instanceId));
-    if (myEntry && myEntry.offer && !myEntry.answer) {
-      this.handleLeaderOffer(myEntry);
+    if (offerEntry.offer && myEntry && !myEntry.answer) {
+      this.handleLeaderOffer(offerEntry);
     }
-    if (myEntry) {
-      this.processLeaderIceCandidates(myEntry);
-    }
+    this.processLeaderIceCandidates(offerEntry);
+  }
+  touchOwnPeerEntry() {
+    const entry = this.getStorageItem(this.peerKey(this.instanceId));
+    if (!entry)
+      return;
+    entry.timestamp = Date.now();
+    this.setStorageItem(this.peerKey(this.instanceId), entry);
   }
   // ─────────────────────────────────────────────────────────────────────────
   // WebRTC - Leader Side
@@ -1046,13 +1084,13 @@ var P2PCoordinator = class {
     this.setupDataChannel(dc, peerId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    const peerEntry = this.getStorageItem(this.peerKey(peerId));
-    if (peerEntry) {
-      peerEntry.offer = JSON.stringify(offer);
-      peerEntry.timestamp = Date.now();
-      this.setStorageItem(this.peerKey(peerId), peerEntry);
-      this.log(`Wrote offer to ${peerId}'s entry`);
-    }
+    this.setStorageItem(this.offerKey(peerId), {
+      leaderId: this.instanceId,
+      timestamp: Date.now(),
+      offer: JSON.stringify(offer),
+      leaderIce: []
+    });
+    this.log(`Wrote offer for ${peerId}`);
   }
   async handlePeerAnswer(peer) {
     const pc = this.peerConnections.get(peer.id);
@@ -1062,8 +1100,6 @@ var P2PCoordinator = class {
       const answer = JSON.parse(peer.answer);
       await pc.setRemoteDescription(answer);
       this.log(`Set remote description from ${peer.id}`);
-      peer.connected = true;
-      this.setStorageItem(this.peerKey(peer.id), peer);
     } catch (e) {
       this.log(`Error handling answer from ${peer.id}: ${e}`);
     }
@@ -1073,6 +1109,8 @@ var P2PCoordinator = class {
     if (!pc || pc.remoteDescription === null)
       return;
     for (const candidateJson of peer.followerIce) {
+      if (!this.markIceApplied(peer.id, candidateJson))
+        continue;
       try {
         const candidate = JSON.parse(candidateJson);
         pc.addIceCandidate(candidate).catch(() => {
@@ -1084,31 +1122,36 @@ var P2PCoordinator = class {
   // ─────────────────────────────────────────────────────────────────────────
   // WebRTC - Follower Side
   // ─────────────────────────────────────────────────────────────────────────
-  async handleLeaderOffer(myEntry) {
-    if (!myEntry.offer || !this.currentLeaderId)
+  async handleLeaderOffer(offerEntry) {
+    if (!offerEntry.offer || !this.currentLeaderId)
       return;
     this.log("Received offer from leader");
     const pc = this.createPeerConnection(this.currentLeaderId);
     try {
-      const offer = JSON.parse(myEntry.offer);
+      const offer = JSON.parse(offerEntry.offer);
       await pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      myEntry.answer = JSON.stringify(answer);
-      myEntry.timestamp = Date.now();
-      this.setStorageItem(this.peerKey(this.instanceId), myEntry);
-      this.log("Wrote answer to localStorage");
+      const myEntry = this.getStorageItem(this.peerKey(this.instanceId));
+      if (myEntry) {
+        myEntry.answer = JSON.stringify(answer);
+        myEntry.timestamp = Date.now();
+        this.setStorageItem(this.peerKey(this.instanceId), myEntry);
+        this.log("Wrote answer to localStorage");
+      }
     } catch (e) {
       this.log(`Error handling offer: ${e}`);
     }
   }
-  processLeaderIceCandidates(myEntry) {
+  processLeaderIceCandidates(offerEntry) {
     if (!this.currentLeaderId)
       return;
     const pc = this.peerConnections.get(this.currentLeaderId);
     if (!pc || pc.remoteDescription === null)
       return;
-    for (const candidateJson of myEntry.leaderIce) {
+    for (const candidateJson of offerEntry.leaderIce) {
+      if (!this.markIceApplied(this.currentLeaderId, candidateJson))
+        continue;
       try {
         const candidate = JSON.parse(candidateJson);
         pc.addIceCandidate(candidate).catch(() => {
@@ -1116,6 +1159,18 @@ var P2PCoordinator = class {
       } catch {
       }
     }
+  }
+  /** Returns true the first time a candidate is seen for a peer. */
+  markIceApplied(peerId, candidateJson) {
+    let applied = this.appliedIce.get(peerId);
+    if (!applied) {
+      applied = /* @__PURE__ */ new Set();
+      this.appliedIce.set(peerId, applied);
+    }
+    if (applied.has(candidateJson))
+      return false;
+    applied.add(candidateJson);
+    return true;
   }
   // ─────────────────────────────────────────────────────────────────────────
   // WebRTC Common
@@ -1162,20 +1217,18 @@ var P2PCoordinator = class {
   addIceCandidateToStorage(peerId, candidate) {
     const candidateJson = JSON.stringify(candidate);
     if (this.role === "leader") {
-      const peerEntry = this.getStorageItem(this.peerKey(peerId));
-      if (peerEntry) {
-        if (!peerEntry.leaderIce.includes(candidateJson)) {
-          peerEntry.leaderIce.push(candidateJson);
-          this.setStorageItem(this.peerKey(peerId), peerEntry);
-        }
+      const offerEntry = this.getStorageItem(this.offerKey(peerId));
+      if (offerEntry && !offerEntry.leaderIce.includes(candidateJson)) {
+        offerEntry.leaderIce.push(candidateJson);
+        offerEntry.timestamp = Date.now();
+        this.setStorageItem(this.offerKey(peerId), offerEntry);
       }
     } else {
       const myEntry = this.getStorageItem(this.peerKey(this.instanceId));
-      if (myEntry) {
-        if (!myEntry.followerIce.includes(candidateJson)) {
-          myEntry.followerIce.push(candidateJson);
-          this.setStorageItem(this.peerKey(this.instanceId), myEntry);
-        }
+      if (myEntry && !myEntry.followerIce.includes(candidateJson)) {
+        myEntry.followerIce.push(candidateJson);
+        myEntry.timestamp = Date.now();
+        this.setStorageItem(this.peerKey(this.instanceId), myEntry);
       }
     }
   }
@@ -1196,6 +1249,12 @@ var P2PCoordinator = class {
         const data = JSON.parse(event.data);
         if (data.type === "event") {
           this.onEvent?.(data.event);
+        } else if (data.type === "app") {
+          const from = data.from || peerId;
+          this.onAppMessage?.(data.payload, from);
+          if (this.role === "leader") {
+            this.sendToChannels(JSON.stringify(data), peerId);
+          }
         }
       } catch {
         this.log("Failed to parse DataChannel message");
@@ -1214,6 +1273,7 @@ var P2PCoordinator = class {
       this.peerConnections.delete(peerId);
     }
     this.connectingPeers.delete(peerId);
+    this.appliedIce.delete(peerId);
     if (this.role === "leader") {
       this.onFollowerDisconnected?.(peerId);
     }
@@ -1230,7 +1290,9 @@ var P2PCoordinator = class {
     this.log("Promoting to leader");
     this.closeAllConnections();
     this.removeStorageItem(this.peerKey(this.instanceId));
+    this.removeStorageItem(this.offerKey(this.instanceId));
     this.connectingPeers.clear();
+    this.appliedIce.clear();
     this.currentLeaderId = null;
     await this.tryBecomeLeader();
   }
@@ -1272,6 +1334,26 @@ var P2PCoordinator = class {
         } catch (e) {
           this.log(`Failed to send to ${peerId}: ${e}`);
         }
+      }
+    }
+  }
+  /**
+   * Send an application-level message to the other browser sources. Followers
+   * send to the leader, which relays it on to everyone else.
+   */
+  sendAppMessage(payload) {
+    this.sendToChannels(JSON.stringify({ type: "app", from: this.instanceId, payload }));
+  }
+  sendToChannels(message, exceptPeerId) {
+    for (const [peerId, dc] of this.dataChannels) {
+      if (peerId === exceptPeerId)
+        continue;
+      if (dc.readyState !== "open")
+        continue;
+      try {
+        dc.send(message);
+      } catch (e) {
+        this.log(`Failed to send to ${peerId}: ${e}`);
       }
     }
   }
@@ -1334,14 +1416,34 @@ var P2PCoordinator = class {
     }
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (!key?.startsWith(this.peerPrefix))
+      if (!key)
         continue;
-      const peer = this.getStorageItem(key);
-      if (peer && now - peer.timestamp > LEADER_TIMEOUT_MS * 3) {
-        this.log(`Cleaning up stale peer: ${peer.id}`);
-        this.removeStorageItem(key);
+      if (key.startsWith(this.peerPrefix)) {
+        const peer = this.getStorageItem(key);
+        if (peer && now - peer.timestamp > LEADER_TIMEOUT_MS * 3) {
+          this.log(`Cleaning up stale peer: ${peer.id}`);
+          this.removeStorageItem(key);
+        }
+      } else if (key.startsWith(this.offerPrefix)) {
+        const offer = this.getStorageItem(key);
+        if (offer && now - offer.timestamp > LEADER_TIMEOUT_MS * 3) {
+          this.removeStorageItem(key);
+        }
       }
     }
+  }
+  registerUnloadHandler() {
+    if (typeof window === "undefined")
+      return;
+    this.unloadListener = () => {
+      const leader = this.getLeader();
+      if (this.role === "leader" && leader && leader.id === this.instanceId) {
+        this.removeStorageItem(this.leaderKey);
+      }
+      this.removeStorageItem(this.peerKey(this.instanceId));
+    };
+    window.addEventListener("pagehide", this.unloadListener);
+    window.addEventListener("beforeunload", this.unloadListener);
   }
   // ─────────────────────────────────────────────────────────────────────────
   // State
@@ -1366,8 +1468,17 @@ var P2PCoordinator = class {
     this.stopHeartbeat();
     this.stopPolling();
     this.closeAllConnections();
+    if (this.unloadListener && typeof window !== "undefined") {
+      window.removeEventListener("pagehide", this.unloadListener);
+      window.removeEventListener("beforeunload", this.unloadListener);
+      this.unloadListener = null;
+    }
+    this.appliedIce.clear();
     if (this.role === "leader") {
       this.removeStorageItem(this.leaderKey);
+      for (const peerId of this.connectingPeers) {
+        this.removeStorageItem(this.offerKey(peerId));
+      }
     }
     this.removeStorageItem(this.peerKey(this.instanceId));
   }
@@ -1424,6 +1535,9 @@ var TwitchAPI = class {
   }
   async post(endpoint, body) {
     return this.request("POST", endpoint, body);
+  }
+  async patch(endpoint, body) {
+    return this.request("PATCH", endpoint, body);
   }
   async delete(endpoint) {
     await this.request("DELETE", endpoint);
@@ -1521,6 +1635,30 @@ var TwitchAPI = class {
       totalCost: response.total_cost,
       maxTotalCost: response.max_total_cost
     };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Channel Point Redemptions
+  // ─────────────────────────────────────────────────────────────────────────
+  /**
+   * Resolve a pending channel point redemption.
+   *
+   * CANCELED refunds the points to the viewer. Only works for rewards created
+   * by this client id, and only while the redemption is still UNFULFILLED —
+   * which requires the reward to have should_redemptions_skip_request_queue
+   * set to false.
+   */
+  async updateRedemptionStatus(broadcasterId, rewardId, redemptionId, status) {
+    const params = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      reward_id: rewardId,
+      id: redemptionId
+    });
+    const response = await this.patch(
+      `/channel_points/custom_rewards/redemptions?${params.toString()}`,
+      { status }
+    );
+    this.log(`Redemption ${redemptionId} -> ${status}`);
+    return response.data?.[0] ?? null;
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Chat
@@ -1692,7 +1830,11 @@ var ComfyJSImpl = class {
     this.channelId = "";
     this.scopes = [];
     this.isFirstConnect = true;
+    this.eventSubStarting = false;
     this.boundBeforeUnload = null;
+    // Recently handled events, for suppressing duplicates
+    this.seenEvents = /* @__PURE__ */ new Set();
+    this.seenEventOrder = [];
     // ─────────────────────────────────────────────────────────────────────────
     // Event Handlers (with default implementations)
     // ─────────────────────────────────────────────────────────────────────────
@@ -1799,6 +1941,13 @@ var ComfyJSImpl = class {
      * Games/diagnostics can hook this to track what's happening with channel points.
      */
     this.onEventSubStatus = () => {
+    };
+    /**
+     * Message received from another browser source of the same channel.
+     * Paired with Broadcast(); used to coordinate work between overlays that
+     * run side by side in OBS.
+     */
+    this.onBroadcast = () => {
     };
   }
   // ─────────────────────────────────────────────────────────────────────────
@@ -1911,7 +2060,7 @@ var ComfyJSImpl = class {
       } else if (this.p2p?.currentRole === "follower") {
         this.emitEventSubStatus("p2p-follower-waiting", "waiting 15s for DataChannel from leader");
         setTimeout(async () => {
-          if (this.p2p && this.p2p.followerCount === 0) {
+          if (this.p2p && this.p2p.currentRole === "follower" && this.p2p.followerCount === 0) {
             console.warn("P2P DataChannel failed to connect. Falling back to EventSub directly.");
             this.emitEventSubStatus("p2p-fallback", "DataChannel not connected after 15s, initializing EventSub directly");
             await this.initializeEventSub();
@@ -2077,6 +2226,45 @@ var ComfyJSImpl = class {
       }
     );
     return response.text();
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Channel Point Redemptions
+  // ─────────────────────────────────────────────────────────────────────────
+  /**
+   * Resolve a pending redemption. `CANCELED` refunds the points to the viewer.
+   *
+   * Requires the channel:manage:redemptions scope, a reward created by this
+   * client id, and a reward configured with
+   * should_redemptions_skip_request_queue: false — Twitch auto-fulfills
+   * skip-the-queue redemptions and refuses to change them afterwards.
+   */
+  async UpdateRedemptionStatus(rewardId, redemptionId, status) {
+    if (!this.api)
+      throw new Error("Not connected");
+    if (!this.channelId)
+      throw new Error("No channel ID available");
+    return this.api.updateRedemptionStatus(this.channelId, rewardId, redemptionId, status);
+  }
+  /** Refund a redemption's channel points to the viewer. */
+  async RefundRedemption(rewardId, redemptionId) {
+    return this.UpdateRedemptionStatus(rewardId, redemptionId, "CANCELED");
+  }
+  /** Mark a redemption as completed so it leaves the streamer's queue. */
+  async FulfillRedemption(rewardId, redemptionId) {
+    return this.UpdateRedemptionStatus(rewardId, redemptionId, "FULFILLED");
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // Cross-Source Messaging
+  // ─────────────────────────────────────────────────────────────────────────
+  /**
+   * Send a message to the other browser sources running the same channel.
+   * Delivered over the same BroadcastChannel used to relay EventSub events.
+   */
+  Broadcast(payload) {
+    if (!this.p2p)
+      return false;
+    this.p2p.sendAppMessage(payload);
+    return true;
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Private: Token Validation
@@ -2332,6 +2520,21 @@ var ComfyJSImpl = class {
     this.p2p.onEvent = (event) => {
       this.handleEventSubNotification(event);
     };
+    this.p2p.onAppMessage = (payload, fromId) => {
+      try {
+        this.onBroadcast(payload, fromId);
+      } catch (err) {
+        this.onError(err instanceof Error ? err : new Error(String(err)));
+      }
+    };
+    this.p2p.onRoleChange = (newRole) => {
+      this.emitEventSubStatus("p2p-role", newRole);
+      if (newRole === "leader" && this.password && this.useEventSub && !this.eventSub) {
+        this.initializeEventSub().catch((err) => {
+          this.emitEventSubStatus("eventsub-fallback-failed", String(err));
+        });
+      }
+    };
   }
   // ─────────────────────────────────────────────────────────────────────────
   // Private: EventSub
@@ -2339,25 +2542,36 @@ var ComfyJSImpl = class {
   async initializeEventSub() {
     if (!this.api)
       return;
-    await this.cleanupStaleSubscriptions();
-    this.eventSub = new EventSubClient({ debug: this.isDebug });
-    this.eventSub.createSubscription = async (sessionId, type, version, condition) => {
-      const sub = await this.api.createEventSubSubscription(sessionId, type, version, condition);
-      this.eventSub.registerSubscription(sub);
-      return sub;
-    };
-    this.eventSub.onEvent = (event) => {
-      this.handleEventSubNotification(event);
-      this.p2p?.broadcastEvent(event);
-    };
-    await this.eventSub.connect();
-    this.emitEventSubStatus("eventsub-connected", `session: ${this.eventSub.session}`);
-    await this.subscribeToScopedEvents();
-    if (typeof window !== "undefined") {
-      this.boundBeforeUnload = () => {
-        this.eventSub?.disconnect();
+    if (this.eventSub || this.eventSubStarting)
+      return;
+    this.eventSubStarting = true;
+    try {
+      await this.cleanupStaleSubscriptions();
+      const eventSub = new EventSubClient({ debug: this.isDebug });
+      this.eventSub = eventSub;
+      eventSub.createSubscription = async (sessionId, type, version, condition) => {
+        const sub = await this.api.createEventSubSubscription(sessionId, type, version, condition);
+        eventSub.registerSubscription(sub);
+        return sub;
       };
-      window.addEventListener("beforeunload", this.boundBeforeUnload);
+      eventSub.onEvent = (event) => {
+        this.p2p?.broadcastEvent(event);
+        this.handleEventSubNotification(event);
+      };
+      await eventSub.connect();
+      this.emitEventSubStatus("eventsub-connected", `session: ${eventSub.session}`);
+      await this.subscribeToScopedEvents();
+      if (typeof window !== "undefined" && !this.boundBeforeUnload) {
+        this.boundBeforeUnload = () => {
+          this.eventSub?.disconnect();
+        };
+        window.addEventListener("beforeunload", this.boundBeforeUnload);
+      }
+    } catch (err) {
+      this.eventSub = null;
+      throw err;
+    } finally {
+      this.eventSubStarting = false;
     }
   }
   /**
@@ -2441,24 +2655,13 @@ var ComfyJSImpl = class {
             continue;
           }
           if (errStr.includes("429") && errStr.includes("maximum subscriptions")) {
-            this.log(`429 hit for ${type}, attempting to delete existing subs and retry`);
-            try {
-              const result = await this.api.getEventSubSubscriptions();
-              const duplicates = result.subscriptions.filter(
-                (s) => s.type === type && s.status === "enabled"
-              );
-              for (const dup of duplicates) {
-                await this.api.deleteEventSubSubscription(dup.id);
-                this.log(`Deleted existing sub ${dup.id} (${dup.type})`);
-              }
-              await this.eventSub.subscribe(type, version, condition);
-              this.emitEventSubStatus("eventsub-subscribed", type, { version, condition, retriedAfter429: true });
-              continue;
-            } catch (retryErr) {
-              console.error(`Retry after 429 cleanup failed for ${type}:`, retryErr);
-              this.emitEventSubStatus("eventsub-subscribe-failed", `${type}: ${String(retryErr)} (after 429 retry)`, { type, error: String(retryErr) });
-              continue;
-            }
+            this.log(`429 for ${type}: subscription cap reached, relying on existing subscription`);
+            this.emitEventSubStatus(
+              "eventsub-subscribe-capped",
+              `${type}: subscription cap reached, another browser source already holds one`,
+              { type, condition }
+            );
+            continue;
           }
           console.error(`Failed to subscribe to ${type}:`, err);
           this.log(`Failed to subscribe to ${type}: ${err}`);
@@ -2469,6 +2672,10 @@ var ComfyJSImpl = class {
   }
   handleEventSubNotification(notification) {
     const { subscriptionType, event } = notification;
+    if (!this.markEventSeen(notification)) {
+      this.log(`Duplicate ${subscriptionType} ignored`);
+      return;
+    }
     try {
       switch (subscriptionType) {
         case "channel.channel_points_custom_reward_redemption.add":
@@ -2698,6 +2905,29 @@ var ComfyJSImpl = class {
     } catch (err) {
       console.warn("[ComfyJS] onEventSubStatus callback error:", err);
     }
+  }
+  /**
+   * Returns true the first time an event is seen. Redemptions are keyed on the
+   * redemption id so they still deduplicate across two EventSub sessions;
+   * everything else falls back to the per-message id, which catches Twitch's
+   * own retransmissions.
+   */
+  markEventSeen(notification) {
+    const isRedemption = notification.subscriptionType === "channel.channel_points_custom_reward_redemption.add" || notification.subscriptionType === "channel.channel_points_automatic_reward_redemption.add";
+    const eventId = notification.event?.id;
+    const key = isRedemption && typeof eventId === "string" ? `${notification.subscriptionType}:${eventId}` : notification.messageId ? `msg:${notification.messageId}` : "";
+    if (!key)
+      return true;
+    if (this.seenEvents.has(key))
+      return false;
+    this.seenEvents.add(key);
+    this.seenEventOrder.push(key);
+    if (this.seenEventOrder.length > 400) {
+      const evicted = this.seenEventOrder.shift();
+      if (evicted)
+        this.seenEvents.delete(evicted);
+    }
+    return true;
   }
   log(msg) {
     if (this.isDebug) {
