@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ComfyJS Differential Client</title>
+</head>
+<body>
+<script>
+(() => {
+  const mode = new URLSearchParams(location.search).get('mode') || 'v2';
+  const script = document.createElement('script');
+  script.src = mode === 'v1'
+    ? 'https://cdn.jsdelivr.net/npm/comfy.js@1.1.30/dist/comfy.min.js'
+    : '../dist/comfy.min.js';
+
+  const handlers = [
+    'onError', 'onCommand', 'onChat', 'onWhisper', 'onMessageDeleted',
+    'onBan', 'onTimeout', 'onJoin', 'onPart', 'onHosted', 'onRaid',
+    'onSub', 'onResub', 'onSubGift', 'onSubMysteryGift',
+    'onGiftSubContinue', 'onCheer', 'onChatMode', 'onReward',
+    'onShoutout', 'onHypeTrain', 'onPoll', 'onPrediction',
+    'onConnected', 'onReconnect'
+  ];
+
+  function clone(value) {
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message };
+    }
+    try {
+      return JSON.parse(JSON.stringify(value, (_key, item) => {
+        if (typeof item === 'function') return '[function]';
+        if (item instanceof Date) return item.toISOString();
+        return item;
+      }));
+    } catch {
+      return String(value);
+    }
+  }
+
+  function emit(handler, args) {
+    parent.postMessage({
+      source: 'comfy-differential',
+      mode,
+      handler,
+      receivedAt: Date.now(),
+      args: clone(args)
+    }, location.origin);
+  }
+
+  script.onload = () => {
+    for (const handler of handlers) {
+      ComfyJS[handler] = (...args) => emit(handler, args);
+    }
+
+    // v2-only future-proof feed. It is intentionally not part of v1 parity.
+    if (mode === 'v2' && 'onEventSub' in ComfyJS) {
+      ComfyJS.onEventSub = (...args) => emit('onEventSub', args);
+    }
+
+    parent.postMessage({ source: 'comfy-differential', mode, ready: true }, location.origin);
+  };
+
+  script.onerror = () => {
+    parent.postMessage({
+      source: 'comfy-differential',
+      mode,
+      fatal: `Failed to load ${script.src}`
+    }, location.origin);
+  };
+
+  document.head.appendChild(script);
+
+  addEventListener('message', async (event) => {
+    if (event.origin !== location.origin || event.data?.source !== 'comfy-differential-control') return;
+    if (!window.ComfyJS) return;
+
+    if (event.data.action === 'start') {
+      const { channel, token } = event.data;
+      try {
+        const result = ComfyJS.Init(channel, token || undefined);
+        if (result && typeof result.catch === 'function') {
+          result.catch(error => emit('onError', [error]));
+        }
+      } catch (error) {
+        emit('onError', [error]);
+      }
+    }
+
+    if (event.data.action === 'stop') {
+      try { ComfyJS.Disconnect(); } catch (error) { emit('onError', [error]); }
+    }
+  });
+})();
+</script>
+</body>
+</html>
